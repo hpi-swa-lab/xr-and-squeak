@@ -1,12 +1,12 @@
-function createView(node) {
+function createView(node, parent) {
   const shard = document.createElement("sb-shard");
-  shard.appendChild(nodeToHTML(node));
+  shard.update(node);
   return shard;
 }
 
 function reRunQueries(node, ...triggers) {
   for (const trigger of triggers) {
-    if (queries.has(trigger)) {
+    if (getAllQueries().has(trigger)) {
       nodeAllDo(node, (node) => {
         for (const query of queries.get(trigger)) {
           runQuery(query, node);
@@ -16,10 +16,16 @@ function reRunQueries(node, ...triggers) {
   }
 }
 
-function editText(rootNode, input, cursor) {
+function setNewText(rootNode, text) {
+  _parseText(text, rootNode);
+}
+
+function spliceText(rootNode, start, deleteCount, insert) {
   const newText =
-    rootNode.text.slice(0, cursor) + input + rootNode.text.slice(cursor);
-  _parseText(newText, nodeRoot(rootNode));
+    rootNode.text.slice(0, start) +
+    insert +
+    rootNode.text.slice(start + deleteCount);
+  _parseText(newText, rootNode);
 }
 
 let init = false;
@@ -72,12 +78,25 @@ function nodeRoot(node) {
 function addTextFromCursor(cursor, node, isLeaf, text) {
   const gap = text.slice(lastLeafIndex, cursor.startIndex);
   if (gap) {
-    nodeAddChild(node, {
-      kind: "text",
-      children: [],
-      text: gap.replace(/\s/g, "\u00A0"),
-      range: [lastLeafIndex, cursor.startIndex],
-    });
+    const lines = gap.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        nodeAddChild(node, {
+          kind: "text",
+          children: [],
+          text: "\n",
+          range: [lastLeafIndex, lastLeafIndex + 1],
+        });
+      }
+      if (lines[i]) {
+        nodeAddChild(node, {
+          kind: "text",
+          children: [],
+          text: lines[i].replace(/ /g, "\u00A0"),
+          range: [lastLeafIndex + 1, lastLeafIndex + 1 + lines[i].length],
+        });
+      }
+    }
   }
 
   lastLeafIndex = cursor.endIndex;

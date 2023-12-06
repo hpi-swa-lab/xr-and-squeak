@@ -13,8 +13,12 @@ customElements.define(
   "sb-shard",
   class Shard extends HTMLElement {
     source = null;
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.innerHTML = `<slot></slot>`;
+    }
     update(node) {
-      this.innerHTML = "";
       this.appendChild(nodeToHTML(node));
       this.source = node;
     }
@@ -126,6 +130,8 @@ function getGlobalCursorPosition(root) {
 
 function nodeToHTML(node) {
   if (node.kind === "text") {
+    if (node.text.includes("\n")) return document.createElement("br");
+
     const text = document.createElement("sb-text");
     text.setAttribute("text", node.text);
     text.node = node;
@@ -149,18 +155,14 @@ customElements.define(
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `
-        <style>
+      this.shadowRoot.innerHTML = `<style>
             :host {
-                display: inline-block;
-                padding: 2px 0;
-                display: flex;
-                border: 1px solid #ccc;
-                align-items: center;
+                display: inline;
+                background: rgba(0.4, 0.4, 0.4, 0.05);
+                margin: 0;
+                padding: 0;
             }
-        </style>
-        <slot></slot>
-        `;
+        </style><slot></slot>`;
     }
     set node(v) {
       this._node = v;
@@ -196,40 +198,98 @@ customElements.define(
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `
-        <style>
+      this.shadowRoot.innerHTML = `<style>
             :host {
-                display: inline-block;
+                display: inline;
                 font-family: monospace;
             }
             span {
                 outline: none;
             }
-        </style>
-        <span contenteditable></span>`;
+        </style><span contenteditable></span>`;
       this.addEventListener("input", (event) => {
-        const input = event.data;
-        const cursor = getGlobalCursorPosition(this.shadowRoot) - input.length;
-
-        // undo text change, the diffing will apply it
+        console.log(event);
+        // undo any text changes, the diffing will apply it
+        const start = getGlobalCursorPosition(this.shadowRoot);
         this.shadowRoot.querySelector("span").textContent =
           this.getAttribute("text");
 
-        if (input && cursor !== null) {
+        if (!start) return;
+
+        const splice = (start, deleteCount, insert) =>
           this.restoreCursorAfter(
-            () => editText(nodeRoot(this.node), input, cursor),
-            cursor + input.length
+            () =>
+              spliceText(
+                nodeRoot(this.node),
+                // cursor position as calculated includes changes
+                start - insert.length + deleteCount,
+                deleteCount,
+                insert
+              ),
+            start + deleteCount
           );
+
+        // https://rawgit.com/w3c/input-events/v1/index.html#interface-InputEvent-Attributes
+        switch (event.inputType) {
+          case "deleteContentForward":
+            splice(start, 1, "");
+            break;
+          case "deleteContent":
+          case "deleteContentBackward":
+            splice(start - 1, 1, "");
+            break;
+          case "deleteByCut":
+          case "deleteByDrag":
+            splice(start, 1, "");
+            break;
+          case "deleteWordBackward":
+            splice(start, 1, "");
+            break;
+          case "deleteWordForward":
+            splice(start, 1, "");
+            break;
+          case "insertLineBreak":
+          case "insertParagraph":
+            splice(start, 0, "\n");
+            break;
+          case "insertCompositionText":
+          case "insertFromComposition":
+          case "insertFromDrop":
+          case "insertFromPaste":
+          case "insertReplacementText":
+          case "insertText":
+          case "insertTextPlaceholder":
+          case "insertFromYank":
+            splice(start, 0, event.data);
+            break;
+          default:
+            console.warn("unhandled input type", event.inputType);
+            break;
         }
+
+        // const input = event.data;
+        // const cursor = getGlobalCursorPosition(this.shadowRoot) - input.length;
       });
     }
 
     input() {
-      return this.shadowRoot.querySelector("span").childNodes[0];
+      return this.shadowRoot.childNodes[1].childNodes[0];
+    }
+    isLineBreak() {
+      return this.shadowRoot.childNodes[1].tagName === "BR";
     }
     attributeChangedCallback(name, oldValue, newValue) {
-      if (name === "text")
-        this.shadowRoot.querySelector("span").textContent = newValue;
+      if (name === "text") {
+        if (newValue === "\n" && !this.isLineBreak()) {
+          this.shadowRoot.removeChild(this.shadowRoot.childNodes[1]);
+          this.shadowRoot.appendChild(document.createElement("br"));
+        } else if (newValue !== "\n" && this.isLineBreak()) {
+          this.shadowRoot.removeChild(this.shadowRoot.childNodes[1]);
+          this.shadowRoot.appendChild(document.createElement("span"));
+        }
+        if (newValue !== "\n")
+          this.shadowRoot.querySelector("span").textContent = newValue;
+      }
     }
     getRange() {
       return this.node.range;

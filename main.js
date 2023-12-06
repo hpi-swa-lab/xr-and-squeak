@@ -15,7 +15,19 @@ function testAll() {
 }
 
 window.addEventListener("load", async () => {
-  const smalltalkMethod = await parseText("a 2+43", "smalltalk");
+  const smalltalkMethod = await parseText(
+    `initialize
+
+  super initialize.
+  
+  self
+    addMorphBack: (Morph new
+      color: Color red;
+      extent: 30 @ 20;
+      yourself);
+    addMorphBack: (Morph new color: Color green)`,
+    "smalltalk"
+  );
   document.body.appendChild(createView(smalltalkMethod));
 
   // testInsertSpaces();
