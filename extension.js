@@ -1,3 +1,5 @@
+import { Shard } from "./view.js";
+
 export class Replacement extends HTMLElement {
   shards = [];
 
@@ -17,6 +19,13 @@ export class Replacement extends HTMLElement {
     this.shards.push([locator, shard]);
     return shard;
   }
+
+  get sourceString() {
+    return this.source.root._sourceText.slice(
+      this.source.range[0],
+      this.source.range[1]
+    );
+  }
 }
 
 export function ensureReplacement(node, tag) {
@@ -24,10 +33,16 @@ export function ensureReplacement(node, tag) {
     if (view.tagName === tag) {
       view.shard.ignoreMutation(() => view.update(node));
     } else {
+      // FIXME not intended, should work without
+      if (!view.shard) return;
+
       const replacement = document.createElement(tag);
+      replacement.source = node;
       replacement.init(node);
       replacement.update(node);
-      view.shard.ignoreMutation(() => view.replaceWith(replacement));
+      Shard.ignoreMutation(() => view.replaceWith(replacement));
+      node.allNodesDo((node) => node.views.remove(view));
+      node.views.push(replacement);
     }
   });
 }

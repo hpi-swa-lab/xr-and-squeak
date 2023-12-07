@@ -1,17 +1,10 @@
-import { ExtensionScope } from "./extension.js";
+import { ExtensionScope, Replacement } from "./extension.js";
 import { SBParser } from "./model.js";
-
-function getSelection(root) {
-  return root.getSelection ? root.getSelection() : document.getSelection();
-}
-
-const observeOptions = {
-  childList: true,
-  characterData: true,
-  subtree: true,
-  attributes: true,
-  characterDataOldValue: true,
-};
+import {
+  ToggleableMutationObserver,
+  WeakArray,
+  getSelection,
+} from "./utils.js";
 
 customElements.define(
   "sb-sandblocks",
@@ -61,127 +54,177 @@ sb-shard {
   }
 );
 
-customElements.define(
-  "sb-shard",
-  class Shard extends HTMLElement {
-    source = null;
-    connectedCallback() {
-      for (const [key, value] of Object.entries({
-        spellcheck: "false",
-        autocorrect: "off",
-        autocapitalize: "off",
-        translate: "no",
-        contenteditable: "true",
-        role: "textbox",
-        "aria-multiline": "true",
-      }))
-        this.setAttribute(key, value);
-
-      this.observer = new MutationObserver((mutations) => {
-        mutations = [...mutations, ...this.observer.takeRecords()].reverse();
-        this.ignoreMutation(() => {
-          this.restoreCursorAfter(() => {
-            const newText = this.sourceString;
-            for (const mutation of mutations) {
-              this.undoMutation(mutation);
-            }
-            this.update(SBParser.setNewText(this.source, newText));
-          });
-        });
-      });
-      this.observer.observe(this, observeOptions);
-
-      this.processTriggers("always", "open");
-    }
-
-    processTriggers(...triggers) {
-      let current = this.getRootNode().host;
-      while (current) {
-        if (current instanceof ExtensionScope) {
-          current.processTrigger(this.source, ...triggers);
-          break;
-        }
-        current = current.parentElement;
-      }
-    }
-
-    get sourceString() {
-      return this.innerText.replace(/\u00A0/g, " ");
-    }
-
-    undoMutation(mutation) {
-      switch (mutation.type) {
-        case "characterData":
-          mutation.target.textContent = mutation.oldValue;
-          break;
-        case "childList":
-          for (const node of mutation.removedNodes) {
-            mutation.target.insertBefore(node, mutation.nextSibling);
-          }
-          for (const node of mutation.addedNodes) {
-            mutation.target.removeChild(node);
-          }
-          break;
-        default:
-          debugger;
-      }
-    }
-
-    destroy() {
-      this.observer.disconnect();
-      this.parentElement?.removeChild(this);
-    }
-
-    ignoreMutation(cb) {
-      this.observer.disconnect();
+export class Shard extends HTMLElement {
+  static observers = new WeakArray();
+  static ignoreMutation(cb) {
+    this.observers.forEach((observer) => observer.disconnect());
+    try {
       cb();
-      this.observer.observe(this, observeOptions);
-    }
-    update(node) {
-      if (!this.source) {
-        this.appendChild(node.toHTML());
-        this.source = node;
-      } else if (this.source !== node) {
-        this.source = node;
-      }
-    }
-    restoreCursorAfter(cb) {
-      const [textField, cursor] = getGlobalCursorPosition(
-        this.getRootNode()
-      ) ?? [null, null];
-
-      const parents = [];
-      for (let p = textField; p; p = p.parentElement) {
-        if (p.tagName === "SB-BLOCK") parents.push(p);
-      }
-
-      cb();
-
-      // find the first parent that is still in the document and contains
-      // the cursor, then find the text node that contains the cursor
-      let textNode;
-      for (const parent of parents) {
-        if (parent.isConnected) {
-          const [start, end] = parent.getRange();
-          if (start <= cursor && end >= cursor) {
-            textNode = parent.findTextForCursor(cursor);
-            break;
-          }
-        }
-      }
-
-      if (textNode) {
-        textNode.placeCursorAt(cursor);
-      }
-    }
-    get root() {
-      return this.childNodes[0];
-    }
-    placeCursorAt(index) {
-      this.root.findTextForCursor(index).placeCursorAt(index);
+    } finally {
+      this.observers.forEach((observer) => observer.connect());
     }
   }
-);
+
+  source = null;
+
+  connectedCallback() {
+    for (const [key, value] of Object.entries({
+      spellcheck: "false",
+      autocorrect: "off",
+      autocapitalize: "off",
+      translate: "no",
+      contenteditable: "true",
+      role: "textbox",
+      "aria-multiline": "true",
+    }))
+      this.setAttribute(key, value);
+
+    // TODO use queue
+    // this.addEventListener("compositionstart", () => {
+    //   this.constructor.observers.forEach((observer) => observer.disconnect());
+    // });
+    // this.addEventListener("compositionend", () => {
+    //   this.constructor.observers.forEach((observer) => observer.connect());
+    // });
+
+    this.observer = new ToggleableMutationObserver(this, (mutations) => {
+      mutations = [...mutations, ...this.observer.takeRecords()].reverse();
+      if (!mutations.some((m) => this.isMyMutation(m))) return;
+
+      this.constructor.ignoreMutation(() => {
+        this.restoreCursorAfter(() => {
+          const newText = this.sourceString;
+          for (const mutation of mutations) {
+            this.undoMutation(mutation);
+          }
+
+          SBParser.replaceText(this.source.root, this.source.range, newText);
+        });
+      });
+    });
+    this.constructor.observers.push(this.observer);
+    this.processTriggers("always", "open");
+  }
+
+  processTriggers(...triggers) {
+    let current = this.getRootNode().host;
+    while (current) {
+      if (current instanceof ExtensionScope) {
+        current.processTrigger(this.source, ...triggers);
+        break;
+      }
+      current = current.parentElement;
+    }
+  }
+
+  get sourceString() {
+    let buffer = { text: "" };
+    this.serialize(this, buffer);
+    return buffer.text;
+  }
+
+  serialize(node, buffer) {
+    for (const child of node.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        buffer.text += child.textContent.replace(/\u00A0/g, " ");
+      } else if (child.tagName === "BR") {
+        buffer.text += "\n";
+      } else if (
+        ["SB-TEXT", "SB-BLOCK", "SPAN", "FONT"].includes(child.tagName)
+      ) {
+        this.serialize(child, buffer);
+      } else if (child instanceof Replacement) {
+        buffer.text += child.sourceString;
+      } else {
+        debugger;
+      }
+    }
+  }
+
+  undoMutation(mutation) {
+    switch (mutation.type) {
+      case "characterData":
+        mutation.target.textContent = mutation.oldValue;
+        break;
+      case "childList":
+        for (const node of mutation.removedNodes) {
+          mutation.target.insertBefore(node, mutation.nextSibling);
+        }
+        for (const node of mutation.addedNodes) {
+          mutation.target.removeChild(node);
+        }
+        break;
+      default:
+        debugger;
+    }
+  }
+
+  destroy() {
+    this.observer.disconnect();
+    this.parentElement?.removeChild(this);
+  }
+
+  isMyMutation(mutation) {
+    let current = mutation.target;
+    while (current) {
+      if (current === this) return true;
+      // in another shard
+      if (current.tagName === "SB-SHARD") return false;
+      // in a replacement
+      if (current instanceof Replacement) return false;
+      current = current.parentElement;
+    }
+    throw new Error("Mutation is not in shard");
+  }
+
+  update(node) {
+    if (!this.source) {
+      this.appendChild(node.toHTML());
+      this.source = node;
+    } else if (this.source !== node) {
+      this.source = node;
+    }
+  }
+  restoreCursorAfter(cb) {
+    let [textField, cursor] = getGlobalCursorPosition(this.getRootNode()) ?? [
+      null,
+      null,
+    ];
+
+    const parents = [];
+    for (let p = textField; p; p = p.parentElement) {
+      if (p.tagName === "SB-BLOCK") parents.push(p);
+    }
+
+    cb();
+
+    // find the first parent that is still in the document and contains
+    // the cursor, then find the text node that contains the cursor
+    let textNode;
+    cursor = Math.min(cursor, this.source.range[1]);
+    if (parents.length === 0) parents.push(this.childNodes[0]);
+    for (const parent of parents) {
+      if (parent.isConnected) {
+        const [start, end] = parent.getRange();
+        if (start <= cursor && end >= cursor) {
+          textNode = parent.findTextForCursor(cursor);
+          break;
+        }
+      }
+    }
+
+    if (textNode) {
+      textNode.placeCursorAt(cursor);
+    }
+  }
+  get root() {
+    return this.childNodes[0];
+  }
+  placeCursorAt(index) {
+    this.root.findTextForCursor(index).placeCursorAt(index);
+  }
+}
+customElements.define("sb-shard", Shard);
 
 customElements.define(
   "sb-block",
@@ -305,6 +348,7 @@ function getGlobalCursorPosition(root) {
     const text = textFor(container);
 
     if (container.nodeType === Node.TEXT_NODE) {
+      if (!text) return [null, range.startOffset];
       if (container === container.parentElement.firstChild) {
         return [text, text.getRange()[0] + range.startOffset];
       } else {

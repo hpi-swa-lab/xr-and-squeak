@@ -1,3 +1,5 @@
+import { SortedArray, zipOrNullDo } from "./utils.js";
+
 class SubtreeShare {
   constructor() {
     this.availableTrees = new Map();
@@ -93,15 +95,6 @@ class SubtreeRegistry {
     const share = this.assignShare(node);
     share.registerAvailableTree(node);
     return share;
-  }
-}
-
-class FakeWeakRef {
-  constructor(value) {
-    this.value = value;
-  }
-  deref() {
-    return this.value;
   }
 }
 
@@ -322,47 +315,84 @@ export class TrueDiff {
   }
 }
 
-class DetachOp {
-  constructor(node) {
-    this.node = node;
-  }
-  apply() {
-    this.node.parent?.removeChild(this.node);
-    this.node.viewsDo((view) => {
-      view.parentElement?.removeChild(view);
+class DiffOp {
+  updateViews(node, cb) {
+    node.viewsDo((view) => {
+      const shard = view.shard;
+      if (shard) cb(view, shard);
+      else cb(view, null);
     });
   }
 }
-class AttachOp {
+
+class DetachOp extends DiffOp {
+  constructor(node) {
+    super();
+    this.node = node;
+  }
+  apply(buffer) {
+    if (this.node.parent) {
+      this.node.parent.removeChild(this.node);
+      this.updateViews(this.node, (view, shard) => {
+        // view may have already been removed
+        if (view.parentElement) {
+          view.parentElement.removeChild(view);
+          buffer.rememberDetached(view, shard);
+        }
+      });
+    } else {
+      this.node.viewsDo((view) => {
+        buffer.rememberDetached(view, view.shard);
+        buffer.rememberDetachedRootShard(view.shard);
+        view.parentElement.removeChild(view);
+      });
+    }
+  }
+}
+
+class AttachOp extends DiffOp {
   constructor(node, parent, index) {
+    super();
     this.node = node;
     this.parent = parent;
     this.index = index;
   }
-  apply() {
+  apply(buffer) {
     this.parent?.insertChild(this.node, this.index);
-    this.parent?.viewsDo((parentView) => {
-      parentView.insertBefore(
-        this.node.toHTML(),
-        parentView.childNodes[this.index]
-      );
-    });
+
+    if (!this.parent) {
+      buffer.detachedRootShards.forEach((shard) => {
+        shard.source = this.node;
+        shard.appendChild(buffer.getDetachedOrConstruct(this.node, shard));
+      });
+    } else {
+      this.updateViews(this.parent, (parentView, shard) => {
+        parentView.insertBefore(
+          buffer.getDetachedOrConstruct(this.node, shard),
+          parentView.childNodes[this.index]
+        );
+      });
+    }
   }
 }
-class UpdateOp {
+
+class UpdateOp extends DiffOp {
   constructor(node, text) {
+    super();
     this.node = node;
     this.text = text;
   }
   apply() {
     this.node._text = this.text;
-    this.node.viewsDo((view) => {
+    this.updateViews(this.node, (view) => {
       view.setAttribute("text", this.text);
     });
   }
 }
-class RemoveOp {
+
+class RemoveOp extends DiffOp {
   constructor(node) {
+    super();
     this.node = node;
   }
   apply() {}
@@ -372,6 +402,8 @@ class EditBuffer {
   constructor() {
     this.posBuf = [];
     this.negBuf = [];
+    this.shardBuffer = new Map();
+    this.detachedRootShards = new Set();
   }
   attach(node, parent, link) {
     assert(node !== parent);
@@ -396,36 +428,28 @@ class EditBuffer {
   }
   update(node, text) {
     assert(node.views.length > 0);
-    this.log("update", node.type ?? node.text, text);
+    this.log("update", node.type ?? `"${node.text}"`, `"${text}"`);
     this.posBuf.push(new UpdateOp(node, text));
   }
   apply() {
     this.negBuf.forEach((f) => f.apply(this));
     this.posBuf.forEach((f) => f.apply(this));
   }
+  getDetachedOrConstruct(node, shard) {
+    return (
+      this.shardBuffer.get(shard)?.find((view) => view.node === node) ??
+      node.toHTML()
+    );
+  }
+  rememberDetached(view, shard) {
+    if (!shard) return;
+    if (!this.shardBuffer.has(shard)) this.shardBuffer.set(shard, []);
+    this.shardBuffer.get(shard).push(view);
+  }
+  rememberDetachedRootShard(shard) {
+    this.detachedRootShards.add(shard);
+  }
   log(...op) {
-    console.log(...op);
-  }
-}
-
-class SortedArray {
-  constructor(compare) {
-    this.array = [];
-    this.compare = compare;
-  }
-
-  insert(value) {
-    const index = this.array.findIndex((v) => this.compare(v, value) > 0);
-    if (index === -1) {
-      this.array.push(value);
-    } else {
-      this.array.splice(index, 0, value);
-    }
-  }
-}
-
-function zipOrNullDo(a, b, cb) {
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    cb(a[i], b[i]);
+    if (true) console.log(...op);
   }
 }

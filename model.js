@@ -1,4 +1,5 @@
 import { TrueDiff } from "./diff.js";
+import { WeakArray } from "./utils.js";
 
 class SBNode {
   _parent = null;
@@ -16,7 +17,7 @@ class SBNode {
   }
 
   get root() {
-    return this.parent.root ? this.parent.root : this;
+    return this.parent ? this.parent.root : this;
   }
 
   createView() {
@@ -26,14 +27,7 @@ class SBNode {
   }
 
   viewsDo(cb) {
-    if (!this.views) return;
-    let anyRemoved = false;
-    for (const view of this.views) {
-      const v = view.deref();
-      if (v) cb(v);
-      else anyRemoved = true;
-    }
-    if (anyRemoved) this.views = this.views.filter((view) => view.deref());
+    if (this.views) this.views.forEach(cb);
   }
 
   field(field) {
@@ -145,7 +139,7 @@ class SBText extends SBNode {
     const text = document.createElement("sb-text");
     text.setAttribute("text", this.text);
     text.node = this;
-    (this.views ??= []).push(new WeakRef(text));
+    (this.views ??= new WeakArray()).push(text);
     return text;
   }
 }
@@ -208,7 +202,7 @@ class SBBlock extends SBNode {
       block.appendChild(child.toHTML());
     }
     block.node = this;
-    (this.views ??= []).push(new WeakRef(block));
+    (this.views ??= new WeakArray()).push(block);
     return block;
   }
 }
@@ -216,6 +210,16 @@ class SBBlock extends SBNode {
 export class SBParser {
   static init = false;
   static loadedLanguages = new Map();
+
+  static replaceText(root, range, text) {
+    return this._parseText(
+      root._sourceText.slice(0, range[0]) +
+        text +
+        root._sourceText.slice(range[1]),
+      root._tree.language,
+      root
+    );
+  }
 
   static setNewText(root, text) {
     return this._parseText(text, root._tree.language, root);
@@ -225,7 +229,7 @@ export class SBParser {
     const parser = new TreeSitter();
     parser.setLanguage(language);
 
-    // TODO reuse currentTree (breaks indices?)
+    // TODO reuse currentTree (breaks indices, need to update or use new nodes)
     const newTree = parser.parse(text);
     if (root?._tree) root._tree.delete();
     let newRoot = nodeFromCursor(newTree.walk(), text);
@@ -242,6 +246,8 @@ export class SBParser {
     root._tree = newTree;
     root._sourceText = text;
     console.assert(root.range[1] === text.length, "root range is wrong");
+
+    root.viewsDo((view) => view.shard.processTriggers("always"));
 
     return root;
   }
@@ -283,6 +289,7 @@ function addWhitespace(string, node) {
     }
   }
 }
+
 function addTextFromCursor(cursor, node, isLeaf, text) {
   const gap = text.slice(lastLeafIndex, cursor.startIndex);
   if (gap) {

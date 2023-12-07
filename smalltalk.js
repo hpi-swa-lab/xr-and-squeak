@@ -6,14 +6,12 @@ customElements.define(
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `<span>WATCH</span>`;
+      this.shadowRoot.innerHTML = `<span>WATCH[</span><slot></slot><span>]WATCH</span>`;
     }
 
     init(source) {
       super.init(source);
-      this.shadowRoot.appendChild(
-        this.createShard((source) => source.childNode(0))
-      );
+      this.appendChild(this.createShard((source) => source.childNode(0)));
     }
   }
 );
@@ -22,6 +20,7 @@ Extension.register(
   "smalltalkBase",
   new Extension()
     .registerQuery("always", [
+      (x) => true,
       (x) => x.type === "unary_message",
       (x) => x.childNode(1).text === "sbWatch",
       (x) => ensureReplacement(x, "sb-watch"),
