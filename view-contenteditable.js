@@ -35,7 +35,7 @@ customElements.define(
             for (const mutation of mutations) {
               this.undoMutation(mutation);
             }
-            setNewText(this.source, newText);
+            this.update(SBParser.setNewText(this.source, newText));
           });
         });
       });
@@ -64,8 +64,12 @@ customElements.define(
       this.observer.observe(this, observeOptions);
     }
     update(node) {
-      this.appendChild(nodeToHTML(node));
-      this.source = node;
+      if (!this.source) {
+        this.appendChild(node.toHTML());
+        this.source = node;
+      } else if (this.source !== node) {
+        this.source = node;
+      }
     }
     restoreCursorAfter(cb) {
       const [textField, cursor] = getGlobalCursorPosition(this.getRootNode());
@@ -171,25 +175,6 @@ customElements.define(
     }
   }
 );
-
-function nodeToHTML(node) {
-  if (node.kind === "text") {
-    if (node.text.includes("\n")) return document.createElement("br");
-    const text = document.createElement("sb-text");
-    text.setAttribute("text", node.text);
-    text.node = node;
-    (node.views ??= []).push(new WeakRef(text));
-    return text;
-  } else {
-    const block = document.createElement("sb-block");
-    for (const child of node.children) {
-      block.appendChild(nodeToHTML(child));
-    }
-    block.node = node;
-    (node.views ??= []).push(new WeakRef(block));
-    return block;
-  }
-}
 
 function getGlobalCursorPosition(root) {
   const selection = document.getSelection(root);

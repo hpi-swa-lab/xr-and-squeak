@@ -5,6 +5,18 @@
 //   (x) => installReplacement(x, "sb-watch"),
 // ]);
 
+function reRunQueries(node, ...triggers) {
+  for (const trigger of triggers) {
+    if (getAllQueries().has(trigger)) {
+      nodeAllDo(node, (node) => {
+        for (const query of queries.get(trigger)) {
+          runQuery(query, node);
+        }
+      });
+    }
+  }
+}
+
 let queries = new Map();
 
 function getAllQueries() {
