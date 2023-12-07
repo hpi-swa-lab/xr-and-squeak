@@ -63,6 +63,12 @@ customElements.define(
           debugger;
       }
     }
+
+    destroy() {
+      this.observer.disconnect();
+      this.parentElement?.removeChild(this);
+    }
+
     ignoreMutation(cb) {
       this.observer.disconnect();
       cb();
@@ -237,7 +243,8 @@ function getGlobalCursorPosition(root) {
     let cursor = text.getRange()[0];
     for (let i = 0; i <= range.startOffset; i++) {
       const child = container.childNodes[i];
-      if (child.nodeType === Node.TEXT_NODE) {
+      if (!child) continue;
+      if (child?.nodeType === Node.TEXT_NODE) {
         cursor += child.textContent.length;
       } else if (child.tagName === "BR") {
         cursor++;

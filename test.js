@@ -44,6 +44,15 @@ const tests = [
       expectEqual(el.sourceString, "abc\nd\n");
     });
   },
+  async function testReplaceRootNode() {
+    const root = await SBParser.parseText(`abc`, "smalltalk");
+    const el = root.createView();
+    mountDuring(el, () => {
+      el.placeCursorAt(3);
+      // causes the method to become an ERROR node
+      document.execCommand("insertText", false, "(a[");
+    });
+  },
 ];
 
 function expectEqual(a, b) {
@@ -54,7 +63,7 @@ function expectEqual(a, b) {
 function mountDuring(el, cb) {
   document.body.appendChild(el);
   cb();
-  document.body.removeChild(el);
+  el.destroy();
 }
 
 async function testAll() {

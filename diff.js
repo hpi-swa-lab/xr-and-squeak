@@ -277,6 +277,7 @@ class TrueDiff {
     this.unloadUnassigned(a, editBuffer);
     const newTree = this.loadUnassigned(b, editBuffer);
     editBuffer.attach(newTree, parent, link);
+    return newTree;
   }
   computeEditScriptRecurse(a, b, parent, link, editBuffer) {
     if (a.type === b.type && a.children.length === b.children.length) {
@@ -326,7 +327,7 @@ class DetachOp {
     this.node = node;
   }
   apply() {
-    this.node.parent.removeChild(this.node);
+    this.node.parent?.removeChild(this.node);
     this.node.viewsDo((view) => {
       view.parentElement?.removeChild(view);
     });
@@ -339,8 +340,8 @@ class AttachOp {
     this.index = index;
   }
   apply() {
-    this.parent.insertChild(this.node, this.index);
-    this.parent.viewsDo((parentView) => {
+    this.parent?.insertChild(this.node, this.index);
+    this.parent?.viewsDo((parentView) => {
       parentView.insertBefore(
         this.node.toHTML(),
         parentView.childNodes[this.index]
