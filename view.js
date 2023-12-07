@@ -53,7 +53,9 @@ sb-shard {
         this.getAttribute("text"),
         this.getAttribute("language")
       ).then((node) => {
-        this.shadowRoot.appendChild(node.createView());
+        if (node) {
+          this.shadowRoot.appendChild(node.createView());
+        }
       });
     }
   }
