@@ -71,7 +71,9 @@ export class ExtensionScope extends HTMLElement {
 
   connectedCallback() {
     this.extensions = [];
-    this.getAttribute("extensions")
+    let extensions = this.getAttribute("extensions")
+    if (!extensions) return
+    extensions
       .split(" ")
       .filter((name) => name.length > 0)
       .forEach((name) => {
