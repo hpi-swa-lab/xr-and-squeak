@@ -1,3 +1,5 @@
+import { TrueDiff } from "./diff.js";
+
 class SBNode {
   _parent = null;
 
@@ -211,7 +213,7 @@ class SBBlock extends SBNode {
   }
 }
 
-class SBParser {
+export class SBParser {
   static init = false;
   static loadedLanguages = new Map();
 
@@ -241,7 +243,6 @@ class SBParser {
     root._sourceText = text;
     console.assert(root.range[1] === text.length, "root range is wrong");
 
-    // reRunQueries(root, "always", "open");
     return root;
   }
 

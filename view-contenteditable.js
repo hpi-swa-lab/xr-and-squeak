@@ -1,4 +1,5 @@
-"use strict";
+import { ExtensionScope } from "./extension.js";
+import { SBParser } from "./model.js";
 
 function getSelection(root) {
   return root.getSelection ? root.getSelection() : document.getSelection();
@@ -87,6 +88,19 @@ customElements.define(
         });
       });
       this.observer.observe(this, observeOptions);
+
+      this.processTriggers("always", "open");
+    }
+
+    processTriggers(...triggers) {
+      let current = this.getRootNode().host;
+      while (current) {
+        if (current instanceof ExtensionScope) {
+          current.processTrigger(this.source, ...triggers);
+          break;
+        }
+        current = current.parentElement;
+      }
     }
 
     get sourceString() {

@@ -105,7 +105,7 @@ class FakeWeakRef {
   }
 }
 
-class TrueDiff {
+export class TrueDiff {
   applyEdits(a, b) {
     const registry = new SubtreeRegistry();
 
