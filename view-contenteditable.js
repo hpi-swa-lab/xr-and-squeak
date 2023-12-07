@@ -1,17 +1,8 @@
 "use strict";
 
-document.body.innerHTML += `<style>
-sb-block {
-  display: inline;
-  background: rgba(0.4, 0.4, 0.4, 0.05);
-  margin: 0;
-  padding: 0;
-  font-family: monospace;
+function getSelection(root) {
+  return root.getSelection ? root.getSelection() : document.getSelection();
 }
-sb-shard {
-  outline: none;
-}
-</style>`;
 
 const observeOptions = {
   childList: true,
@@ -22,11 +13,67 @@ const observeOptions = {
 };
 
 customElements.define(
+  "sb-sandblocks",
+  class Sandblocks extends HTMLElement {
+    queries = new Map();
+
+    constructor() {
+      super();
+    }
+  }
+);
+
+customElements.define(
+  "sb-editor",
+  class Editor extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.innerHTML = `
+     <style>
+sb-block {
+  display: inline;
+  background: rgba(0.4, 0.4, 0.4, 0.05);
+  margin: 0;
+  padding: 0;
+  font-family: monospace;
+}
+sb-block.has-error {
+  border: 1px solid red;
+}
+sb-shard {
+  outline: none;
+}
+</style><slot></slot>`;
+    }
+
+    connectedCallback() {
+      SBParser.parseText(
+        this.getAttribute("text"),
+        this.getAttribute("language")
+      ).then((node) => {
+        this.shadowRoot.appendChild(node.createView());
+      });
+    }
+  }
+);
+
+customElements.define(
   "sb-shard",
   class Shard extends HTMLElement {
     source = null;
     connectedCallback() {
-      this.setAttribute("contenteditable", "true");
+      for (const [key, value] of Object.entries({
+        spellcheck: "false",
+        autocorrect: "off",
+        autocapitalize: "off",
+        translate: "no",
+        contenteditable: "true",
+        role: "textbox",
+        "aria-multiline": "true",
+      }))
+        this.setAttribute(key, value);
+
       this.observer = new MutationObserver((mutations) => {
         mutations = [...mutations, ...this.observer.takeRecords()].reverse();
         this.ignoreMutation(() => {
@@ -127,6 +174,9 @@ customElements.define(
     set node(v) {
       this._node = v;
       this.setAttribute("type", v.type);
+      if (v.type === "ERROR") {
+        this.classList.add("has-error");
+      }
     }
     get node() {
       return this._node;
@@ -186,7 +236,7 @@ customElements.define(
       range.setStart(target, index);
       range.setEnd(target, index);
 
-      const selection = document.getSelection();
+      const selection = getSelection(this.getRootNode());
       selection.removeAllRanges();
       selection.addRange(range);
     }
@@ -215,7 +265,7 @@ function getGlobalCursorPosition(root) {
     return current;
   }
 
-  const selection = document.getSelection(root);
+  const selection = getSelection(root.getRootNode());
   if (selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
     const container = range.commonAncestorContainer;

@@ -241,8 +241,7 @@ class SBParser {
     root._sourceText = text;
     console.assert(root.range[1] === text.length, "root range is wrong");
 
-    // TODO migrate
-    // reRunQueries(currentRootNode, "always", "open");
+    // reRunQueries(root, "always", "open");
     return root;
   }
 
