@@ -246,16 +246,19 @@ export class SBParser {
     return root;
   }
 
-  static async parseText(text, languageName, baseURL="") {
+  static async parseText(text, languageName, baseURL = "") {
     if (!this.init) await TreeSitter.init();
     this.init = true;
-        
-    if (!text  || !languageName) return
-        
+
+    if (!text || !languageName)
+      throw new Error("text and languageName are required");
+
     if (!this.loadedLanguages.has(languageName)) {
       this.loadedLanguages.set(
         languageName,
-        await TreeSitter.Language.load(baseURL+`tree-sitter-${languageName}.wasm`)
+        await TreeSitter.Language.load(
+          baseURL + `tree-sitter-${languageName}.wasm`
+        )
       );
     }
 

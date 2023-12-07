@@ -92,12 +92,14 @@ export class ExtensionScope extends HTMLElement {
 
   connectedCallback() {
     this.extensions = [];
-    this.getAttribute("extensions")
-      ?.split(" ")
-      ?.filter((name) => name.length > 0)
-      ?.forEach((name) => {
-        this.extensions.push(Extension.get(name));
-      });
+    queueMicrotask(() =>
+      this.getAttribute("extensions")
+        ?.split(" ")
+        ?.filter((name) => name.length > 0)
+        ?.forEach((name) => {
+          this.extensions.push(Extension.get(name));
+        })
+    );
   }
 
   processTrigger(node, ...triggers) {
