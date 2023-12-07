@@ -1,12 +1,33 @@
+export class Replacement extends HTMLElement {
+  shards = [];
+
+  update(source) {
+    for (const [locator, shard] of this.shards) {
+      const node = locator(source);
+      if (node !== shard.source) {
+        shard.update(node);
+      }
+    }
+  }
+
+  init(source) {}
+
+  createShard(locator) {
+    const shard = document.createElement("sb-shard");
+    this.shards.push([locator, shard]);
+    return shard;
+  }
+}
+
 export function ensureReplacement(node, tag) {
   node.viewsDo((view) => {
     if (view.tagName === tag) {
-      view.update(node);
+      view.shard.ignoreMutation(() => view.update(node));
     } else {
       const replacement = document.createElement(tag);
       replacement.init(node);
       replacement.update(node);
-      view.replaceWith(replacement);
+      view.shard.ignoreMutation(() => view.replaceWith(replacement));
     }
   });
 }
@@ -52,8 +73,8 @@ export class Extension {
   processTrigger(node, ...triggers) {
     for (const trigger of triggers) {
       if (this.queries.has(trigger)) {
-        nodeAllDo(node, (node) => {
-          for (const query of queries.get(trigger)) {
+        node.allNodesDo((node) => {
+          for (const query of this.queries.get(trigger)) {
             runQuery(query, node);
           }
         });
@@ -71,12 +92,15 @@ export class ExtensionScope extends HTMLElement {
 
   connectedCallback() {
     this.extensions = [];
-    this.getAttribute("extensions")
-      .split(" ")
-      .filter((name) => name.length > 0)
-      .forEach((name) => {
-        this.extensions.push(Extension.get(name));
-      });
+
+    queueMicrotask(() => {
+      this.getAttribute("extensions")
+        .split(" ")
+        .filter((name) => name.length > 0)
+        .forEach((name) => {
+          this.extensions.push(Extension.get(name));
+        });
+    });
   }
 
   processTrigger(node, ...triggers) {
@@ -87,24 +111,3 @@ export class ExtensionScope extends HTMLElement {
 }
 
 customElements.define("sb-extension-scope", ExtensionScope);
-
-export class Replacement extends HTMLElement {
-  shards = [];
-
-  update(source) {
-    for (const [locator, shard] of this.shards) {
-      const node = locator(source);
-      if (node !== shard.source) {
-        shard.update(node);
-      }
-    }
-  }
-
-  init(source) {}
-
-  createShard(locator) {
-    const shard = document.createElement("sb-shard");
-    this.shards.push([locator, shard]);
-    return shard;
-  }
-}

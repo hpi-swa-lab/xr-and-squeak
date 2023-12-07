@@ -53,7 +53,7 @@ class SBNode {
 
   childNode(index) {
     for (let i = 0; i < this.children.length; i++) {
-      if (!isWhitespace(this.children[i])) {
+      if (!this.children[i].isWhitespace()) {
         if (index === 0) return this.children[i];
         index--;
       }

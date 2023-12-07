@@ -12,7 +12,7 @@ customElements.define(
     init(source) {
       super.init(source);
       this.shadowRoot.appendChild(
-        this.createShard((source) => nodeChildNode(source, 0))
+        this.createShard((source) => source.childNode(0))
       );
     }
   }
@@ -22,11 +22,8 @@ Extension.register(
   "smalltalkBase",
   new Extension()
     .registerQuery("always", [
-      (x) => {
-        debugger;
-        return x.type === "unary_message";
-      },
-      (x) => x.children.text === "sbWatch",
+      (x) => x.type === "unary_message",
+      (x) => x.childNode(1).text === "sbWatch",
       (x) => ensureReplacement(x, "sb-watch"),
     ])
     .registerQuery("always", [])

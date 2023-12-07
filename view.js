@@ -211,6 +211,14 @@ customElements.define(
       }
       return null;
     }
+    get shard() {
+      let current = this.parentElement;
+      while (current) {
+        if (current.tagName === "SB-SHARD") return current;
+        current = current.parentElement;
+      }
+      return current;
+    }
   }
 );
 
@@ -239,6 +247,15 @@ customElements.define(
         if (newValue !== "\n")
           this.querySelector("span").textContent = newValue;
       }
+    }
+
+    get shard() {
+      let current = this.parentElement;
+      while (current) {
+        if (current.tagName === "SB-SHARD") return current;
+        current = current.parentElement;
+      }
+      return current;
     }
 
     placeCursorAt(index) {
