@@ -31,7 +31,7 @@ customElements.define(
         mutations = [...mutations, ...this.observer.takeRecords()].reverse();
         this.ignoreMutation(() => {
           this.restoreCursorAfter(() => {
-            const newText = this.innerText.replace(/\u00A0/g, " ");
+            const newText = this.sourceString;
             for (const mutation of mutations) {
               this.undoMutation(mutation);
             }
@@ -41,6 +41,11 @@ customElements.define(
       });
       this.observer.observe(this, observeOptions);
     }
+
+    get sourceString() {
+      return this.innerText.replace(/\u00A0/g, " ");
+    }
+
     undoMutation(mutation) {
       switch (mutation.type) {
         case "characterData":
@@ -72,11 +77,13 @@ customElements.define(
       }
     }
     restoreCursorAfter(cb) {
-      const [textField, cursor] = getGlobalCursorPosition(this.getRootNode());
+      const [textField, cursor] = getGlobalCursorPosition(
+        this.getRootNode()
+      ) ?? [null, null];
 
       const parents = [];
-      for (let p = textField.parentElement; p; p = p.parentElement) {
-        parents.push(p);
+      for (let p = textField; p; p = p.parentElement) {
+        if (p.tagName === "SB-BLOCK") parents.push(p);
       }
 
       cb();
@@ -94,13 +101,15 @@ customElements.define(
         }
       }
 
-      const range = document.createRange();
-      range.setStart(textNode.input(), cursor - textNode.node.range[0]);
-      range.setEnd(textNode.input(), cursor - textNode.node.range[0]);
-
-      const selection = document.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
+      if (textNode) {
+        textNode.placeCursorAt(cursor);
+      }
+    }
+    get root() {
+      return this.childNodes[0];
+    }
+    placeCursorAt(index) {
+      this.root.findTextForCursor(index).placeCursorAt(index);
     }
   }
 );
@@ -151,16 +160,31 @@ customElements.define(
           this.appendChild(document.createElement("span"));
         }
         if (newValue === "\n" && !this.isLineBreak()) {
-          this.removeChild(this.shadowRoot.childNodes[0]);
+          this.removeChild(this.childNodes[0]);
           this.appendChild(document.createElement("br"));
         } else if (newValue !== "\n" && this.isLineBreak()) {
-          this.removeChild(this.shadowRoot.childNodes[0]);
+          this.removeChild(this.childNodes[0]);
           this.appendChild(document.createElement("span"));
         }
         if (newValue !== "\n")
           this.querySelector("span").textContent = newValue;
       }
     }
+
+    placeCursorAt(index) {
+      index -= this.node.range[0];
+      console.assert(index >= 0);
+
+      const range = document.createRange();
+      const target = this.isLineBreak() ? this : this.input();
+      range.setStart(target, index);
+      range.setEnd(target, index);
+
+      const selection = document.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
     getRange() {
       return this.node.range;
     }
@@ -177,16 +201,51 @@ customElements.define(
 );
 
 function getGlobalCursorPosition(root) {
+  function textFor(node) {
+    let current = node;
+    while (current && current.tagName !== "SB-TEXT") {
+      current = current.parentElement;
+    }
+    return current;
+  }
+
   const selection = document.getSelection(root);
   if (selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
     const container = range.commonAncestorContainer;
+    const text = textFor(container);
+
     if (container.nodeType === Node.TEXT_NODE) {
-      const parentElement = container.parentElement.parentElement;
-      if (parentElement?.tagName === "SB-TEXT") {
-        return [parentElement, parentElement.getRange()[0] + range.startOffset];
+      if (container === container.parentElement.firstChild) {
+        return [text, text.getRange()[0] + range.startOffset];
+      } else {
+        let cursor = text.getRange()[0];
+        for (const child of container.parentElement.childNodes) {
+          if (child === container) break;
+          if (child.nodeType === Node.TEXT_NODE) {
+            cursor += child.textContent.length;
+          } else if (child.tagName === "BR") {
+            cursor++;
+          } else {
+            debugger;
+          }
+        }
+        return [text, cursor];
       }
     }
+
+    let cursor = text.getRange()[0];
+    for (let i = 0; i <= range.startOffset; i++) {
+      const child = container.childNodes[i];
+      if (child.nodeType === Node.TEXT_NODE) {
+        cursor += child.textContent.length;
+      } else if (child.tagName === "BR") {
+        cursor++;
+      } else {
+        debugger;
+      }
+    }
+    return [text, cursor];
   }
   return null;
 }

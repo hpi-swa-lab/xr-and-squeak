@@ -76,6 +76,17 @@ class SBNode {
     }
   }
 
+  allLeafsDo(cb) {
+    if (this.isText) cb(this);
+    else for (const child of this.children) child.allLeafsDo(cb);
+  }
+
+  allLeafs() {
+    const leafs = [];
+    this.allLeafsDo((leaf) => leafs.push(leaf));
+    return leafs;
+  }
+
   get isText() {
     return false;
   }
@@ -129,7 +140,6 @@ class SBText extends SBNode {
   }
 
   toHTML() {
-    if (this.text.includes("\n")) return document.createElement("br");
     const text = document.createElement("sb-text");
     text.setAttribute("text", this.text);
     text.node = this;
@@ -252,36 +262,42 @@ class SBParser {
 }
 
 /* converting cursor to nodes */
+function addWhitespace(string, node) {
+  const lines = string.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (i > 0) {
+      node.addChild(new SBText("\n", lastLeafIndex, lastLeafIndex + 1));
+      lastLeafIndex++;
+    }
+    if (lines[i]) {
+      const s = lastLeafIndex;
+      node.addChild(
+        new SBText(lines[i].replace(/ /g, "\u00A0"), s, s + lines[i].length)
+      );
+      lastLeafIndex += lines[i].length;
+    }
+  }
+}
 function addTextFromCursor(cursor, node, isLeaf, text) {
   const gap = text.slice(lastLeafIndex, cursor.startIndex);
   if (gap) {
-    const lines = gap.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      if (i > 0) {
-        node.addChild(new SBText("\n", lastLeafIndex, lastLeafIndex + 1));
-      }
-      if (lines[i]) {
-        const s = lastLeafIndex + 1;
-        node.addChild(
-          new SBText(lines[i].replace(/ /g, "\u00A0"), s, s + lines[i].length)
-        );
-      }
-    }
+    addWhitespace(gap, node);
   }
-
-  lastLeafIndex = cursor.endIndex;
 
   if (isLeaf) {
     node.addChild(
       new SBText(cursor.nodeText, cursor.startIndex, cursor.endIndex)
     );
+    lastLeafIndex = cursor.endIndex;
   }
 }
 
 let lastLeafIndex;
 function nodeFromCursor(cursor, text) {
   lastLeafIndex = 0;
-  return _nodeFromCursor(cursor, text);
+  let node = _nodeFromCursor(cursor, text);
+  addWhitespace(text.slice(lastLeafIndex), node);
+  return node;
 }
 
 function _nodeFromCursor(cursor, text) {
