@@ -3,7 +3,12 @@
 <script>
   import "src/client/tree-sitter.js"
   import md5 from "./md5.min.js"
-  window.md5= md5
+  
+  window.md5 = md5
+  
+  // await lively.loadJavaScriptThroughDOM("md5x", lively4url + '/../sandblocks-text/md5.min.js')
+                                                                 
+  // window.md5= md5
   ""
 </script>
 
