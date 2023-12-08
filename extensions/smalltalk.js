@@ -1,4 +1,4 @@
-import { Extension, Replacement } from "./extension.js";
+import { Extension, Replacement } from "../extension.js";
 
 customElements.define(
   "sb-watch",

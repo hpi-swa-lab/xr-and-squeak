@@ -450,6 +450,6 @@ class EditBuffer {
     this.detachedRootShards.add(shard);
   }
   log(...op) {
-    if (true) console.log(...op);
+    if (false) console.log(...op);
   }
 }

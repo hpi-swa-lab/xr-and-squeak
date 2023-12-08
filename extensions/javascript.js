@@ -1,4 +1,4 @@
-import { Extension } from "./extension.js";
+import { Extension } from "../extension.js";
 
 Extension.register(
   "javascriptBase",

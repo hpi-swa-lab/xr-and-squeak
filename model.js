@@ -31,6 +31,10 @@ class SBNode {
     return this.parent ? this.parent.root : this;
   }
 
+  get isRoot() {
+    return !this.parent;
+  }
+
   createView() {
     const shard = document.createElement("sb-shard");
     shard.update(this);
@@ -68,6 +72,11 @@ class SBNode {
 
   isWhitespace() {
     return false;
+  }
+
+  nodeAndParentsDo(cb) {
+    cb(this);
+    if (this.parent) this.parent.nodeAndParentsDo(cb);
   }
 
   allNodesDo(cb) {
@@ -111,6 +120,10 @@ class SBNode {
   // edit operations
   replaceWith(str) {
     SBParser.replaceText(this.root, this.range, str);
+  }
+
+  select(adjacentView) {
+    adjacentView.editor.findNode(this).select();
   }
 }
 
@@ -263,7 +276,7 @@ export class SBParser {
     root._sourceText = text;
     console.assert(root.range[1] === text.length, "root range is wrong");
 
-    root.viewsDo((view) => view.shard.processTriggers("always"));
+    root.viewsDo((view) => view.shard.processTriggers(["always"], root));
 
     return root;
   }

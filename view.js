@@ -7,42 +7,142 @@ import {
   nextHash,
 } from "./utils.js";
 
-customElements.define(
-  "sb-editor",
-  class Editor extends HTMLElement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="style.css"><slot></slot>`;
-    }
+class EditHistory {
+  undoStack = [];
+  redoStack = [];
 
-    connectedCallback() {
-      this.style.display = "block";
-      this.style.margin = "1rem";
-      SBParser.parseText(
-        this.getAttribute("text"),
-        this.getAttribute("language")
-      ).then((node) => {
-        if (node) {
-          this.shadowRoot.appendChild(node.createView());
-        }
-      });
-    }
-
-    get sourceString() {
-      return this.shadowRoot.querySelector("sb-shard").sourceString;
-    }
+  push(sourceString, cursor) {
+    this.redoStack = [];
+    this.undoStack.push({ sourceString, cursor });
   }
-);
+
+  undo() {
+    if (this.undoStack.length === 0) return;
+    const item = this.undoStack.pop();
+    this.redoStack.push(item);
+    return item;
+  }
+
+  redo() {
+    if (this.redoStack.length === 0) return;
+    const item = this.redoStack.pop();
+    this.undoStack.push(item);
+    return item;
+  }
+
+  canUndo() {
+    return this.undoStack.length > 0;
+  }
+
+  canRedo() {
+    return this.redoStack.length > 0;
+  }
+}
+
+export class Editor extends HTMLElement {
+  lastEditInNode = null;
+  lastSourceString = null;
+
+  static keyMap = {};
+  static registerKeyMap(map) {
+    this.keyMap = map;
+  }
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="style.css"><slot></slot>`;
+    this.editHistory = new EditHistory();
+  }
+
+  noteChange(newSourceString, cursor, textField) {
+    if (textField !== this.lastEditInNode) {
+      this.editHistory.push(this.lastSourceString, cursor);
+      this.lastEditInNode = textField;
+    }
+    this.lastSourceString = newSourceString;
+  }
+
+  undo() {
+    if (!this.editHistory.canUndo()) return;
+    const { sourceString, cursor } = this.editHistory.undo();
+    this.lastSourceString = sourceString;
+    this.lastEditInNode = null;
+    SBParser.setNewText(this.source, sourceString);
+    this.shard.placeCursorAt(cursor);
+  }
+
+  redo() {
+    // TODO need to push newest item
+    if (!this.editHistory.canRedo()) return;
+    const { sourceString, cursor } = this.editHistory.redo();
+    SBParser.setNewText(this.source, sourceString);
+    this.shard.placeCursorAt(cursor);
+  }
+
+  connectedCallback() {
+    this.style.display = "block";
+    this.style.margin = "1rem";
+    this.lastSourceString = this.getAttribute("text");
+    SBParser.parseText(
+      this.getAttribute("text"),
+      this.getAttribute("language")
+    ).then((node) => {
+      this.shadowRoot.appendChild(node.createView());
+    });
+  }
+
+  get sourceString() {
+    return this.shard.sourceString;
+  }
+
+  get source() {
+    return this.shard.source;
+  }
+
+  get shard() {
+    return this.shadowRoot.querySelector("sb-shard");
+  }
+
+  get selected() {
+    return this.shard.getGlobalCursorPosition()[0];
+  }
+
+  findNode(node) {
+    return findNode(this.shard, node);
+  }
+}
+customElements.define("sb-editor", Editor);
+
+function findNode(parent, node) {
+  // iterate over all dom children and check if the node is the same
+  // as the source node
+  for (const child of parent.childNodes) {
+    if (child.node === node) return child;
+    const result = findNode(child, node);
+    if (result) return result;
+  }
+}
+
+function getEditor(element) {
+  const editor = element.getRootNode().host;
+  console.assert(editor.tagName === "SB-EDITOR");
+  return editor;
+}
 
 export class Shard extends HTMLElement {
   static observers = new WeakArray();
+  static nestedDisable = 0;
   static ignoreMutation(cb) {
-    this.observers.forEach((observer) => observer.disconnect());
+    if (this.nestedDisable === 0)
+      this.observers.forEach((observer) => observer.disconnect());
+    this.nestedDisable++;
     try {
       cb();
     } finally {
-      this.observers.forEach((observer) => observer.connect());
+      this.nestedDisable--;
+      if (this.nestedDisable === 0)
+        this.observers.forEach((observer) => observer.connect());
     }
   }
 
@@ -73,6 +173,20 @@ export class Shard extends HTMLElement {
         e.preventDefault();
         document.execCommand("insertText", false, "\t");
       }
+
+      for (const [action, key] of Object.entries(Editor.keyMap)) {
+        if (this.matchesKey(e, key)) {
+          e.preventDefault();
+          this.extensionScopesDo((scope) => {
+            // TODO pass selection instead of source
+            scope.dispatchShortcut(
+              action,
+              this.getGlobalCursorPosition()[0].node,
+              this
+            );
+          });
+        }
+      }
     });
 
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
@@ -80,30 +194,48 @@ export class Shard extends HTMLElement {
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
       this.constructor.ignoreMutation(() => {
-        this.restoreCursorAfter(() => {
-          const newText = this.sourceString;
+        const newText = this.sourceString;
+        const { cursor, textField } = this.restoreCursorAfter(() => {
           for (const mutation of mutations) {
             this.undoMutation(mutation);
           }
 
           SBParser.replaceText(this.source.root, this.source.range, newText);
         });
+        getEditor(this).noteChange(newText, cursor, textField);
       });
     });
     this.constructor.observers.push(this.observer);
-    this.processTriggers("always", "open");
+    this.processTriggers(["always", "open"], this.source);
+  }
+  get editor() {
+    return getEditor(this);
   }
 
-  processTriggers(...triggers) {
+  matchesKey(e, key) {
+    const modifiers = key.split("-");
+    const baseKey = modifiers.pop();
+
+    if (modifiers.includes("Ctrl") && !e.ctrlKey && !e.metaKey) return false;
+    if (modifiers.includes("Alt") && !e.altKey) return false;
+    return e.key === baseKey;
+  }
+
+  extensionScopesDo(cb) {
     this.constructor.ignoreMutation(() => {
       let current = this.getRootNode().host;
       while (current) {
         if (current instanceof ExtensionScope) {
-          current.processTriggers(this.source, ...triggers);
-          break;
+          cb(current);
         }
         current = current.parentElement;
       }
+    });
+  }
+
+  processTriggers(triggers, node) {
+    this.extensionScopesDo((scope) => {
+      scope.processTriggers(triggers, node);
     });
   }
 
@@ -176,10 +308,7 @@ export class Shard extends HTMLElement {
     }
   }
   restoreCursorAfter(cb) {
-    let [textField, cursor] = getGlobalCursorPosition(this.getRootNode()) ?? [
-      null,
-      null,
-    ];
+    let [textField, cursor] = this.getGlobalCursorPosition() ?? [null, null];
 
     const parents = [];
     for (let p = textField; p; p = p.parentElement) {
@@ -206,36 +335,129 @@ export class Shard extends HTMLElement {
     if (textNode) {
       textNode.placeCursorAt(cursor);
     }
+    return { cursor, textField: textNode };
   }
+
+  getGlobalCursorPosition() {
+    function textFor(node) {
+      let current = node;
+      while (current && current.tagName !== "SB-TEXT") {
+        current = current.parentElement;
+      }
+      return current;
+    }
+
+    const selection = getSelection(this.getRootNode());
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      const text = textFor(container);
+
+      if (container.nodeType === Node.TEXT_NODE) {
+        if (!text) return [null, range.startOffset];
+        if (container === container.parentElement.firstChild) {
+          return [text, text.getRange()[0] + range.startOffset];
+        } else {
+          let cursor = text.getRange()[0];
+          for (const child of container.parentElement.childNodes) {
+            if (child === container) break;
+            if (child.nodeType === Node.TEXT_NODE || child.tagName === "SPAN") {
+              cursor += child.textContent.length;
+            } else if (child.tagName === "BR") {
+              cursor++;
+            } else {
+              debugger;
+            }
+          }
+          return [text, cursor];
+        }
+      }
+
+      let cursor = text.getRange()[0];
+      for (let i = 0; i <= range.startOffset; i++) {
+        const child = container.childNodes[i];
+        if (!child) continue;
+        if (child?.nodeType === Node.TEXT_NODE) {
+          cursor += child.textContent.length;
+        } else if (child.tagName === "BR") {
+          cursor++;
+        } else {
+          debugger;
+        }
+      }
+      return [text, cursor];
+    }
+    return null;
+  }
+
   get root() {
     return this.childNodes[0];
   }
+
   placeCursorAt(index) {
     this.root.findTextForCursor(index).placeCursorAt(index);
   }
 }
 customElements.define("sb-shard", Shard);
 
+class _EditableElement extends HTMLElement {
+  _node = null;
+  get shard() {
+    let current = this.parentElement;
+    while (current) {
+      if (current.tagName === "SB-SHARD") return current;
+      current = current.parentElement;
+    }
+    return current;
+  }
+  get editor() {
+    const editor = element.getRootNode().host;
+    console.assert(editor.tagName === "SB-EDITOR");
+    return editor;
+  }
+  set node(v) {
+    this._node = v;
+    this.setAttribute("type", v.type);
+    if (v.type === "ERROR") {
+      this.classList.add("has-error");
+    }
+  }
+  get node() {
+    return this._node;
+  }
+
+  getRange() {
+    return this.node.range;
+  }
+
+  select() {
+    const range = document.createRange();
+    range.selectNode(this);
+    const selection = getSelection(this.getRootNode());
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  connectedCallback() {
+    this.addEventListener("dblclick", this.onDoubleClick);
+  }
+  disconnectedCallback() {
+    this.removeEventListener("dblclick", this.onDoubleClick);
+  }
+  onDoubleClick(e) {
+    e.stopPropagation();
+    Shard.ignoreMutation(() =>
+      this.shard.processTriggers(["doubleClick"], this.node)
+    );
+  }
+}
+
 customElements.define(
   "sb-block",
-  class Block extends HTMLElement {
-    _node = null;
+  class Block extends _EditableElement {
     constructor() {
       super();
       this.hash = nextHash();
-    }
-    set node(v) {
-      this._node = v;
-      this.setAttribute("type", v.type);
-      if (v.type === "ERROR") {
-        this.classList.add("has-error");
-      }
-    }
-    get node() {
-      return this._node;
-    }
-    getRange() {
-      return this.node.range;
     }
     findTextForCursor(cursor) {
       for (const child of this.children) {
@@ -250,30 +472,12 @@ customElements.define(
       }
       return null;
     }
-    get shard() {
-      let current = this.parentElement;
-      while (current) {
-        if (current.tagName === "SB-SHARD") return current;
-        current = current.parentElement;
-      }
-      return current;
-    }
-    connectedCallback() {
-      this.addEventListener("dblclick", this.onDoubleClick);
-    }
-    disconnectedCallback() {
-      this.removeEventListener("dblclick", this.onDoubleClick);
-    }
-    onDoubleClick(e) {
-      e.stopPropagation();
-      this.shard.processTriggers("doubleClick");
-    }
   }
 );
 
 customElements.define(
   "sb-text",
-  class Text extends HTMLElement {
+  class Text extends _EditableElement {
     static observedAttributes = ["text"];
     constructor() {
       super();
@@ -302,15 +506,6 @@ customElements.define(
       }
     }
 
-    get shard() {
-      let current = this.parentElement;
-      while (current) {
-        if (current.tagName === "SB-SHARD") return current;
-        current = current.parentElement;
-      }
-      return current;
-    }
-
     placeCursorAt(index) {
       index -= this.node.range[0];
       console.assert(index >= 0);
@@ -324,70 +519,5 @@ customElements.define(
       selection.removeAllRanges();
       selection.addRange(range);
     }
-
-    getRange() {
-      return this.node.range;
-    }
-
-    viewParentThat(cb) {
-      let parent = this.parentElement;
-      while (parent) {
-        if (["SB-BLOCK", "SB-TEXT"].includes(parent.tagName) && cb(parent))
-          return parent;
-        parent = parent.parentElement;
-      }
-    }
   }
 );
-
-function getGlobalCursorPosition(root) {
-  function textFor(node) {
-    let current = node;
-    while (current && current.tagName !== "SB-TEXT") {
-      current = current.parentElement;
-    }
-    return current;
-  }
-
-  const selection = getSelection(root.getRootNode());
-  if (selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const container = range.commonAncestorContainer;
-    const text = textFor(container);
-
-    if (container.nodeType === Node.TEXT_NODE) {
-      if (!text) return [null, range.startOffset];
-      if (container === container.parentElement.firstChild) {
-        return [text, text.getRange()[0] + range.startOffset];
-      } else {
-        let cursor = text.getRange()[0];
-        for (const child of container.parentElement.childNodes) {
-          if (child === container) break;
-          if (child.nodeType === Node.TEXT_NODE || child.tagName === "SPAN") {
-            cursor += child.textContent.length;
-          } else if (child.tagName === "BR") {
-            cursor++;
-          } else {
-            debugger;
-          }
-        }
-        return [text, cursor];
-      }
-    }
-
-    let cursor = text.getRange()[0];
-    for (let i = 0; i <= range.startOffset; i++) {
-      const child = container.childNodes[i];
-      if (!child) continue;
-      if (child?.nodeType === Node.TEXT_NODE) {
-        cursor += child.textContent.length;
-      } else if (child.tagName === "BR") {
-        cursor++;
-      } else {
-        debugger;
-      }
-    }
-    return [text, cursor];
-  }
-  return null;
-}

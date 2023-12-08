@@ -66,49 +66,103 @@ export class Extension {
     this.queries = new Map();
   }
 
-  attachedData = new Map();
+  attachedDataPerTrigger = new Map();
+  queuedUpdates = [];
 
-  registerQuery(trigger, query) {
-    if (!this.queries.has(trigger)) this.queries.set(trigger, []);
-    this.queries.get(trigger).push(query);
-    return this;
+  get currentlyProcessingTrigger() {
+    return !!this.currentAttachedData;
   }
 
-  processTriggers(node, ...triggers) {
+  propagationType(trigger) {
+    return (
+      {
+        always: "all",
+        doubleClick: "parents",
+        shortcut: "parents",
+      }[trigger] ?? "all"
+    );
+  }
+
+  queryShouldStillPropagate(trigger) {
+    if (trigger === "shortcut") return !!this.currentShortcut;
+    return true;
+  }
+
+  processTriggers(triggers, node) {
     for (const trigger of triggers) {
       if (this.queries.has(trigger)) {
-        this.processTrigger(node, trigger);
+        this.processTrigger(trigger, node);
       }
     }
   }
 
-  processTrigger(node, trigger) {
+  processTrigger(trigger, node) {
+    if (this.currentlyProcessingTrigger) {
+      this.queuedUpdates.push([trigger, node]);
+      return;
+    }
+
+    this.currentAttachedData =
+      this.attachedDataPerTrigger.get(trigger) ?? new Map();
     this.newAttachedData = new Map();
 
-    node.allNodesDo((node) => {
-      for (const query of this.queries.get(trigger)) {
-        runQuery(query(this), node);
-      }
-    });
+    if (this.propagationType(trigger) === "parents") {
+      node.nodeAndParentsDo(
+        (node) =>
+          this.queryShouldStillPropagate(trigger) &&
+          this.runQueries(trigger, node)
+      );
+    } else {
+      console.assert(this.propagationType(trigger) === "all");
+      node.root.allNodesDo((node) => this.runQueries(trigger, node));
+    }
 
-    for (const key of this.attachedData.keys()) {
+    for (const key of this.currentAttachedData.keys()) {
       if (!this.newAttachedData.has(key)) {
-        this.attachedData.get(key)();
+        this.currentAttachedData.get(key)();
       }
     }
 
-    this.attachedData = this.newAttachedData;
+    this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
+    this.currentAttachedData = null;
+    this.newAttachedData = null;
+
+    let queued = this.queuedUpdates.pop();
+    if (queued) {
+      this.processTrigger(...queued);
+    }
+  }
+
+  currentShortcut = null;
+  currentShortcutView = null;
+  dispatchShortcut(identifier, selected, view) {
+    this.currentShortcut = identifier;
+    this.currentShortcutView = view;
+    this.processTrigger("shortcut", selected);
+    this.currentShortcut = null;
+    this.currentShortcutView = null;
+  }
+
+  stopPropagatingShortcut() {
+    this.currentShortcut = null;
+    this.currentShortcutView = null;
+  }
+
+  runQueries(trigger, node) {
+    for (const query of this.queries.get(trigger) ?? []) {
+      runQuery(query(this), node);
+    }
   }
 
   applySyntaxHighlighting(node, ...cls) {
     node.viewsDo((view) => {
       console.assert(view.hash, "view has no hash");
       const hash = `${view.hash}:syntax:${cls.join(":")}`;
-      if (!this.attachedData.has(hash)) {
+      if (!this.currentAttachedData.has(hash)) {
         for (const c of cls) view.classList.add(c);
         this.newAttachedData.set(hash, () => view.classList.remove(cls));
       } else {
-        this.newAttachedData.set(hash, this.attachedData.get(hash));
+        this.newAttachedData.set(hash, this.currentAttachedData.get(hash));
       }
     });
   }
@@ -131,6 +185,19 @@ export class Extension {
       }
     });
   }
+
+  registerShortcut(node, identifier, callback) {
+    if (identifier === this.currentShortcut) {
+      callback([node, this.currentShortcutView]);
+      this.stopPropagatingShortcut();
+    }
+  }
+
+  registerQuery(trigger, query) {
+    if (!this.queries.has(trigger)) this.queries.set(trigger, []);
+    this.queries.get(trigger).push(query);
+    return this;
+  }
 }
 
 export class ExtensionScope extends HTMLElement {
@@ -152,9 +219,15 @@ export class ExtensionScope extends HTMLElement {
     );
   }
 
-  processTriggers(node, ...triggers) {
+  processTriggers(triggers, node) {
     for (const extension of this.extensions) {
-      extension.processTriggers(node, ...triggers);
+      extension.processTriggers(triggers, node);
+    }
+  }
+
+  dispatchShortcut(identifier, selected, view) {
+    for (const extension of this.extensions) {
+      extension.dispatchShortcut(identifier, selected, view);
     }
   }
 }
