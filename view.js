@@ -28,6 +28,10 @@ customElements.define(
         }
       });
     }
+
+    get sourceString() {
+      return this.shadowRoot.querySelector("sb-shard").sourceString;
+    }
   }
 );
 
