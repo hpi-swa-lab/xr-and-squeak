@@ -1,5 +1,5 @@
 import { ExtensionScope, Replacement } from "./extension.js";
-import { SBParser } from "./model.js";
+import { SBParser, config } from "./model.js";
 import {
   ToggleableMutationObserver,
   WeakArray,
@@ -54,7 +54,7 @@ export class Editor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="style.css"><slot></slot>`;
+    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
     this.editHistory = new EditHistory();
   }
 
@@ -92,6 +92,12 @@ export class Editor extends HTMLElement {
       this.getAttribute("language")
     ).then((node) => {
       this.shadowRoot.appendChild(node.createView());
+
+      // FIXME changes from jens, not sure if those can work if the root is swapped out
+      // this.shadowRoot.querySelectorAll(".view").forEach(ea => ea.remove())
+      // let view = node.createView()
+      // view.classList.add("view")
+      // this.shadowRoot.appendChild(view);
     });
   }
 

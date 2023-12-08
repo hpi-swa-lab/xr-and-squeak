@@ -1,6 +1,14 @@
 import { TrueDiff } from "./diff.js";
 import { WeakArray } from "./utils.js";
 
+export let config = {
+  baseURL: "",
+};
+
+export function setConfig(options) {
+  Object.assign(config, options);
+}
+
 class SBNode {
   static _id = 0;
   static next() {
@@ -284,7 +292,7 @@ export class SBParser {
     return root;
   }
 
-  static async parseText(text, languageName, baseURL = "") {
+  static async parseText(text, languageName) {
     if (!this.init) await TreeSitter.init();
     this.init = true;
 
@@ -294,7 +302,7 @@ export class SBParser {
       this.loadedLanguages.set(
         languageName,
         await TreeSitter.Language.load(
-          baseURL + `tree-sitter-${languageName}.wasm`
+          config.baseURL + `tree-sitter-${languageName}.wasm`
         )
       );
     }
