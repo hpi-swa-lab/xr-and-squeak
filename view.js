@@ -1,5 +1,5 @@
 import { ExtensionScope, Replacement } from "./extension.js";
-import { SBParser } from "./model.js";
+import { SBParser, config } from "./model.js";
 import {
   ToggleableMutationObserver,
   WeakArray,
@@ -13,18 +13,22 @@ customElements.define(
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="style.css"><slot></slot>`;
+      debugger
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
     }
 
     connectedCallback() {
       this.style.display = "block";
       this.style.margin = "1rem";
       SBParser.parseText(
-        this.getAttribute("text"),
-        this.getAttribute("language")
+        this.getAttribute("text") || "",
+        this.getAttribute("language") || "smalltalk"
       ).then((node) => {
         if (node) {
-          this.shadowRoot.appendChild(node.createView());
+          this.shadowRoot.querySelectorAll(".view").forEach(ea => ea.remove())
+          let view = node.createView()
+          view.classList.add("view")
+          this.shadowRoot.appendChild(view);
         }
       });
     }
