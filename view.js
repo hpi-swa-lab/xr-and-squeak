@@ -5,15 +5,18 @@ import {
   WeakArray,
   getSelection,
   nextHash,
+  parentWithTag,
+  allViewsDo,
+  clamp,
 } from "./utils.js";
 
 class EditHistory {
   undoStack = [];
   redoStack = [];
 
-  push(sourceString, cursor) {
+  push(sourceString, cursorRange) {
     this.redoStack = [];
-    this.undoStack.push({ sourceString, cursor });
+    this.undoStack.push({ sourceString, cursorRange });
   }
 
   undo() {
@@ -55,9 +58,9 @@ export class Editor extends HTMLElement {
     this.editHistory = new EditHistory();
   }
 
-  noteChange(newSourceString, cursor, textField) {
+  noteChange(newSourceString, cursorRange, textField) {
     if (textField !== this.lastEditInNode) {
-      this.editHistory.push(this.lastSourceString, cursor);
+      this.editHistory.push(this.lastSourceString, cursorRange);
       this.lastEditInNode = textField;
     }
     this.lastSourceString = newSourceString;
@@ -65,19 +68,19 @@ export class Editor extends HTMLElement {
 
   undo() {
     if (!this.editHistory.canUndo()) return;
-    const { sourceString, cursor } = this.editHistory.undo();
+    const { sourceString, cursorRange } = this.editHistory.undo();
     this.lastSourceString = sourceString;
     this.lastEditInNode = null;
     SBParser.setNewText(this.source, sourceString);
-    this.shard.placeCursorAt(cursor);
+    this.shard.selectRange(...cursorRange);
   }
 
   redo() {
     // TODO need to push newest item
     if (!this.editHistory.canRedo()) return;
-    const { sourceString, cursor } = this.editHistory.redo();
+    const { sourceString, cursorRange } = this.editHistory.redo();
     SBParser.setNewText(this.source, sourceString);
-    this.shard.placeCursorAt(cursor);
+    this.shard.placeCursorAt(cursorRange);
   }
 
   connectedCallback() {
@@ -105,7 +108,7 @@ export class Editor extends HTMLElement {
   }
 
   get selected() {
-    return this.shard.getGlobalCursorPosition()[0];
+    return this.shard.selected;
   }
 
   findNode(node) {
@@ -178,12 +181,7 @@ export class Shard extends HTMLElement {
         if (this.matchesKey(e, key)) {
           e.preventDefault();
           this.extensionScopesDo((scope) => {
-            // TODO pass selection instead of source
-            scope.dispatchShortcut(
-              action,
-              this.getGlobalCursorPosition()[0].node,
-              this
-            );
+            scope.dispatchShortcut(action, this.selected);
           });
         }
       }
@@ -195,14 +193,14 @@ export class Shard extends HTMLElement {
 
       this.constructor.ignoreMutation(() => {
         const newText = this.sourceString;
-        const { cursor, textField } = this.restoreCursorAfter(() => {
+        this.restoreCursorAfter(() => {
           for (const mutation of mutations) {
             this.undoMutation(mutation);
           }
 
-          SBParser.replaceText(this.source.root, this.source.range, newText);
+          SBParser.replaceText(this.source.root, this.range, newText);
         });
-        getEditor(this).noteChange(newText, cursor, textField);
+        this.editor.noteChange(newText, this.cursorToRange(), this.selected);
       });
     });
     this.constructor.observers.push(this.observer);
@@ -210,6 +208,13 @@ export class Shard extends HTMLElement {
   }
   get editor() {
     return getEditor(this);
+  }
+
+  get range() {
+    // if we are the root, tree-sitter reports ranges that start after the first whitespace.
+    // this conflicts with our updating routines
+    if (this.source.isRoot) return [0, this.sourceString.length];
+    return this.source.range;
   }
 
   matchesKey(e, key) {
@@ -240,27 +245,9 @@ export class Shard extends HTMLElement {
   }
 
   get sourceString() {
-    let buffer = { text: "" };
-    this.serialize(this, buffer);
-    return buffer.text;
-  }
-
-  serialize(node, buffer) {
-    for (const child of node.childNodes) {
-      if (child.nodeType === Node.TEXT_NODE) {
-        buffer.text += child.textContent.replace(/\u00A0/g, " ");
-      } else if (child.tagName === "BR") {
-        buffer.text += "\n";
-      } else if (
-        ["SB-TEXT", "SB-BLOCK", "SPAN", "FONT"].includes(child.tagName)
-      ) {
-        this.serialize(child, buffer);
-      } else if (child instanceof Replacement) {
-        buffer.text += child.sourceString;
-      } else {
-        debugger;
-      }
-    }
+    const range = document.createRange();
+    range.selectNodeContents(this);
+    return range.toString();
   }
 
   undoMutation(mutation) {
@@ -307,101 +294,78 @@ export class Shard extends HTMLElement {
       this.source = node;
     }
   }
-  restoreCursorAfter(cb) {
-    let [textField, cursor] = this.getGlobalCursorPosition() ?? [null, null];
 
-    const parents = [];
-    for (let p = textField; p; p = p.parentElement) {
-      if (p.tagName === "SB-BLOCK") parents.push(p);
-    }
-
-    cb();
-
-    // find the first parent that is still in the document and contains
-    // the cursor, then find the text node that contains the cursor
-    let textNode;
-    cursor = Math.min(cursor, this.source.range[1]);
-    if (parents.length === 0) parents.push(this.childNodes[0]);
-    for (const parent of parents) {
-      if (parent.isConnected) {
-        const [start, end] = parent.getRange();
-        if (start <= cursor && end >= cursor) {
-          textNode = parent.findTextForCursor(cursor);
-          break;
-        }
-      }
-    }
-
-    if (textNode) {
-      textNode.placeCursorAt(cursor);
-    }
-    return { cursor, textField: textNode };
+  get selected() {
+    const range = this.cursorToRange();
+    return range ? this.findSelected(this.root, range) : null;
   }
-
-  getGlobalCursorPosition() {
-    function textFor(node) {
-      let current = node;
-      while (current && current.tagName !== "SB-TEXT") {
-        current = current.parentElement;
+  // smallest child encompassing range
+  findSelected(parent, range) {
+    let candidate = null;
+    allViewsDo(parent, (child) => {
+      const [start, end] = child.getRange();
+      if (start <= range[0] && end >= range[1]) {
+        if (
+          !candidate ||
+          candidate.getRange()[1] - candidate.getRange()[0] > end - start
+        )
+          candidate = child;
       }
-      return current;
-    }
-
+    });
+    return candidate;
+  }
+  restoreCursorAfter(cb) {
+    const range = this.cursorToRange();
+    cb();
+    if (range) this.selectRange(...range);
+  }
+  selectRange(start, end) {
+    const range = this.rangeToCursor(...this.clampRange(start, end));
     const selection = getSelection(this.getRootNode());
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const container = range.commonAncestorContainer;
-      const text = textFor(container);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  clampRange(start, end) {
+    const range = [0, this.sourceString.length];
+    return [clamp(start, ...range), clamp(end, ...range)];
+  }
+  rangeToCursor(start, end) {
+    const range = document.createRange();
+    const startNode = this.root.findTextForCursor(start);
+    const endNode = this.root.findTextForCursor(end);
+    range.setStart(...startNode.rangeParams(start));
+    range.setEnd(...endNode.rangeParams(start));
+    return range;
+  }
+  cursorToRange() {
+    const selection = getSelection(this.getRootNode());
+    if (selection.rangeCount === 0) return null;
+    return [
+      this.cursorToIndex(selection.anchorNode, selection.anchorOffset),
+      this.cursorToIndex(selection.focusNode, selection.focusOffset),
+    ];
+  }
+  cursorToIndex(node, offset) {
+    const parent = parentWithTag(node, ["SB-TEXT", "SB-BLOCK"]);
+    if (!parent) return 0;
 
-      if (container.nodeType === Node.TEXT_NODE) {
-        if (!text) return [null, range.startOffset];
-        if (container === container.parentElement.firstChild) {
-          return [text, text.getRange()[0] + range.startOffset];
-        } else {
-          let cursor = text.getRange()[0];
-          for (const child of container.parentElement.childNodes) {
-            if (child === container) break;
-            if (child.nodeType === Node.TEXT_NODE || child.tagName === "SPAN") {
-              cursor += child.textContent.length;
-            } else if (child.tagName === "BR") {
-              cursor++;
-            } else {
-              debugger;
-            }
-          }
-          return [text, cursor];
-        }
-      }
-
-      let cursor = text.getRange()[0];
-      for (let i = 0; i <= range.startOffset; i++) {
-        const child = container.childNodes[i];
-        if (!child) continue;
-        if (child?.nodeType === Node.TEXT_NODE) {
-          cursor += child.textContent.length;
-        } else if (child.tagName === "BR") {
-          cursor++;
-        } else {
-          debugger;
-        }
-      }
-      return [text, cursor];
-    }
-    return null;
+    const range = document.createRange();
+    range.selectNodeContents(parent);
+    range.setEnd(
+      node,
+      // FIXME I have no idea why we seem to need to add an offset here for empty lines.
+      node.textContent.slice(-1) === "\n" ? Math.max(1, offset) : offset
+    );
+    return parent.getRange()[0] + range.toString().length;
   }
 
   get root() {
     return this.childNodes[0];
   }
-
-  placeCursorAt(index) {
-    this.root.findTextForCursor(index).placeCursorAt(index);
-  }
 }
 customElements.define("sb-shard", Shard);
 
 class _EditableElement extends HTMLElement {
-  _node = null;
   get shard() {
     let current = this.parentElement;
     while (current) {
@@ -411,23 +375,19 @@ class _EditableElement extends HTMLElement {
     return current;
   }
   get editor() {
-    const editor = element.getRootNode().host;
+    const editor = this.getRootNode().host;
     console.assert(editor.tagName === "SB-EDITOR");
     return editor;
-  }
-  set node(v) {
-    this._node = v;
-    this.setAttribute("type", v.type);
-    if (v.type === "ERROR") {
-      this.classList.add("has-error");
-    }
-  }
-  get node() {
-    return this._node;
   }
 
   getRange() {
     return this.node.range;
+  }
+
+  isFullySelected() {
+    const [a, b] = this.getRange();
+    const [c, d] = this.shard.cursorToRange();
+    return a === c && b === d;
   }
 
   select() {
@@ -483,41 +443,15 @@ customElements.define(
       super();
       this.hash = nextHash();
     }
-    input() {
-      return this.childNodes[0].childNodes[0];
-    }
-    isLineBreak() {
-      return this.childNodes.length > 0 && this.childNodes[0].tagName === "BR";
+    rangeParams(offset) {
+      if (this.childNodes.length === 0)
+        this.appendChild(document.createTextNode(""));
+      return [this.childNodes[0], offset - this.getRange()[0]];
     }
     attributeChangedCallback(name, oldValue, newValue) {
       if (name === "text") {
-        if (this.childNodes.length === 0) {
-          this.appendChild(document.createElement("span"));
-        }
-        if (newValue === "\n" && !this.isLineBreak()) {
-          this.removeChild(this.childNodes[0]);
-          this.appendChild(document.createElement("br"));
-        } else if (newValue !== "\n" && this.isLineBreak()) {
-          this.removeChild(this.childNodes[0]);
-          this.appendChild(document.createElement("span"));
-        }
-        if (newValue !== "\n")
-          this.querySelector("span").textContent = newValue;
+        this.textContent = newValue;
       }
-    }
-
-    placeCursorAt(index) {
-      index -= this.node.range[0];
-      console.assert(index >= 0);
-
-      const range = document.createRange();
-      const target = this.isLineBreak() ? this : this.input();
-      range.setStart(target, index);
-      range.setEnd(target, index);
-
-      const selection = getSelection(this.getRootNode());
-      selection.removeAllRanges();
-      selection.addRange(range);
     }
   }
 );

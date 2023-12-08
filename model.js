@@ -255,6 +255,9 @@ export class SBParser {
   }
 
   static _parseText(text, language, root = null) {
+    // need a trailing newline for contenteditable, empty nodes cannot be edited
+    if (text.slice(-1) !== "\n") text += "\n";
+
     const parser = new TreeSitter();
     parser.setLanguage(language);
 
@@ -285,8 +288,7 @@ export class SBParser {
     if (!this.init) await TreeSitter.init();
     this.init = true;
 
-    if (!text || !languageName)
-      throw new Error("text and languageName are required");
+    if (!languageName) throw new Error("languageName is required");
 
     if (!this.loadedLanguages.has(languageName)) {
       this.loadedLanguages.set(
@@ -302,30 +304,14 @@ export class SBParser {
 }
 
 /* converting cursor to nodes */
-function addWhitespace(string, node) {
-  const lines = string.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    if (i > 0) {
-      node.addChild(new SBText("\n", lastLeafIndex, lastLeafIndex + 1));
-      lastLeafIndex++;
-    }
-    if (lines[i]) {
-      const s = lastLeafIndex;
-      node.addChild(
-        new SBText(lines[i].replace(/ /g, "\u00A0"), s, s + lines[i].length)
-      );
-      lastLeafIndex += lines[i].length;
-    }
-  }
-}
-
 function addTextFromCursor(cursor, node, isLeaf, text) {
   const gap = text.slice(lastLeafIndex, cursor.startIndex);
   if (gap) {
-    addWhitespace(gap, node);
+    node.addChild(new SBText(gap, lastLeafIndex, cursor.startIndex));
+    lastLeafIndex = cursor.startIndex;
   }
 
-  if (isLeaf) {
+  if (isLeaf && cursor.nodeText.length > 0) {
     node.addChild(
       new SBText(cursor.nodeText, cursor.startIndex, cursor.endIndex)
     );
@@ -337,7 +323,10 @@ let lastLeafIndex;
 function nodeFromCursor(cursor, text) {
   lastLeafIndex = 0;
   let node = _nodeFromCursor(cursor, text);
-  addWhitespace(text.slice(lastLeafIndex), node);
+  if (lastLeafIndex < text.length)
+    node.addChild(
+      new SBText(text.slice(lastLeafIndex), lastLeafIndex, text.length)
+    );
   return node;
 }
 

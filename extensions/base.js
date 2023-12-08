@@ -8,8 +8,9 @@ Extension.register(
     ])
     .registerQuery("shortcut", (e) => [
       (x) =>
-        e.registerShortcut(x, "selectNodeUp", ([x, view]) =>
-          x.parent.select(view)
-        ),
+        e.registerShortcut(x, "selectNodeUp", ([x, view]) => {
+          if (!view.isFullySelected()) x.select(view);
+          else x.parent.select(view);
+        }),
     ])
 );

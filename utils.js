@@ -65,6 +65,16 @@ export function getSelection(root) {
   return root.getSelection ? root.getSelection() : document.getSelection();
 }
 
+export function parentWithTag(node, tag) {
+  while (
+    node &&
+    (Array.isArray(tag) ? !tag.includes(node.tagName) : node.tagName !== tag)
+  ) {
+    node = node.parentNode;
+  }
+  return node;
+}
+
 export class SortedArray {
   constructor(compare) {
     this.array = [];
@@ -90,4 +100,19 @@ export function zipOrNullDo(a, b, cb) {
 let _hash = 1;
 export function nextHash() {
   return _hash++;
+}
+
+export function allViewsDo(parent, cb) {
+  for (const child of parent.childNodes) {
+    if (child.tagName === "SB-TEXT" || child.tagName === "SB-BLOCK") {
+      cb(child);
+      allViewsDo(child, cb);
+    } else {
+      allViewsDo(child, cb);
+    }
+  }
+}
+
+export function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }

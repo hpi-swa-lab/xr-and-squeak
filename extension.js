@@ -135,10 +135,10 @@ export class Extension {
 
   currentShortcut = null;
   currentShortcutView = null;
-  dispatchShortcut(identifier, selected, view) {
+  dispatchShortcut(identifier, selected) {
     this.currentShortcut = identifier;
-    this.currentShortcutView = view;
-    this.processTrigger("shortcut", selected);
+    this.currentShortcutView = selected;
+    this.processTrigger("shortcut", selected.node);
     this.currentShortcut = null;
     this.currentShortcutView = null;
   }
@@ -225,9 +225,9 @@ export class ExtensionScope extends HTMLElement {
     }
   }
 
-  dispatchShortcut(identifier, selected, view) {
+  dispatchShortcut(identifier, selected) {
     for (const extension of this.extensions) {
-      extension.dispatchShortcut(identifier, selected, view);
+      extension.dispatchShortcut(identifier, selected);
     }
   }
 }
