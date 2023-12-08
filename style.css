@@ -1,0 +1,57 @@
+sb-block {
+  display: inline;
+  background: rgba(0.4, 0.4, 0.4, 0.01);
+  margin: 0;
+  padding: 0;
+  font-family: monospace;
+}
+sb-block.has-error {
+  border: 1px solid red;
+}
+sb-shard {
+  outline: none;
+  white-space: pre;
+  word-wrap: normal;
+  tab-size: 2;
+}
+.keyword,
+.type {
+  color: rgb(38, 127, 153);
+}
+
+.function,
+.variable,
+.tag,
+.operator {
+  color: rgb(0, 0, 255);
+}
+.variable.part {
+  color: black;
+}
+
+.comment,
+.punctuation {
+  color: rgb(110, 110, 110);
+}
+
+.number,
+.string,
+.escape {
+  color: rgb(162, 21, 21);
+}
+
+.punctuation.bracket,
+.constant.builtin,
+.annotation {
+  color: rgb(120, 94, 38);
+}
+
+.property,
+.important {
+  color: rgb(174, 0, 228);
+}
+
+.major_declaration {
+  color: rgb(0, 0, 0);
+  font-weight: bold;
+}

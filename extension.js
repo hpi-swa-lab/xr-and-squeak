@@ -1,7 +1,13 @@
 import { Shard } from "./view.js";
+import { nextHash } from "./utils.js";
 
 export class Replacement extends HTMLElement {
   shards = [];
+
+  constructor() {
+    super();
+    this.hash = nextHash();
+  }
 
   update(source) {
     for (const [locator, shard] of this.shards) {
@@ -26,25 +32,6 @@ export class Replacement extends HTMLElement {
       this.source.range[1]
     );
   }
-}
-
-export function ensureReplacement(node, tag) {
-  node.viewsDo((view) => {
-    if (view.tagName === tag) {
-      view.shard.ignoreMutation(() => view.update(node));
-    } else {
-      // FIXME not intended, should work without
-      if (!view.shard) return;
-
-      const replacement = document.createElement(tag);
-      replacement.source = node;
-      replacement.init(node);
-      replacement.update(node);
-      Shard.ignoreMutation(() => view.replaceWith(replacement));
-      node.allNodesDo((node) => node.views.remove(view));
-      node.views.push(replacement);
-    }
-  });
 }
 
 function runQuery(query, arg) {
@@ -79,22 +66,70 @@ export class Extension {
     this.queries = new Map();
   }
 
+  attachedData = new Map();
+
   registerQuery(trigger, query) {
     if (!this.queries.has(trigger)) this.queries.set(trigger, []);
     this.queries.get(trigger).push(query);
     return this;
   }
 
-  processTrigger(node, ...triggers) {
+  processTriggers(node, ...triggers) {
     for (const trigger of triggers) {
       if (this.queries.has(trigger)) {
-        node.allNodesDo((node) => {
-          for (const query of this.queries.get(trigger)) {
-            runQuery(query, node);
-          }
-        });
+        this.processTrigger(node, trigger);
       }
     }
+  }
+
+  processTrigger(node, trigger) {
+    this.newAttachedData = new Map();
+
+    node.allNodesDo((node) => {
+      for (const query of this.queries.get(trigger)) {
+        runQuery(query(this), node);
+      }
+    });
+
+    for (const key of this.attachedData.keys()) {
+      if (!this.newAttachedData.has(key)) {
+        this.attachedData.get(key)();
+      }
+    }
+
+    this.attachedData = this.newAttachedData;
+  }
+
+  applySyntaxHighlighting(node, ...cls) {
+    node.viewsDo((view) => {
+      console.assert(view.hash, "view has no hash");
+      const hash = `${view.hash}:syntax:${cls.join(":")}`;
+      if (!this.attachedData.has(hash)) {
+        for (const c of cls) view.classList.add(c);
+        this.newAttachedData.set(hash, () => view.classList.remove(cls));
+      } else {
+        this.newAttachedData.set(hash, this.attachedData.get(hash));
+      }
+    });
+  }
+
+  ensureReplacement(node, tag) {
+    node.viewsDo((view) => {
+      if (view.tagName === tag) {
+        view.shard.ignoreMutation(() => view.update(node));
+      } else {
+        // FIXME not intended, should work without
+        if (!view.shard) return;
+
+        const replacement = document.createElement(tag);
+        replacement.source = node;
+        replacement.init(node);
+        replacement.update(node);
+        Shard.ignoreMutation(() => view.replaceWith(replacement));
+        node.allNodesDo((node) => node.views.remove(view));
+        node.views.push(replacement);
+      }
+    });
   }
 }
 
@@ -117,9 +152,9 @@ export class ExtensionScope extends HTMLElement {
     );
   }
 
-  processTrigger(node, ...triggers) {
+  processTriggers(node, ...triggers) {
     for (const extension of this.extensions) {
-      extension.processTrigger(node, ...triggers);
+      extension.processTriggers(node, ...triggers);
     }
   }
 }

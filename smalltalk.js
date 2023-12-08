@@ -1,4 +1,4 @@
-import { Extension, ensureReplacement, Replacement } from "./extension.js";
+import { Extension, Replacement } from "./extension.js";
 
 customElements.define(
   "sb-watch",
@@ -19,11 +19,84 @@ customElements.define(
 Extension.register(
   "smalltalkBase",
   new Extension()
-    .registerQuery("always", [
+    .registerQuery("always", (e) => [
       (x) => true,
       (x) => x.type === "unary_message",
       (x) => x.childNode(1).text === "sbWatch",
-      (x) => ensureReplacement(x, "sb-watch"),
+      (x) => e.ensureReplacement(x, "sb-watch"),
     ])
-    .registerQuery("always", [])
+
+    // syntax highlighting
+    .registerQuery("always", (e) => [
+      (x) => ["identifier", "block_argument"].includes(x.type),
+      (x) => e.applySyntaxHighlighting(x, "variable"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) =>
+        ["self", "true", "false", "thisContext", "super", "nil"].includes(
+          x.type
+        ),
+      (x) => e.applySyntaxHighlighting(x, "keyword"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => x.type === "pragma",
+      (x) => e.applySyntaxHighlighting(x, "annotation"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => x.type === "unary_identifier" && x.parent.type === "pragma",
+      (x) => e.applySyntaxHighlighting(x, "structure", "part"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => x.type === "number",
+      (x) => e.applySyntaxHighlighting(x, "number"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => ["string", "symbol", "character"].includes(x.type),
+      (x) => e.applySyntaxHighlighting(x, "number"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => x.type === "comment",
+      (x) => e.applySyntaxHighlighting(x, "comment"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => x.text === "|" && x.parent.type === "block",
+      (x) => e.applySyntaxHighlighting(x, "punctuation"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => [";", ".", "(", ")"].includes(x.text),
+      (x) => e.applySyntaxHighlighting(x, "punctuation"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) =>
+        ["unary_identifier", "binary_operator", "keyword"].includes(x.type),
+      (x) => e.applySyntaxHighlighting(x, "variable", "part"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => ["^", "[", "]", "{", "}"].includes(x.text),
+      (x) => e.applySyntaxHighlighting(x, "important"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) =>
+        (x.type === "keyword" && x.parent.type === "keyword_selector") ||
+        (x.type === "binary_operator" && x.parent.type === "binary_selector") ||
+        (x.type === "unary_identifier" && x.parent.type === "unary_selector"),
+      (x) => e.applySyntaxHighlighting(x, "major_declaration", "part"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) =>
+        [
+          "pragma_keyword_selector",
+          "pragma_unary_selector",
+          "pragma_binary_selector",
+        ].includes(x.type),
+      (x) => e.applySyntaxHighlighting(x, "structure", "part"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => x.type === "temporaries",
+      (x) => e.applySyntaxHighlighting(x, "punctuation"),
+    ])
+    .registerQuery("always", (e) => [
+      (x) => x.type === "identifier" && x.parent.type === "temporaries",
+      (x) => e.applySyntaxHighlighting(x, "punctuation"),
+    ])
 );

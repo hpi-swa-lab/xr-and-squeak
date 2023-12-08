@@ -86,3 +86,8 @@ export function zipOrNullDo(a, b, cb) {
     cb(a[i], b[i]);
   }
 }
+
+let _hash = 1;
+export function nextHash() {
+  return _hash++;
+}

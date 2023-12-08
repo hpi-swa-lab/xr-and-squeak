@@ -4,18 +4,8 @@ import {
   ToggleableMutationObserver,
   WeakArray,
   getSelection,
+  nextHash,
 } from "./utils.js";
-
-customElements.define(
-  "sb-sandblocks",
-  class Sandblocks extends HTMLElement {
-    queries = new Map();
-
-    constructor() {
-      super();
-    }
-  }
-);
 
 customElements.define(
   "sb-editor",
@@ -23,22 +13,7 @@ customElements.define(
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `
-     <style>
-sb-block {
-  display: inline;
-  background: rgba(0.4, 0.4, 0.4, 0.05);
-  margin: 0;
-  padding: 0;
-  font-family: monospace;
-}
-sb-block.has-error {
-  border: 1px solid red;
-}
-sb-shard {
-  outline: none;
-}
-</style><slot></slot>`;
+      this.shadowRoot.innerHTML = `<link rel="stylesheet" href="style.css"><slot></slot>`;
     }
 
     connectedCallback() {
@@ -103,14 +78,16 @@ export class Shard extends HTMLElement {
       });
     });
     this.constructor.observers.push(this.observer);
-    this.processTriggers("always", "open");
+    this.constructor.ignoreMutation(() =>
+      this.processTriggers("always", "open")
+    );
   }
 
   processTriggers(...triggers) {
     let current = this.getRootNode().host;
     while (current) {
       if (current instanceof ExtensionScope) {
-        current.processTrigger(this.source, ...triggers);
+        current.processTriggers(this.source, ...triggers);
         break;
       }
       current = current.parentElement;
@@ -230,6 +207,10 @@ customElements.define(
   "sb-block",
   class Block extends HTMLElement {
     _node = null;
+    constructor() {
+      super();
+      this.hash = nextHash();
+    }
     set node(v) {
       this._node = v;
       this.setAttribute("type", v.type);
@@ -271,6 +252,10 @@ customElements.define(
   "sb-text",
   class Text extends HTMLElement {
     static observedAttributes = ["text"];
+    constructor() {
+      super();
+      this.hash = nextHash();
+    }
     input() {
       return this.childNodes[0].childNodes[0];
     }
@@ -355,7 +340,7 @@ function getGlobalCursorPosition(root) {
         let cursor = text.getRange()[0];
         for (const child of container.parentElement.childNodes) {
           if (child === container) break;
-          if (child.nodeType === Node.TEXT_NODE) {
+          if (child.nodeType === Node.TEXT_NODE || child.tagName === "SPAN") {
             cursor += child.textContent.length;
           } else if (child.tagName === "BR") {
             cursor++;

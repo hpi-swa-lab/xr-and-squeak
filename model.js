@@ -2,9 +2,20 @@ import { TrueDiff } from "./diff.js";
 import { WeakArray } from "./utils.js";
 
 class SBNode {
+  static _id = 0;
+  static next() {
+    return this._id++;
+  }
+
   _parent = null;
 
-  constructor() {}
+  constructor() {
+    this._id = this.constructor.next().toString();
+  }
+
+  get id() {
+    return this._id;
+  }
 
   get children() {
     return [];
