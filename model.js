@@ -107,6 +107,11 @@ class SBNode {
     }
     return height + 1;
   }
+
+  // edit operations
+  replaceWith(str) {
+    SBParser.replaceText(this.root, this.range, str);
+  }
 }
 
 const structureHashText = md5("text");

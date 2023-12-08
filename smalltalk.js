@@ -26,6 +26,11 @@ Extension.register(
       (x) => e.ensureReplacement(x, "sb-watch"),
     ])
 
+    .registerQuery("doubleClick", (e) => [
+      (x) => x.type === "true" || x.type === "false",
+      (x) => x.replaceWith(x.type === "true" ? "false" : "true"),
+    ])
+
     // syntax highlighting
     .registerQuery("always", (e) => [
       (x) => ["identifier", "block_argument"].includes(x.type),

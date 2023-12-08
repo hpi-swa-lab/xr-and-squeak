@@ -41,12 +41,13 @@ sb-shard {
 }
 
 .punctuation.bracket,
-.constant.builtin,
+.constant,
 .annotation {
   color: rgb(120, 94, 38);
 }
 
 .property,
+.constructor,
 .important {
   color: rgb(174, 0, 228);
 }

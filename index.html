@@ -5,8 +5,32 @@
     <title>Sandblocks Text</title>
   </head>
   <body>
-    <sb-extension-scope extensions="smalltalkBase">
-      <sb-editor text="init" language="smalltalk"></sb-editor>
+    <sb-extension-scope extensions="javascriptBase">
+      <sb-editor
+        text="class A {
+  field = true
+
+  processTrigger(node, trigger) {
+    this.newAttachedData = new Map();
+
+    node.allNodesDo((node) => {
+      for (const query of this.queries.get(trigger)) {
+        runQuery(query(this), node);
+      }
+    });
+
+    for (const key of this.attachedData.keys()) {
+      if (!this.newAttachedData.has(key)) {
+        this.attachedData.get(key)();
+      }
+    }
+
+    this.attachedData = this.newAttachedData;
+  }
+
+      }"
+        language="javascript"
+      ></sb-editor>
     </sb-extension-scope>
 
     <script src="tree-sitter.js"></script>

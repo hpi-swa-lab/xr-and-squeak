@@ -62,6 +62,13 @@ export class Shard extends HTMLElement {
     //   this.constructor.observers.forEach((observer) => observer.connect());
     // });
 
+    this.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        document.execCommand("insertText", false, "\t");
+      }
+    });
+
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
       if (!mutations.some((m) => this.isMyMutation(m))) return;
@@ -78,20 +85,20 @@ export class Shard extends HTMLElement {
       });
     });
     this.constructor.observers.push(this.observer);
-    this.constructor.ignoreMutation(() =>
-      this.processTriggers("always", "open")
-    );
+    this.processTriggers("always", "open");
   }
 
   processTriggers(...triggers) {
-    let current = this.getRootNode().host;
-    while (current) {
-      if (current instanceof ExtensionScope) {
-        current.processTriggers(this.source, ...triggers);
-        break;
+    this.constructor.ignoreMutation(() => {
+      let current = this.getRootNode().host;
+      while (current) {
+        if (current instanceof ExtensionScope) {
+          current.processTriggers(this.source, ...triggers);
+          break;
+        }
+        current = current.parentElement;
       }
-      current = current.parentElement;
-    }
+    });
   }
 
   get sourceString() {
@@ -244,6 +251,16 @@ customElements.define(
         current = current.parentElement;
       }
       return current;
+    }
+    connectedCallback() {
+      this.addEventListener("dblclick", this.onDoubleClick);
+    }
+    disconnectedCallback() {
+      this.removeEventListener("dblclick", this.onDoubleClick);
+    }
+    onDoubleClick(e) {
+      e.stopPropagation();
+      this.shard.processTriggers("doubleClick");
     }
   }
 );
