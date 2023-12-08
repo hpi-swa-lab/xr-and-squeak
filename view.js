@@ -17,6 +17,8 @@ customElements.define(
     }
 
     connectedCallback() {
+      this.style.display = "block";
+      this.style.margin = "1rem";
       SBParser.parseText(
         this.getAttribute("text"),
         this.getAttribute("language")

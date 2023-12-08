@@ -5,6 +5,17 @@
     <title>Sandblocks Text</title>
   </head>
   <body>
+    <h3>Smalltalk Demo</h3>
+    <sb-extension-scope extensions="smalltalkBase">
+      <sb-editor
+        text="initialize
+
+  true ifTrue: [2 + 2]"
+        language="smalltalk"
+      ></sb-editor>
+    </sb-extension-scope>
+
+    <h3>Javascript Demo</h3>
     <sb-extension-scope extensions="javascriptBase">
       <sb-editor
         text="class A {
@@ -27,8 +38,7 @@
 
     this.attachedData = this.newAttachedData;
   }
-
-      }"
+}"
         language="javascript"
       ></sb-editor>
     </sb-extension-scope>
