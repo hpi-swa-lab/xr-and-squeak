@@ -1,4 +1,4 @@
-import { nextHash, exec } from "./utils.js";
+import { exec } from "./utils.js";
 
 // An extension groups a set of functionality, such as syntax highlighting,
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
@@ -35,67 +35,6 @@ export class Extension {
 
   instance() {
     return new ExtensionInstance(this);
-  }
-}
-
-export class Widget extends HTMLElement {
-  disconnectedCallback() {
-    this.dispatchEvent(new Event("disconnect"));
-  }
-
-  noteProcessed(trigger, node) {
-    // subclasses may perform actions here
-  }
-}
-
-export class Replacement extends HTMLElement {
-  shards = [];
-
-  constructor() {
-    super();
-    this.hash = nextHash();
-  }
-
-  update(source) {
-    for (const [locator, shard] of this.shards) {
-      const node = locator(source);
-      if (!node) throw new Error("shard locator returned null");
-      if (node !== shard.source) {
-        shard.update(node);
-      }
-    }
-  }
-
-  init(source) {
-    // subclasses may perform initialization here, such as creating shards
-  }
-
-  createShard(locator) {
-    const shard = document.createElement("sb-shard");
-    this.shards.push([locator, shard]);
-    return shard;
-  }
-
-  get sourceString() {
-    return this.editor.sourceString.slice(
-      this.source.range[0],
-      this.source.range[1]
-    );
-  }
-
-  get editor() {
-    const editor = this.getRootNode().host.editor;
-    console.assert(editor.tagName === "SB-EDITOR");
-    return editor;
-  }
-
-  // polymorphic with Block
-  findTextForCursor(cursor) {
-    for (const [_, shard] of this.shards) {
-      const result = shard.root.findTextForCursor(cursor);
-      if (result) return result;
-    }
-    return null;
   }
 }
 

@@ -1,9 +1,7 @@
-import { Extension, Widget } from "../extension.js";
-import { exec } from "../utils.js";
+import { Extension } from "../extension.js";
+import { Widget, ul, li, shard, div } from "../widgets.js";
 
 class SBOutline extends Widget {
-  mapping = new Map();
-
   connectedCallback() {
     this.style.display = "flex";
     this.style.flexDirection = "column";
@@ -12,29 +10,27 @@ class SBOutline extends Widget {
   noteProcessed(trigger, source) {
     if (trigger !== "always" || source.type !== "program") return;
 
-    const newMapping = new Map();
     const DECL_TYPES = ["class_declaration", "function_declaration"];
-    exec(
-      source,
-      (x) => x.children,
-      (l) => l.filter((x) => DECL_TYPES.includes(x.type)),
-      (l) => l.map((x) => x.atField("name")),
-      (l) =>
-        l.forEach((x, i) => {
-          let shard = this.mapping.get(x);
-          if (!shard) {
-            shard = x.createShard();
-            this.insertBefore(shard, this.children[i + 1]);
-          }
-          newMapping.set(x, shard);
-        })
+    this.render(
+      div(
+        "Outline",
+        ul(
+          source.children
+            .filter((x) => DECL_TYPES.includes(x.type))
+            .map((x) =>
+              li(
+                shard(x.atField("name")),
+                ul(
+                  x
+                    .atField("body")
+                    .children.filter((c) => c.type === "method_definition")
+                    .map((x) => li(shard(x.atField("name"))))
+                )
+              )
+            )
+        )
+      )
     );
-    for (const [node, shard] of this.mapping.entries()) {
-      if (!newMapping.has(node)) {
-        shard.remove();
-      }
-    }
-    this.mapping = newMapping;
   }
 }
 customElements.define("sb-outline", SBOutline);

@@ -309,7 +309,7 @@ export class SBParser {
       this.loadedLanguages.set(
         languageName,
         await TreeSitter.Language.load(
-          config.baseURL + `tree-sitter-${languageName}.wasm`
+          config.baseURL + `external/tree-sitter-${languageName}.wasm`
         )
       );
     }

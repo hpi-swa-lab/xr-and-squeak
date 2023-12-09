@@ -1,4 +1,4 @@
-import { Replacement } from "./extension.js";
+import { Replacement } from "./widgets.js";
 import { Editor } from "./editor.js";
 import {
   ToggleableMutationObserver,
@@ -17,6 +17,11 @@ import {
 // to a node in the source model. Multiple shards may point to the same node.
 export class Shard extends HTMLElement {
   source = null;
+
+  // provide convenience setter for preact
+  set initNode(node) {
+    this.update(node);
+  }
 
   connectedCallback() {
     for (const [key, value] of Object.entries({
@@ -70,7 +75,7 @@ export class Shard extends HTMLElement {
         });
       });
     });
-    this.editor.extensionsDo((e) => e.process(["always", "open"], this.source));
+    this.editor.extensionsDo((e) => e.process(["open", "always"], this.source));
   }
 
   get editor() {
@@ -147,6 +152,10 @@ export class Shard extends HTMLElement {
       this.source = node;
     } else if (this.source !== node) {
       this.source = node;
+      if (this.childNodes[0].node !== this.source) {
+        this.removeChild(this.childNodes[0]);
+        this.appendChild(node.toHTML());
+      }
     }
   }
 
