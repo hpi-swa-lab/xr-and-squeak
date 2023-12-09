@@ -59,6 +59,56 @@ export class ToggleableMutationObserver {
     this.enabled = false;
     this.observer.disconnect();
   }
+
+  undoMutation(mutation) {
+    switch (mutation.type) {
+      case "characterData":
+        mutation.target.textContent = mutation.oldValue;
+        break;
+      case "childList":
+        for (const node of mutation.removedNodes) {
+          mutation.target.insertBefore(node, mutation.nextSibling);
+        }
+        for (const node of mutation.addedNodes) {
+          mutation.target.removeChild(node);
+        }
+        break;
+      default:
+        debugger;
+    }
+  }
+}
+
+export function findChange(prev, current) {
+  if (prev.length > current.length) {
+    return { op: "delete", ...findInsertedString(current, prev) };
+  } else {
+    return { op: "insert", ...findInsertedString(prev, current) };
+  }
+}
+
+// assume the only change from prev to current is that a string was inserted into current.
+// find that string.
+function findInsertedString(prev, current) {
+  if (prev.length >= current.length) throw new Error("prev must be shorter");
+
+  let string = "";
+  let start = 0;
+  let i = 0;
+  let j = 0;
+
+  while (j < current.length) {
+    if (prev[i] !== current[j]) {
+      start = i;
+      string += current[j];
+      j++;
+    } else {
+      i++;
+      j++;
+    }
+  }
+
+  return { string, index: start };
 }
 
 export function getSelection(root) {

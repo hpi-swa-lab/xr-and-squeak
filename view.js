@@ -1,5 +1,5 @@
 import { ExtensionScope, Replacement } from "./extension.js";
-import { SBParser, config } from "./model.js";
+import { Editor } from "./editor.js";
 import {
   ToggleableMutationObserver,
   WeakArray,
@@ -10,135 +10,12 @@ import {
   clamp,
 } from "./utils.js";
 
-class EditHistory {
-  undoStack = [];
-  redoStack = [];
-
-  push(sourceString, cursorRange) {
-    this.redoStack = [];
-    this.undoStack.push({ sourceString, cursorRange });
-  }
-
-  undo() {
-    if (this.undoStack.length === 0) return;
-    const item = this.undoStack.pop();
-    this.redoStack.push(item);
-    return item;
-  }
-
-  redo() {
-    if (this.redoStack.length === 0) return;
-    const item = this.redoStack.pop();
-    this.undoStack.push(item);
-    return item;
-  }
-
-  canUndo() {
-    return this.undoStack.length > 0;
-  }
-
-  canRedo() {
-    return this.redoStack.length > 0;
-  }
-}
-
-export class Editor extends HTMLElement {
-  lastEditInNode = null;
-  lastSourceString = null;
-
-  static keyMap = {};
-  static registerKeyMap(map) {
-    this.keyMap = map;
-  }
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
-    this.editHistory = new EditHistory();
-  }
-
-  noteChange(newSourceString, cursorRange, textField) {
-    if (textField !== this.lastEditInNode) {
-      this.editHistory.push(this.lastSourceString, cursorRange);
-      this.lastEditInNode = textField;
-    }
-    this.lastSourceString = newSourceString;
-  }
-
-  undo() {
-    if (!this.editHistory.canUndo()) return;
-    const { sourceString, cursorRange } = this.editHistory.undo();
-    this.lastSourceString = sourceString;
-    this.lastEditInNode = null;
-    SBParser.setNewText(this.source, sourceString);
-    this.shard.selectRange(...cursorRange);
-  }
-
-  redo() {
-    // TODO need to push newest item
-    if (!this.editHistory.canRedo()) return;
-    const { sourceString, cursorRange } = this.editHistory.redo();
-    SBParser.setNewText(this.source, sourceString);
-    this.shard.placeCursorAt(cursorRange);
-  }
-
-  connectedCallback() {
-    this.style.display = "block";
-    this.style.margin = "1rem";
-    this.lastSourceString = this.getAttribute("text");
-    SBParser.parseText(
-      this.getAttribute("text"),
-      this.getAttribute("language")
-    ).then((node) => {
-      this.shadowRoot.appendChild(node.createView());
-
-      // FIXME changes from jens, not sure if those can work if the root is swapped out
-      // this.shadowRoot.querySelectorAll(".view").forEach(ea => ea.remove())
-      // let view = node.createView()
-      // view.classList.add("view")
-      // this.shadowRoot.appendChild(view);
-    });
-  }
-
-  get sourceString() {
-    return this.shard.sourceString;
-  }
-
-  get source() {
-    return this.shard.source;
-  }
-
-  get shard() {
-    return this.shadowRoot.querySelector("sb-shard");
-  }
-
-  get selected() {
-    return this.shard.selected;
-  }
-
-  findNode(node) {
-    return findNode(this.shard, node);
-  }
-}
-customElements.define("sb-editor", Editor);
-
-function findNode(parent, node) {
-  // iterate over all dom children and check if the node is the same
-  // as the source node
-  for (const child of parent.childNodes) {
-    if (child.node === node) return child;
-    const result = findNode(child, node);
-    if (result) return result;
-  }
-}
-
-function getEditor(element) {
-  const editor = element.getRootNode().host;
-  console.assert(editor.tagName === "SB-EDITOR");
-  return editor;
-}
-
+// A Shard is a self-contained editable element.
+//
+// Consequently, it keeps track of the selection and detects and isolates
+// modifications to its content. It collaborates with the Editor to update
+// the model when changes occur. It contains _EditableElements. It refers
+// to a node in the source model. Multiple shards may point to the same node.
 export class Shard extends HTMLElement {
   static observers = new WeakArray();
   static nestedDisable = 0;
@@ -186,9 +63,7 @@ export class Shard extends HTMLElement {
       for (const [action, key] of Object.entries(Editor.keyMap)) {
         if (this.matchesKey(e, key)) {
           e.preventDefault();
-          this.extensionScopesDo((scope) => {
-            scope.dispatchShortcut(action, this.selected);
-          });
+          this.extensionsDo((e) => e.dispatchShortcut(action, this.selected));
         }
       }
     });
@@ -198,22 +73,28 @@ export class Shard extends HTMLElement {
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
       this.constructor.ignoreMutation(() => {
-        const newText = this.sourceString;
+        const text = this.sourceString;
         this.restoreCursorAfter(() => {
-          for (const mutation of mutations) {
-            this.undoMutation(mutation);
-          }
+          for (const mutation of mutations)
+            this.observer.undoMutation(mutation);
 
-          SBParser.replaceText(this.source.root, this.range, newText);
+          this.editor.replaceTextFromTyping({
+            range: this.range,
+            text,
+            cursorRange: this.cursorToRange(),
+            view: this.selected,
+          });
         });
-        this.editor.noteChange(newText, this.cursorToRange(), this.selected);
       });
     });
     this.constructor.observers.push(this.observer);
-    this.processTriggers(["always", "open"], this.source);
+    this.extensionsDo((e) => e.process(["always", "open"], this.source));
   }
+
   get editor() {
-    return getEditor(this);
+    const editor = this.getRootNode().host;
+    console.assert(editor.tagName === "SB-EDITOR");
+    return editor;
   }
 
   get range() {
@@ -232,21 +113,15 @@ export class Shard extends HTMLElement {
     return e.key === baseKey;
   }
 
-  extensionScopesDo(cb) {
+  extensionsDo(cb) {
     this.constructor.ignoreMutation(() => {
       let current = this.getRootNode().host;
       while (current) {
         if (current instanceof ExtensionScope) {
-          cb(current);
+          current.extensionsDo(cb);
         }
         current = current.parentElement;
       }
-    });
-  }
-
-  processTriggers(triggers, node) {
-    this.extensionScopesDo((scope) => {
-      scope.processTriggers(triggers, node);
     });
   }
 
@@ -254,24 +129,6 @@ export class Shard extends HTMLElement {
     const range = document.createRange();
     range.selectNodeContents(this);
     return range.toString();
-  }
-
-  undoMutation(mutation) {
-    switch (mutation.type) {
-      case "characterData":
-        mutation.target.textContent = mutation.oldValue;
-        break;
-      case "childList":
-        for (const node of mutation.removedNodes) {
-          mutation.target.insertBefore(node, mutation.nextSibling);
-        }
-        for (const node of mutation.addedNodes) {
-          mutation.target.removeChild(node);
-        }
-        break;
-      default:
-        debugger;
-    }
   }
 
   destroy() {
@@ -371,6 +228,8 @@ export class Shard extends HTMLElement {
 }
 customElements.define("sb-shard", Shard);
 
+// _EditableElements is the superclass for Text and Block elements, grouping
+// common functionality.
 class _EditableElement extends HTMLElement {
   get shard() {
     let current = this.parentElement;
@@ -412,52 +271,48 @@ class _EditableElement extends HTMLElement {
   }
   onDoubleClick(e) {
     e.stopPropagation();
-    Shard.ignoreMutation(() =>
-      this.shard.processTriggers(["doubleClick"], this.node)
-    );
+    this.shard.extensionsDo((e) => e.process(["doubleClick"], this.node));
   }
 }
 
-customElements.define(
-  "sb-block",
-  class Block extends _EditableElement {
-    constructor() {
-      super();
-      this.hash = nextHash();
-    }
-    findTextForCursor(cursor) {
-      for (const child of this.children) {
-        if (["SB-TEXT", "SB-BLOCK"].includes(child.tagName)) {
-          const [start, end] = child.node.range;
-          if (start <= cursor && end >= cursor) {
-            if (child.tagName === "SB-BLOCK")
-              return child.findTextForCursor(cursor);
-            else return child;
-          }
+// Block the view for any non-terminal node.
+class Block extends _EditableElement {
+  constructor() {
+    super();
+    this.hash = nextHash();
+  }
+  findTextForCursor(cursor) {
+    for (const child of this.children) {
+      if (["SB-TEXT", "SB-BLOCK"].includes(child.tagName)) {
+        const [start, end] = child.node.range;
+        if (start <= cursor && end >= cursor) {
+          if (child.tagName === "SB-BLOCK")
+            return child.findTextForCursor(cursor);
+          else return child;
         }
       }
-      return null;
     }
+    return null;
   }
-);
+}
+customElements.define("sb-block", Block);
 
-customElements.define(
-  "sb-text",
-  class Text extends _EditableElement {
-    static observedAttributes = ["text"];
-    constructor() {
-      super();
-      this.hash = nextHash();
-    }
-    rangeParams(offset) {
-      if (this.childNodes.length === 0)
-        this.appendChild(document.createTextNode(""));
-      return [this.childNodes[0], offset - this.getRange()[0]];
-    }
-    attributeChangedCallback(name, oldValue, newValue) {
-      if (name === "text") {
-        this.textContent = newValue;
-      }
+// Text is the view for a terminal node.
+class Text extends _EditableElement {
+  static observedAttributes = ["text"];
+  constructor() {
+    super();
+    this.hash = nextHash();
+  }
+  rangeParams(offset) {
+    if (this.childNodes.length === 0)
+      this.appendChild(document.createTextNode(""));
+    return [this.childNodes[0], offset - this.getRange()[0]];
+  }
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === "text") {
+      this.textContent = newValue;
     }
   }
-);
+}
+customElements.define("sb-text", Text);

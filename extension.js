@@ -64,6 +64,7 @@ export class Extension {
 
   constructor() {
     this.queries = new Map();
+    this.changeFilters = [];
   }
 
   attachedDataPerTrigger = new Map();
@@ -88,15 +89,15 @@ export class Extension {
     return true;
   }
 
-  processTriggers(triggers, node) {
+  process(triggers, node) {
     for (const trigger of triggers) {
       if (this.queries.has(trigger)) {
-        this.processTrigger(trigger, node);
+        this._processTrigger(trigger, node);
       }
     }
   }
 
-  processTrigger(trigger, node) {
+  _processTrigger(trigger, node) {
     if (this.currentlyProcessingTrigger) {
       this.queuedUpdates.push([trigger, node]);
       return;
@@ -129,7 +130,7 @@ export class Extension {
 
     let queued = this.queuedUpdates.pop();
     if (queued) {
-      this.processTrigger(...queued);
+      this._processTrigger(...queued);
     }
   }
 
@@ -138,7 +139,7 @@ export class Extension {
   dispatchShortcut(identifier, selected) {
     this.currentShortcut = identifier;
     this.currentShortcutView = selected;
-    this.processTrigger("shortcut", selected.node);
+    this._processTrigger("shortcut", selected.node);
     this.currentShortcut = null;
     this.currentShortcutView = null;
   }
@@ -198,6 +199,16 @@ export class Extension {
     this.queries.get(trigger).push(query);
     return this;
   }
+
+  registerChangeFilter(filter) {
+    this.changeFilters.push(filter);
+    return this;
+  }
+
+  filterChange(change, text) {
+    this.changeFilters.forEach((filter) => (text = filter(change, text)));
+    return text;
+  }
 }
 
 export class ExtensionScope extends HTMLElement {
@@ -219,15 +230,9 @@ export class ExtensionScope extends HTMLElement {
     );
   }
 
-  processTriggers(triggers, node) {
+  extensionsDo(cb) {
     for (const extension of this.extensions) {
-      extension.processTriggers(triggers, node);
-    }
-  }
-
-  dispatchShortcut(identifier, selected) {
-    for (const extension of this.extensions) {
-      extension.dispatchShortcut(identifier, selected);
+      cb(extension);
     }
   }
 }

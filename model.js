@@ -1,5 +1,5 @@
 import { TrueDiff } from "./diff.js";
-import { WeakArray } from "./utils.js";
+import { WeakArray, findChange } from "./utils.js";
 
 export let config = {
   baseURL: "",
@@ -51,6 +51,12 @@ class SBNode {
 
   viewsDo(cb) {
     if (this.views) this.views.forEach(cb);
+  }
+
+  get editor() {
+    let editor = null;
+    this.viewsDo((view) => !editor && (editor = view.editor));
+    return editor;
   }
 
   field(field) {
@@ -127,7 +133,7 @@ class SBNode {
 
   // edit operations
   replaceWith(str) {
-    SBParser.replaceText(this.root, this.range, str);
+    this.editor.replaceTextFromCommand(this.range, str);
   }
 
   select(adjacentView) {
@@ -248,48 +254,28 @@ export class SBParser {
   static init = false;
   static loadedLanguages = new Map();
 
-  static replaceText(root, range, text) {
-    return this._parseText(
-      root._sourceText.slice(0, range[0]) +
-        text +
-        root._sourceText.slice(range[1]),
-      root._tree.language,
-      root
-    );
-  }
-
-  static setNewText(root, text) {
-    return this._parseText(text, root._tree.language, root);
-  }
-
-  static _parseText(text, language, root = null) {
-    // need a trailing newline for contenteditable, empty nodes cannot be edited
+  static updateModelAndView(text, language, root = null) {
     if (text.slice(-1) !== "\n") text += "\n";
 
     const parser = new TreeSitter();
-    parser.setLanguage(language);
+    parser.setLanguage(language ?? root._tree.language);
 
     // TODO reuse currentTree (breaks indices, need to update or use new nodes)
     const newTree = parser.parse(text);
     if (root?._tree) root._tree.delete();
-    let newRoot = nodeFromCursor(newTree.walk(), text);
 
+    let newRoot = nodeFromCursor(newTree.walk(), text);
     if (root) {
       newRoot = new TrueDiff().applyEdits(root, newRoot);
       if (root !== newRoot) {
         delete root._tree;
-        delete root._sourceText;
       }
     }
 
-    root = newRoot;
-    root._tree = newTree;
-    root._sourceText = text;
-    console.assert(root.range[1] === text.length, "root range is wrong");
+    newRoot._tree = newTree;
+    console.assert(newRoot.range[1] === text.length, "root range is wrong");
 
-    root.viewsDo((view) => view.shard.processTriggers(["always"], root));
-
-    return root;
+    return newRoot;
   }
 
   static async parseText(text, languageName) {
@@ -307,7 +293,10 @@ export class SBParser {
       );
     }
 
-    return this._parseText(text, this.loadedLanguages.get(languageName));
+    return this.updateModelAndView(
+      text,
+      this.loadedLanguages.get(languageName)
+    );
   }
 }
 

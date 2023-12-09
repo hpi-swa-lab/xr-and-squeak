@@ -13,4 +13,13 @@ Extension.register(
           else x.parent.select(view);
         }),
     ])
+    .registerChangeFilter((change, text) => {
+      if (change.op === "insert" && change.string === "(")
+        return insert(text, change.index + 1, ")");
+      return text;
+    })
 );
+
+function insert(string, index, extra) {
+  return string.substring(0, index) + extra + string.substring(index);
+}
