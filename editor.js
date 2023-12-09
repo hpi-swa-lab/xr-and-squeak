@@ -48,7 +48,7 @@ export class Editor extends HTMLElement {
   }
   set sourceString(text) {
     // need a trailing newline for contenteditable, empty nodes cannot be edited
-    if (text.slice(-1) !== "\n") text += "\n";
+    if (text && text.slice(-1) !== "\n") text += "\n";
     this._sourceString = text;
   }
 
@@ -131,6 +131,7 @@ export class Editor extends HTMLElement {
     this.style.display = "block";
     this.style.margin = "1rem";
     this.sourceString = this.getAttribute("text");
+    if (!this.getAttribute("language")) return;
     SBParser.parseText(this.sourceString, this.getAttribute("language")).then(
       (node) => {
         this.shadowRoot.appendChild(node.createView());
