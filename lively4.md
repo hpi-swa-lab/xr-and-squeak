@@ -2,14 +2,7 @@
 
 <script>
   import "src/client/tree-sitter.js"
-  import md5 from "./md5.min.js"
-  
-  window.md5 = md5
-  
-  // await lively.loadJavaScriptThroughDOM("md5x", lively4url + '/../sandblocks-text/md5.min.js')
-                                                                 
-  // window.md5= md5
-  ""
+  import md5 from "./md5.js"
 </script>
 
 <script>
@@ -18,7 +11,6 @@
   import {} from "./extensions/smalltalk.js";
   import {} from "./extensions/javascript.js";
 
-//   // initialize language.... 
   var baseDir = lively.query(this, "lively-container").getDir()
   setConfig({baseURL: baseDir})
  

@@ -2,6 +2,6 @@
 
 let a = 1
 
-function helloAXA() {
+function hello() {
   1
 }
