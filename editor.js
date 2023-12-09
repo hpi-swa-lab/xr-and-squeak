@@ -60,7 +60,7 @@ export class Editor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
+    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><span id="content"></span><slot></slot>`;
     this.editHistory = new EditHistory();
   }
 
@@ -134,13 +134,11 @@ export class Editor extends HTMLElement {
     if (!this.getAttribute("language")) return;
     SBParser.parseText(this.sourceString, this.getAttribute("language")).then(
       (node) => {
-        this.shadowRoot.appendChild(node.createView());
+        // this.shadowRoot.appendChild(node.createView());
 
-        // FIXME changes from Jens, not sure if those can work if the root is swapped out
-        // this.shadowRoot.querySelectorAll(".view").forEach(ea => ea.remove())
-        // let view = node.createView()
-        // view.classList.add("view")
-        // this.shadowRoot.appendChild(view);
+        let contentRoot = this.shadowRoot.querySelector("#content")
+        contentRoot.innerHTML = ""
+        contentRoot.appendChild(node.createView());
       }
     );
   }
