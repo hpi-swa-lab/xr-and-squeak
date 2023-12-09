@@ -10,7 +10,7 @@ class SBOutline extends Widget {
   }
 
   noteProcessed(trigger, source) {
-    if (trigger !== "always") return;
+    if (trigger !== "always" || source.type !== "program") return;
 
     const newMapping = new Map();
     const DECL_TYPES = ["class_declaration", "function_declaration"];

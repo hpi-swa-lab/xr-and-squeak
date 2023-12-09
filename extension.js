@@ -188,11 +188,11 @@ class ExtensionInstance {
       return;
     }
 
-    if (this.extension.queries.has(trigger)) {
-      this.currentAttachedData =
-        this.attachedDataPerTrigger.get(trigger) ?? new Map();
-      this.newAttachedData = new Map();
+    this.currentAttachedData =
+      this.attachedDataPerTrigger.get(trigger) ?? new Map();
+    this.newAttachedData = new Map();
 
+    if (this.extension.queries.has(trigger)) {
       switch (this.propagationType(trigger)) {
         case "parents":
           node.nodeAndParentsDo(
@@ -216,15 +216,15 @@ class ExtensionInstance {
           this.currentAttachedData.get(key)();
         }
       }
-
-      this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
-      this.currentAttachedData = null;
-      this.newAttachedData = null;
     }
 
     for (const widget of this.widgets) {
       widget.noteProcessed(trigger, node);
     }
+
+    this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
+    this.currentAttachedData = null;
+    this.newAttachedData = null;
 
     let queued = this.queuedUpdates.pop();
     if (queued) {
