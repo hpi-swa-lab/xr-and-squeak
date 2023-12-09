@@ -1,4 +1,4 @@
-import { Extension, Replacement } from "../extension.js";
+import { Extension, Replacement, exec } from "../extension.js";
 
 customElements.define(
   "sb-watch",
@@ -16,6 +16,19 @@ customElements.define(
   }
 );
 
+const smalltalkMethodSelector = [
+  (x) => x.orAnyParent((y) => y.type === "method"),
+  (x) =>
+    x.children.find((y) =>
+      ["keyword_selector", "unary_selector", "binary_selector"].includes(y.type)
+    ),
+];
+
+const smalltalkMethodArguments = [
+  ...smalltalkMethodSelector,
+  (x) => x.children.filter((y) => y.type === "identifier"),
+];
+
 Extension.register(
   "smalltalkBase",
   new Extension()
@@ -29,6 +42,21 @@ Extension.register(
     .registerQuery("doubleClick", (e) => [
       (x) => x.type === "true" || x.type === "false",
       (x) => x.replaceWith(x.type === "true" ? "false" : "true"),
+    ])
+
+    .registerQuery("shortcut", (e) => [
+      (x) => {
+        for (let i = 0; i < 5; i++)
+          e.registerShortcut(
+            x,
+            `insert${["First", "Second", "Third", "Fourth", "Fifth"][i]}Arg`,
+            ([x, view]) =>
+              x.exec(
+                ...smalltalkMethodArguments,
+                (args) => args[i] && view.editor.replaceSelection(args[i].text)
+              )
+          );
+      },
     ])
 
     // syntax highlighting

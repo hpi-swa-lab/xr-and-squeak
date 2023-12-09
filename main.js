@@ -7,4 +7,5 @@ Editor.registerKeyMap({
   selectNodeUp: "Ctrl-ArrowUp",
   undo: "Ctrl-z",
   redo: "Ctrl-Z",
+  insertFirstArg: "Alt-1",
 });

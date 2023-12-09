@@ -183,6 +183,7 @@ export class Shard extends HTMLElement {
     if (range) this.selectRange(...range);
   }
   selectRange(start, end) {
+    if (end === undefined) end = start;
     const range = this.rangeToCursor(...this.clampRange(start, end));
     const selection = getSelection(this.getRootNode());
     selection.removeAllRanges();
@@ -197,7 +198,7 @@ export class Shard extends HTMLElement {
     const startNode = this.root.findTextForCursor(start);
     const endNode = this.root.findTextForCursor(end);
     range.setStart(...startNode.rangeParams(start));
-    range.setEnd(...endNode.rangeParams(start));
+    range.setEnd(...endNode.rangeParams(end));
     return range;
   }
   cursorToRange() {
@@ -206,7 +207,7 @@ export class Shard extends HTMLElement {
     return [
       this.cursorToIndex(selection.anchorNode, selection.anchorOffset),
       this.cursorToIndex(selection.focusNode, selection.focusOffset),
-    ];
+    ].sort();
   }
   cursorToIndex(node, offset) {
     const parent = parentWithTag(node, ["SB-TEXT", "SB-BLOCK"]);

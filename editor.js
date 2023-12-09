@@ -64,6 +64,17 @@ export class Editor extends HTMLElement {
     this.editHistory = new EditHistory();
   }
 
+  replaceSelection(text) {
+    const range = this.shard.cursorToRange();
+    this.replaceTextFromTyping({
+      range: range,
+      text,
+      cursorRange: range,
+      view: this.selected,
+    });
+    this.shard.selectRange(range[0] + text.length);
+  }
+
   replaceTextFromTyping({ range, text, cursorRange, view }) {
     if (view !== this.lastEditInView) {
       this.editHistory.push(this.sourceString, cursorRange);
@@ -87,7 +98,8 @@ export class Editor extends HTMLElement {
   }
 
   setText(text) {
-    if (this.sourceString !== text)
+    // FIXME does not support change as replace yet
+    if (this.sourceString.length !== text.length)
       this.shard.extensionsDo(
         (e) =>
           (text = e.filterChange(findChange(this.sourceString, text), text))

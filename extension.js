@@ -34,11 +34,13 @@ export class Replacement extends HTMLElement {
   }
 }
 
-function runQuery(query, arg) {
+export function exec(arg, ...script) {
+  if (!arg) throw new Error("No argument provided");
+
   let current = arg;
-  for (const predicate of query) {
+  for (const predicate of script) {
     if (Array.isArray(predicate)) {
-      current = runQuery(predicate, current);
+      current = exec(current, ...predicate);
       if (!current) return null;
     } else {
       let next = predicate(current);
@@ -151,7 +153,7 @@ export class Extension {
 
   runQueries(trigger, node) {
     for (const query of this.queries.get(trigger) ?? []) {
-      runQuery(query(this), node);
+      exec(node, ...query(this));
     }
   }
 

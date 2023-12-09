@@ -1,4 +1,5 @@
 import { TrueDiff } from "./diff.js";
+import { exec } from "./extension.js";
 import { WeakArray, findChange } from "./utils.js";
 
 export let config = {
@@ -88,6 +89,15 @@ class SBNode {
     return false;
   }
 
+  orAnyParent(predicate) {
+    let current = this;
+    while (current) {
+      if (predicate(current)) return current;
+      current = current.parent;
+    }
+    return null;
+  }
+
   nodeAndParentsDo(cb) {
     cb(this);
     if (this.parent) this.parent.nodeAndParentsDo(cb);
@@ -115,6 +125,10 @@ class SBNode {
     const leafs = [];
     this.allLeafsDo((leaf) => leafs.push(leaf));
     return leafs;
+  }
+
+  exec(...script) {
+    return exec(this, ...script);
   }
 
   get isText() {
