@@ -156,5 +156,17 @@ export class Editor extends HTMLElement {
     // TODO first find shard that has cursor
     return this.shard.selected;
   }
+
+  findNode(node) {
+    return findNode(this.shard, node);
+  }
 }
 customElements.define("sb-editor", Editor);
+
+function findNode(element, node) {
+  if (element.node === node) return element;
+  for (const child of element.children) {
+    const found = findNode(child, node);
+    if (found) return found;
+  }
+}

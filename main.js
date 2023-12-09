@@ -8,4 +8,8 @@ Editor.registerKeyMap({
   undo: "Ctrl-z",
   redo: "Ctrl-Z",
   insertFirstArg: "Alt-1",
+  insertSecondArg: "Alt-2",
+  insertThirdArg: "Alt-3",
+  insertFourthArg: "Alt-4",
+  insertFifthArg: "Alt-5",
 });
