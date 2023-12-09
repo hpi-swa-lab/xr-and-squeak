@@ -49,7 +49,7 @@ export class Editor extends HTMLElement {
   }
   set sourceString(text) {
     // need a trailing newline for contenteditable, empty nodes cannot be edited
-    if (text.slice(-1) !== "\n") text += "\n";
+    if (text && text.slice(-1) !== "\n") text += "\n";
     this._sourceString = text;
   }
 
@@ -61,7 +61,7 @@ export class Editor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
+    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><span id="content"></span><slot></slot>`;
     this.editHistory = new EditHistory();
   }
 
@@ -132,7 +132,12 @@ export class Editor extends HTMLElement {
     this.style.display = "block";
     this.style.margin = "1rem";
     this.sourceString = this.getAttribute("text");
-    this.shadowRoot.appendChild(
+
+    if (!this.getAttribute("language")) return;
+
+    let contentRoot = this.shadowRoot.querySelector("#content");
+    contentRoot.innerHTML = "";
+    contentRoot.appendChild(
       SBParser.initModelAndView(
         this.sourceString,
         this.getAttribute("language")

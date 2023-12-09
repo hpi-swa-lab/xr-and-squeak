@@ -123,7 +123,6 @@ export class Shard extends HTMLElement {
 
       if (nested) string += nested.sourceString ?? "";
     }
-    console.log(string);
     return string;
   }
 

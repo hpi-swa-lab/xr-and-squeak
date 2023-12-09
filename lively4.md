@@ -15,8 +15,8 @@
 <script>
   import  {SBParser, setConfig} from "./model.js"
   import {} from "./view.js";
-  import {} from "./smalltalk.js";
-  import {} from "./javascript.js";
+  import {} from "./extensions/smalltalk.js";
+  import {} from "./extensions/javascript.js";
 
 //   // initialize language.... 
   var baseDir = lively.query(this, "lively-container").getDir()
