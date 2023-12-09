@@ -1,5 +1,5 @@
 import { Shard } from "./view.js";
-import { nextHash } from "./utils.js";
+import { nextHash, exec } from "./utils.js";
 
 export class Replacement extends HTMLElement {
   shards = [];
@@ -18,7 +18,9 @@ export class Replacement extends HTMLElement {
     }
   }
 
-  init(source) {}
+  init(source) {
+    // subclasses may perform initialization here, such as creating shards
+  }
 
   createShard(locator) {
     const shard = document.createElement("sb-shard");
@@ -27,27 +29,16 @@ export class Replacement extends HTMLElement {
   }
 
   get sourceString() {
-    return this.source.root._sourceText.slice(
+    return this.editor.sourceString.slice(
       this.source.range[0],
       this.source.range[1]
     );
   }
-}
 
-export function exec(arg, ...script) {
-  if (!arg) throw new Error("No argument provided");
-
-  let current = arg;
-  for (const predicate of script) {
-    if (Array.isArray(predicate)) {
-      current = exec(current, ...predicate);
-      if (!current) return null;
-    } else {
-      let next = predicate(current);
-      if (!next) return null;
-      if (Array.isArray(next) && next.length < 1) return null;
-      if (next !== true) current = next;
-    }
+  get editor() {
+    const editor = this.getRootNode().host;
+    console.assert(editor.tagName === "SB-EDITOR");
+    return editor;
   }
 }
 
@@ -182,7 +173,7 @@ export class Extension {
         replacement.source = node;
         replacement.init(node);
         replacement.update(node);
-        Shard.ignoreMutation(() => view.replaceWith(replacement));
+        view.replaceWith(replacement);
         node.allNodesDo((node) => node.views.remove(view));
         node.views.push(replacement);
       }

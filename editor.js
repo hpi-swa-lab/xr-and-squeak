@@ -1,5 +1,6 @@
 import { SBParser, config } from "./model.js";
 import { findChange } from "./utils.js";
+import {} from "./view.js";
 
 class EditHistory {
   undoStack = [];
@@ -131,16 +132,11 @@ export class Editor extends HTMLElement {
     this.style.display = "block";
     this.style.margin = "1rem";
     this.sourceString = this.getAttribute("text");
-    SBParser.parseText(this.sourceString, this.getAttribute("language")).then(
-      (node) => {
-        this.shadowRoot.appendChild(node.createView());
-
-        // FIXME changes from Jens, not sure if those can work if the root is swapped out
-        // this.shadowRoot.querySelectorAll(".view").forEach(ea => ea.remove())
-        // let view = node.createView()
-        // view.classList.add("view")
-        // this.shadowRoot.appendChild(view);
-      }
+    this.shadowRoot.appendChild(
+      SBParser.initModelAndView(
+        this.sourceString,
+        this.getAttribute("language")
+      ).createView()
     );
   }
 
@@ -161,7 +157,6 @@ export class Editor extends HTMLElement {
     return findNode(this.shard, node);
   }
 }
-customElements.define("sb-editor", Editor);
 
 function findNode(element, node) {
   if (element.node === node) return element;

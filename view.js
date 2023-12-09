@@ -17,21 +17,6 @@ import {
 // the model when changes occur. It contains _EditableElements. It refers
 // to a node in the source model. Multiple shards may point to the same node.
 export class Shard extends HTMLElement {
-  static observers = new WeakArray();
-  static nestedDisable = 0;
-  static ignoreMutation(cb) {
-    if (this.nestedDisable === 0)
-      this.observers.forEach((observer) => observer.disconnect());
-    this.nestedDisable++;
-    try {
-      cb();
-    } finally {
-      this.nestedDisable--;
-      if (this.nestedDisable === 0)
-        this.observers.forEach((observer) => observer.connect());
-    }
-  }
-
   source = null;
 
   connectedCallback() {
@@ -47,12 +32,8 @@ export class Shard extends HTMLElement {
       this.setAttribute(key, value);
 
     // TODO use queue
-    // this.addEventListener("compositionstart", () => {
-    //   this.constructor.observers.forEach((observer) => observer.disconnect());
-    // });
-    // this.addEventListener("compositionend", () => {
-    //   this.constructor.observers.forEach((observer) => observer.connect());
-    // });
+    // this.addEventListener("compositionstart", () => { });
+    // this.addEventListener("compositionend", () => { });
 
     this.addEventListener("keydown", (e) => {
       if (e.key === "Tab") {
@@ -70,9 +51,10 @@ export class Shard extends HTMLElement {
 
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
+      console.assert(!mutations.some((m) => m.type === "attributes"));
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
-      this.constructor.ignoreMutation(() => {
+      ToggleableMutationObserver.ignoreMutation(() => {
         const text = this.sourceString;
         this.restoreCursorAfter(() => {
           for (const mutation of mutations)
@@ -87,7 +69,6 @@ export class Shard extends HTMLElement {
         });
       });
     });
-    this.constructor.observers.push(this.observer);
     this.extensionsDo((e) => e.process(["always", "open"], this.source));
   }
 
@@ -114,7 +95,7 @@ export class Shard extends HTMLElement {
   }
 
   extensionsDo(cb) {
-    this.constructor.ignoreMutation(() => {
+    ToggleableMutationObserver.ignoreMutation(() => {
       let current = this.getRootNode().host;
       while (current) {
         if (current instanceof ExtensionScope) {
@@ -126,9 +107,32 @@ export class Shard extends HTMLElement {
   }
 
   get sourceString() {
-    const range = document.createRange();
-    range.selectNodeContents(this);
-    return range.toString();
+    let start = null;
+    let string = "";
+    for (const nested of [...this.getNestedContentElements(), null]) {
+      const range = document.createRange();
+
+      if (start) range.setStartAfter(start);
+      else range.setStart(this, 0);
+
+      if (nested) range.setEndBefore(nested);
+      else range.setEndAfter(this);
+
+      start = nested;
+      string += range.toString();
+
+      if (nested) string += nested.sourceString ?? "";
+    }
+    console.log(string);
+    return string;
+  }
+
+  getNestedContentElements(parent = this, list = []) {
+    for (const child of parent.childNodes) {
+      if (child instanceof Block) this.getNestedContentElements(child, list);
+      else if (!(child instanceof Text)) list.push(child);
+    }
+    return list;
   }
 
   destroy() {
@@ -190,7 +194,7 @@ export class Shard extends HTMLElement {
     selection.addRange(range);
   }
   clampRange(start, end) {
-    const range = [0, this.sourceString.length];
+    const range = this.range;
     return [clamp(start, ...range), clamp(end, ...range)];
   }
   rangeToCursor(start, end) {
@@ -220,14 +224,13 @@ export class Shard extends HTMLElement {
       // FIXME I have no idea why we seem to need to add an offset here for empty lines.
       node.textContent.slice(-1) === "\n" ? Math.max(1, offset) : offset
     );
-    return parent.getRange()[0] + range.toString().length;
+    return this.range[0] + parent.getRange()[0] + range.toString().length;
   }
 
   get root() {
     return this.childNodes[0];
   }
 }
-customElements.define("sb-shard", Shard);
 
 // _EditableElements is the superclass for Text and Block elements, grouping
 // common functionality.
@@ -277,7 +280,7 @@ class _EditableElement extends HTMLElement {
 }
 
 // Block the view for any non-terminal node.
-class Block extends _EditableElement {
+export class Block extends _EditableElement {
   constructor() {
     super();
     this.hash = nextHash();
@@ -296,10 +299,9 @@ class Block extends _EditableElement {
     return null;
   }
 }
-customElements.define("sb-block", Block);
 
 // Text is the view for a terminal node.
-class Text extends _EditableElement {
+export class Text extends _EditableElement {
   static observedAttributes = ["text"];
   constructor() {
     super();
@@ -316,4 +318,3 @@ class Text extends _EditableElement {
     }
   }
 }
-customElements.define("sb-text", Text);

@@ -1,6 +1,5 @@
 import { TrueDiff } from "./diff.js";
-import { exec } from "./extension.js";
-import { WeakArray, findChange } from "./utils.js";
+import { WeakArray, exec } from "./utils.js";
 
 export let config = {
   baseURL: "",
@@ -265,7 +264,7 @@ class SBBlock extends SBNode {
 }
 
 export class SBParser {
-  static init = false;
+  static _init = false;
   static loadedLanguages = new Map();
 
   static updateModelAndView(text, language, root = null) {
@@ -292,9 +291,29 @@ export class SBParser {
     return newRoot;
   }
 
+  static initModelAndView(text, languageName) {
+    return this.updateModelAndView(
+      text,
+      this.loadedLanguages.get(languageName)
+    );
+  }
+
+  static async init() {
+    await TreeSitter.init();
+    this._init = true;
+    for (const languageName of ["smalltalk", "javascript"]) {
+      this.loadedLanguages.set(
+        languageName,
+        await TreeSitter.Language.load(
+          config.baseURL + `tree-sitter-${languageName}.wasm`
+        )
+      );
+    }
+  }
+
   static async parseText(text, languageName) {
-    if (!this.init) await TreeSitter.init();
-    this.init = true;
+    if (!this._init) await TreeSitter.init();
+    this._init = true;
 
     if (!languageName) throw new Error("languageName is required");
 

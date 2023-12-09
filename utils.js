@@ -26,12 +26,33 @@ export class WeakArray {
 }
 
 export class ToggleableMutationObserver {
+  static observers = new WeakArray();
+  static nestedDisable = 0;
+  static get enable() {
+    return this.nestedDisable === 0;
+  }
+  static ignoreMutation(cb) {
+    if (this.nestedDisable === 0) {
+      this.observers.forEach((observer) => observer.disconnect());
+    }
+    this.nestedDisable++;
+    try {
+      cb();
+    } finally {
+      this.nestedDisable--;
+      if (this.nestedDisable === 0) {
+        this.observers.forEach((observer) => observer.connect());
+      }
+    }
+  }
+
   constructor(target, callback) {
     this.target = target;
     this.callback = callback;
     this.observer = new MutationObserver(this.callback);
     this.enabled = false;
-    this.connect();
+    if (this.constructor.enable) this.connect();
+    this.constructor.observers.push(this);
   }
 
   takeRecords() {
@@ -165,4 +186,21 @@ export function allViewsDo(parent, cb) {
 
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+export function exec(arg, ...script) {
+  if (!arg) throw new Error("No argument provided");
+
+  let current = arg;
+  for (const predicate of script) {
+    if (Array.isArray(predicate)) {
+      current = exec(current, ...predicate);
+      if (!current) return null;
+    } else {
+      let next = predicate(current);
+      if (!next) return null;
+      if (Array.isArray(next) && next.length < 1) return null;
+      if (next !== true) current = next;
+    }
+  }
 }

@@ -1,4 +1,27 @@
-import { Extension } from "../extension.js";
+import { Extension, Replacement } from "../extension.js";
+
+class SBOutline extends Replacement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this.shadowRoot.innerHTML = `<span>OUTLINE[</span><slot></slot><span>]OUTLINE</span>`;
+  }
+
+  init(source) {
+    super.init(source);
+    this.appendChild(this.createShard((source) => source.childNode(0)));
+  }
+}
+customElements.define("sb-outline", SBOutline);
+
+Extension.register(
+  "javascriptOutline",
+  new Extension().registerQuery("always", (e) => [
+    (x) => false,
+    (x) => x.type === "program",
+    (x) => e.ensureReplacement(x, "sb-outline"),
+  ])
+);
 
 Extension.register(
   "javascriptBase",
