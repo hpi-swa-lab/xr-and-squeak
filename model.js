@@ -59,7 +59,11 @@ class SBNode {
     return editor;
   }
 
-  field(field) {
+  get field() {
+    return this._field;
+  }
+
+  atField(field) {
     return this.children.find((child) => child.field === field);
   }
 
@@ -363,7 +367,7 @@ function nodeFromCursor(cursor, text) {
 function _nodeFromCursor(cursor, text) {
   const node = new SBBlock(
     cursor.nodeType,
-    cursor.nodeField,
+    cursor.currentFieldName(),
     cursor.startIndex,
     cursor.endIndex
   );

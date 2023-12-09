@@ -1,4 +1,3 @@
-import { Shard } from "./view.js";
 import { nextHash, exec } from "./utils.js";
 
 export class Replacement extends HTMLElement {
@@ -12,6 +11,7 @@ export class Replacement extends HTMLElement {
   update(source) {
     for (const [locator, shard] of this.shards) {
       const node = locator(source);
+      if (!node) throw new Error("shard locator returned null");
       if (node !== shard.source) {
         shard.update(node);
       }
@@ -39,6 +39,15 @@ export class Replacement extends HTMLElement {
     const editor = this.getRootNode().host;
     console.assert(editor.tagName === "SB-EDITOR");
     return editor;
+  }
+
+  // polymorphic with Block
+  findTextForCursor(cursor) {
+    for (const [_, shard] of this.shards) {
+      const result = shard.root.findTextForCursor(cursor);
+      if (result) return result;
+    }
+    return null;
   }
 }
 

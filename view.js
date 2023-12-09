@@ -231,7 +231,7 @@ export class Shard extends HTMLElement {
   }
 }
 
-// _EditableElements is the superclass for Text and Block elements, grouping
+// _EditableElement is the superclass for Text and Block elements, grouping
 // common functionality.
 class _EditableElement extends HTMLElement {
   get shard() {

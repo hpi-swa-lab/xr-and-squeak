@@ -193,14 +193,10 @@ export function exec(arg, ...script) {
 
   let current = arg;
   for (const predicate of script) {
-    if (Array.isArray(predicate)) {
-      current = exec(current, ...predicate);
-      if (!current) return null;
-    } else {
-      let next = predicate(current);
-      if (!next) return null;
-      if (Array.isArray(next) && next.length < 1) return null;
-      if (next !== true) current = next;
-    }
+    let next = predicate(current);
+    if (!next) return null;
+    if (Array.isArray(next) && next.length < 1) return null;
+    if (next !== true) current = next;
   }
+  return current;
 }

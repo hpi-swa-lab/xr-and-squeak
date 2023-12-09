@@ -1,4 +1,5 @@
 import { Extension, Replacement } from "../extension.js";
+import { exec } from "../utils.js";
 
 class SBOutline extends Replacement {
   constructor() {
@@ -9,7 +10,19 @@ class SBOutline extends Replacement {
 
   init(source) {
     super.init(source);
-    this.appendChild(this.createShard((source) => source.childNode(0)));
+    this.appendChild(
+      this.createShard((source) =>
+        exec(
+          source,
+          (x) => x.children,
+          (l) =>
+            l.find((x) =>
+              ["class_declaration", "method_declaration"].includes(x.type)
+            ),
+          (x) => x.atField("name")
+        )
+      )
+    );
   }
 }
 customElements.define("sb-outline", SBOutline);
