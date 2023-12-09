@@ -284,6 +284,7 @@ export class TrueDiff {
     }
   }
   updateLiterals(a, b, editBuffer) {
+    a._field = b._field;
     a._range = b.range;
     if (a.text !== b.text) editBuffer.update(a, b.text);
     for (let i = 0; i < a.children.length; i++) {

@@ -1,8 +1,7 @@
-import { ExtensionScope, Replacement } from "./extension.js";
+import { Replacement } from "./extension.js";
 import { Editor } from "./editor.js";
 import {
   ToggleableMutationObserver,
-  WeakArray,
   getSelection,
   nextHash,
   parentWithTag,
@@ -44,7 +43,9 @@ export class Shard extends HTMLElement {
       for (const [action, key] of Object.entries(Editor.keyMap)) {
         if (this.matchesKey(e, key)) {
           e.preventDefault();
-          this.extensionsDo((e) => e.dispatchShortcut(action, this.selected));
+          this.editor.extensionsDo((e) =>
+            e.dispatchShortcut(action, this.selected)
+          );
         }
       }
     });
@@ -69,11 +70,11 @@ export class Shard extends HTMLElement {
         });
       });
     });
-    this.extensionsDo((e) => e.process(["always", "open"], this.source));
+    this.editor.extensionsDo((e) => e.process(["always", "open"], this.source));
   }
 
   get editor() {
-    const editor = this.getRootNode().host;
+    const editor = this.getRootNode().host.editor;
     console.assert(editor.tagName === "SB-EDITOR");
     return editor;
   }
@@ -92,18 +93,6 @@ export class Shard extends HTMLElement {
     if (modifiers.includes("Ctrl") && !e.ctrlKey && !e.metaKey) return false;
     if (modifiers.includes("Alt") && !e.altKey) return false;
     return e.key === baseKey;
-  }
-
-  extensionsDo(cb) {
-    ToggleableMutationObserver.ignoreMutation(() => {
-      let current = this.getRootNode().host;
-      while (current) {
-        if (current instanceof ExtensionScope) {
-          current.extensionsDo(cb);
-        }
-        current = current.parentElement;
-      }
-    });
   }
 
   get sourceString() {
@@ -220,10 +209,11 @@ export class Shard extends HTMLElement {
     range.selectNodeContents(parent);
     range.setEnd(
       node,
-      // FIXME I have no idea why we seem to need to add an offset here for empty lines.
+      // FIXME I have no idea why we seem to need to add an offset here
+      // for empty lines.
       node.textContent.slice(-1) === "\n" ? Math.max(1, offset) : offset
     );
-    return this.range[0] + parent.getRange()[0] + range.toString().length;
+    return parent.getRange()[0] + range.toString().length;
   }
 
   get root() {
@@ -243,7 +233,7 @@ class _EditableElement extends HTMLElement {
     return current;
   }
   get editor() {
-    const editor = this.getRootNode().host;
+    const editor = this.getRootNode().host.editor;
     console.assert(editor.tagName === "SB-EDITOR");
     return editor;
   }
@@ -274,7 +264,7 @@ class _EditableElement extends HTMLElement {
   }
   onDoubleClick(e) {
     e.stopPropagation();
-    this.shard.extensionsDo((e) => e.process(["doubleClick"], this.node));
+    this.editor.extensionsDo((e) => e.process(["doubleClick"], this.node));
   }
 }
 

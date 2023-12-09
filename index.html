@@ -17,7 +17,7 @@
     <h3>Javascript Demo</h3>
     <sb-extension-scope extensions="javascriptBase javascriptOutline base">
       <sb-editor
-        text="class A {
+        text="class MyClass {
   field = true
 
   processTrigger(node, trigger) {
@@ -37,6 +37,10 @@
 
     this.attachedData = this.newAttachedData;
   }
+}
+
+function myFunc(hello) {
+  console.log(hello)
 }"
         language="javascript"
       ></sb-editor>

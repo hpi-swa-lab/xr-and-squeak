@@ -43,7 +43,7 @@ class SBNode {
     return !this.parent;
   }
 
-  createView() {
+  createShard() {
     const shard = document.createElement("sb-shard");
     shard.update(this);
     return shard;

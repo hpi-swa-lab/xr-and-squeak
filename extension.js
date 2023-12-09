@@ -1,5 +1,53 @@
 import { nextHash, exec } from "./utils.js";
 
+// An extension groups a set of functionality, such as syntax highlighting,
+// shortcuts, or key modifiers. Extensions are only instantiated once. They
+// store their runtime data in separate ExtensionInstances, per editor.
+export class Extension {
+  static extensionRegistry = new Map();
+
+  static register(name, extension) {
+    extension.name = name;
+    this.extensionRegistry.set(name, extension);
+  }
+
+  static get(name) {
+    const extension = this.extensionRegistry.get(name);
+    if (!extension) throw new Error(`No extension registered for ${name}`);
+    return extension;
+  }
+
+  constructor() {
+    this.queries = new Map();
+    this.changeFilters = [];
+  }
+
+  registerQuery(trigger, query) {
+    if (!this.queries.has(trigger)) this.queries.set(trigger, []);
+    this.queries.get(trigger).push(query);
+    return this;
+  }
+
+  registerChangeFilter(filter) {
+    this.changeFilters.push(filter);
+    return this;
+  }
+
+  instance() {
+    return new ExtensionInstance(this);
+  }
+}
+
+export class Widget extends HTMLElement {
+  disconnectedCallback() {
+    this.dispatchEvent(new Event("disconnect"));
+  }
+
+  noteProcessed(trigger, node) {
+    // subclasses may perform actions here
+  }
+}
+
 export class Replacement extends HTMLElement {
   shards = [];
 
@@ -36,7 +84,7 @@ export class Replacement extends HTMLElement {
   }
 
   get editor() {
-    const editor = this.getRootNode().host;
+    const editor = this.getRootNode().host.editor;
     console.assert(editor.tagName === "SB-EDITOR");
     return editor;
   }
@@ -51,123 +99,29 @@ export class Replacement extends HTMLElement {
   }
 }
 
-export class Extension {
-  static extensionRegistry = new Map();
-
-  static register(name, extension) {
-    this.extensionRegistry.set(name, extension);
-  }
-
-  static get(name) {
-    const extension = this.extensionRegistry.get(name);
-    if (!extension) throw new Error(`No extension registered for ${name}`);
-    return extension;
-  }
-
-  constructor() {
-    this.queries = new Map();
-    this.changeFilters = [];
-  }
-
+class ExtensionInstance {
   attachedDataPerTrigger = new Map();
   queuedUpdates = [];
+  widgets = [];
 
-  get currentlyProcessingTrigger() {
-    return !!this.currentAttachedData;
+  constructor(extension) {
+    this.extension = extension;
   }
 
-  propagationType(trigger) {
-    return (
-      {
-        always: "all",
-        doubleClick: "parents",
-        shortcut: "parents",
-      }[trigger] ?? "all"
+  filterChange(change, text) {
+    this.extension.changeFilters.forEach(
+      (filter) => (text = filter(change, text))
     );
+    return text;
   }
 
-  queryShouldStillPropagate(trigger) {
-    if (trigger === "shortcut") return !!this.currentShortcut;
-    return true;
-  }
-
-  process(triggers, node) {
-    for (const trigger of triggers) {
-      if (this.queries.has(trigger)) {
-        this._processTrigger(trigger, node);
-      }
-    }
-  }
-
-  _processTrigger(trigger, node) {
-    if (this.currentlyProcessingTrigger) {
-      this.queuedUpdates.push([trigger, node]);
-      return;
-    }
-
-    this.currentAttachedData =
-      this.attachedDataPerTrigger.get(trigger) ?? new Map();
-    this.newAttachedData = new Map();
-
-    if (this.propagationType(trigger) === "parents") {
-      node.nodeAndParentsDo(
-        (node) =>
-          this.queryShouldStillPropagate(trigger) &&
-          this.runQueries(trigger, node)
-      );
-    } else {
-      console.assert(this.propagationType(trigger) === "all");
-      node.root.allNodesDo((node) => this.runQueries(trigger, node));
-    }
-
-    for (const key of this.currentAttachedData.keys()) {
-      if (!this.newAttachedData.has(key)) {
-        this.currentAttachedData.get(key)();
-      }
-    }
-
-    this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
-    this.currentAttachedData = null;
-    this.newAttachedData = null;
-
-    let queued = this.queuedUpdates.pop();
-    if (queued) {
-      this._processTrigger(...queued);
-    }
-  }
-
-  currentShortcut = null;
-  currentShortcutView = null;
-  dispatchShortcut(identifier, selected) {
-    this.currentShortcut = identifier;
-    this.currentShortcutView = selected;
-    this._processTrigger("shortcut", selected.node);
-    this.currentShortcut = null;
-    this.currentShortcutView = null;
-  }
-
-  stopPropagatingShortcut() {
-    this.currentShortcut = null;
-    this.currentShortcutView = null;
-  }
-
-  runQueries(trigger, node) {
-    for (const query of this.queries.get(trigger) ?? []) {
-      exec(node, ...query(this));
-    }
-  }
-
-  applySyntaxHighlighting(node, ...cls) {
-    node.viewsDo((view) => {
-      console.assert(view.hash, "view has no hash");
-      const hash = `${view.hash}:syntax:${cls.join(":")}`;
-      if (!this.currentAttachedData.has(hash)) {
-        for (const c of cls) view.classList.add(c);
-        this.newAttachedData.set(hash, () => view.classList.remove(cls));
-      } else {
-        this.newAttachedData.set(hash, this.currentAttachedData.get(hash));
-      }
-    });
+  createWidget(tag) {
+    const widget = document.createElement(tag);
+    widget.addEventListener("disconnect", (e) =>
+      this.widgets.splice(this.widgets.indexOf(widget), 1)
+    );
+    this.widgets.push(widget);
+    return widget;
   }
 
   ensureReplacement(node, tag) {
@@ -189,6 +143,95 @@ export class Extension {
     });
   }
 
+  applySyntaxHighlighting(node, ...cls) {
+    node.viewsDo((view) => {
+      console.assert(view.hash, "view has no hash");
+      const hash = `${view.hash}:syntax:${cls.join(":")}`;
+      if (!this.currentAttachedData.has(hash)) {
+        for (const c of cls) view.classList.add(c);
+        this.newAttachedData.set(hash, () => view.classList.remove(cls));
+      } else {
+        this.newAttachedData.set(hash, this.currentAttachedData.get(hash));
+      }
+    });
+  }
+
+  get currentlyProcessingTrigger() {
+    return !!this.currentAttachedData;
+  }
+
+  propagationType(trigger) {
+    return (
+      {
+        always: "all",
+        doubleClick: "parents",
+        shortcut: "parents",
+        open: "subtree",
+      }[trigger] ?? "all"
+    );
+  }
+
+  queryShouldStillPropagate(trigger) {
+    if (trigger === "shortcut") return !!this.currentShortcut;
+    return true;
+  }
+
+  process(triggers, node) {
+    for (const trigger of triggers) {
+      this._processTrigger(trigger, node);
+    }
+  }
+
+  _processTrigger(trigger, node) {
+    if (this.currentlyProcessingTrigger) {
+      this.queuedUpdates.push([trigger, node]);
+      return;
+    }
+
+    if (this.extension.queries.has(trigger)) {
+      this.currentAttachedData =
+        this.attachedDataPerTrigger.get(trigger) ?? new Map();
+      this.newAttachedData = new Map();
+
+      switch (this.propagationType(trigger)) {
+        case "parents":
+          node.nodeAndParentsDo(
+            (node) =>
+              this.queryShouldStillPropagate(trigger) &&
+              this.runQueries(trigger, node)
+          );
+          break;
+        case "subtree":
+          node.allNodesDo((node) => this.runQueries(trigger, node));
+          break;
+        case "all":
+          node.root.allNodesDo((node) => this.runQueries(trigger, node));
+          break;
+        default:
+          console.assert(false, "invalid type");
+      }
+
+      for (const key of this.currentAttachedData.keys()) {
+        if (!this.newAttachedData.has(key)) {
+          this.currentAttachedData.get(key)();
+        }
+      }
+
+      this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
+      this.currentAttachedData = null;
+      this.newAttachedData = null;
+    }
+
+    for (const widget of this.widgets) {
+      widget.noteProcessed(trigger, node);
+    }
+
+    let queued = this.queuedUpdates.pop();
+    if (queued) {
+      this._processTrigger(...queued);
+    }
+  }
+
   registerShortcut(node, identifier, callback) {
     if (identifier === this.currentShortcut) {
       callback([node, this.currentShortcutView]);
@@ -196,23 +239,32 @@ export class Extension {
     }
   }
 
-  registerQuery(trigger, query) {
-    if (!this.queries.has(trigger)) this.queries.set(trigger, []);
-    this.queries.get(trigger).push(query);
-    return this;
+  currentShortcut = null;
+  currentShortcutView = null;
+  dispatchShortcut(identifier, selected) {
+    this.currentShortcut = identifier;
+    this.currentShortcutView = selected;
+    this._processTrigger("shortcut", selected.node);
+    this.currentShortcut = null;
+    this.currentShortcutView = null;
   }
 
-  registerChangeFilter(filter) {
-    this.changeFilters.push(filter);
-    return this;
+  stopPropagatingShortcut() {
+    this.currentShortcut = null;
+    this.currentShortcutView = null;
   }
 
-  filterChange(change, text) {
-    this.changeFilters.forEach((filter) => (text = filter(change, text)));
-    return text;
+  runQueries(trigger, node) {
+    for (const query of this.extension.queries.get(trigger) ?? []) {
+      exec(node, ...query(this));
+    }
   }
 }
 
+// An ExtensionScope is added as a parent of an editor.
+// When extension functionality is required by the editor, it will
+// traverse up the DOM, calling each extension that is registered
+// in the visited scopes.
 export class ExtensionScope extends HTMLElement {
   constructor() {
     super();

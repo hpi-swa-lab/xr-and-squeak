@@ -1,5 +1,6 @@
+import { ExtensionScope } from "./extension.js";
 import { SBParser, config } from "./model.js";
-import { findChange } from "./utils.js";
+import { ToggleableMutationObserver, findChange } from "./utils.js";
 import {} from "./view.js";
 
 class EditHistory {
@@ -42,6 +43,7 @@ class EditHistory {
 // the model, such as its undo/redo history.
 export class Editor extends HTMLElement {
   lastEditInView = null;
+  extensionInstances = {};
 
   _sourceString = null;
   get sourceString() {
@@ -101,14 +103,30 @@ export class Editor extends HTMLElement {
   setText(text) {
     // FIXME does not support change as replace yet
     if (this.sourceString.length !== text.length)
-      this.shard.extensionsDo(
+      this.extensionsDo(
         (e) =>
           (text = e.filterChange(findChange(this.sourceString, text), text))
       );
 
     this.sourceString = text;
     SBParser.updateModelAndView(this.sourceString, null, this.source);
-    this.shard.extensionsDo((e) => e.process(["always"], this.source));
+    this.extensionsDo((e) => e.process(["always"], this.source));
+  }
+
+  extensionsDo(cb) {
+    ToggleableMutationObserver.ignoreMutation(() => {
+      let current = this.parentElement;
+      while (current) {
+        if (current instanceof ExtensionScope) {
+          current.extensionsDo((e) => {
+            if (!this.extensionInstances[e.name])
+              this.extensionInstances[e.name] = e.instance();
+          });
+        }
+        current = current.parentElement;
+      }
+      for (const e of Object.values(this.extensionInstances)) cb(e);
+    });
   }
 
   undo() {
@@ -141,8 +159,12 @@ export class Editor extends HTMLElement {
       SBParser.initModelAndView(
         this.sourceString,
         this.getAttribute("language")
-      ).createView()
+      ).createShard()
     );
+  }
+
+  get editor() {
+    return this;
   }
 
   get source() {
