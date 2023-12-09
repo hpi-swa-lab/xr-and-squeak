@@ -200,3 +200,7 @@ export function exec(arg, ...script) {
   }
   return current;
 }
+
+export function rangeEqual(a, b) {
+  return a[0] === b[0] && a[1] === b[1];
+}

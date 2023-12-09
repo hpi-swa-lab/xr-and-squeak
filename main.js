@@ -13,12 +13,18 @@ customElements.define("sb-text", Text);
 customElements.define("sb-editor", Editor);
 
 Editor.registerKeyMap({
-  selectNodeUp: "Ctrl-ArrowUp",
   undo: "Ctrl-z",
   redo: "Ctrl-Z",
+  save: "Ctrl-s",
+
+  selectNodeUp: "Ctrl-ArrowUp",
+
   insertFirstArg: "Alt-1",
   insertSecondArg: "Alt-2",
   insertThirdArg: "Alt-3",
   insertFourthArg: "Alt-4",
   insertFifthArg: "Alt-5",
+
+  wrapWithWatch: "Ctrl-q",
+  printIt: "Ctrl-p",
 });

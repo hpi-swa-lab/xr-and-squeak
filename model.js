@@ -43,6 +43,10 @@ class SBNode {
     return !this.parent;
   }
 
+  get sourceString() {
+    return this.editor.sourceString.slice(...this.range);
+  }
+
   createShard() {
     const shard = document.createElement("sb-shard");
     shard.update(this);
@@ -55,7 +59,9 @@ class SBNode {
 
   get editor() {
     let editor = null;
-    this.viewsDo((view) => !editor && (editor = view.editor));
+    this.viewsDo(
+      (view) => !editor && view.isConnected && (editor = view.editor)
+    );
     return editor;
   }
 
@@ -81,6 +87,16 @@ class SBNode {
   childNode(index) {
     for (let i = 0; i < this.children.length; i++) {
       if (!this.children[i].isWhitespace()) {
+        if (index === 0) return this.children[i];
+        index--;
+      }
+    }
+    return null;
+  }
+
+  childBlock(index) {
+    for (let i = 0; i < this.children.length; i++) {
+      if (!!this.children[i].named) {
         if (index === 0) return this.children[i];
         index--;
       }
@@ -153,6 +169,13 @@ class SBNode {
     this.editor.replaceTextFromCommand(this.range, str);
   }
 
+  wrapWith(start, end) {
+    this.editor.replaceTextFromCommand(
+      this.range,
+      `${start}${this.sourceString}${end}`
+    );
+  }
+
   select(adjacentView) {
     adjacentView.editor.findNode(this).select();
   }
@@ -167,7 +190,7 @@ class SBText extends SBNode {
   }
 
   shallowClone() {
-    return new SBText(this.text, this.range[0], this.range[1]);
+    return new SBText(this.text, this.range[0], this.range[1], this.named);
   }
 
   get structureHash() {
@@ -207,11 +230,12 @@ class SBText extends SBNode {
 class SBBlock extends SBNode {
   _children = [];
 
-  constructor(type, field, start, end) {
+  constructor(type, field, start, end, named) {
     super();
     this._type = type;
     this._field = field;
     this._range = [start, end];
+    this._named = named;
   }
 
   get children() {
@@ -222,8 +246,18 @@ class SBBlock extends SBNode {
     return this._type;
   }
 
+  get named() {
+    return this._named;
+  }
+
   shallowClone() {
-    return new SBBlock(this.type, this.field, this.range[0], this.range[1]);
+    return new SBBlock(
+      this.type,
+      this.field,
+      this.range[0],
+      this.range[1],
+      this.named
+    );
   }
 
   addChild(child) {
@@ -369,7 +403,8 @@ function _nodeFromCursor(cursor, text) {
     cursor.nodeType,
     cursor.currentFieldName(),
     cursor.startIndex,
-    cursor.endIndex
+    cursor.endIndex,
+    cursor.nodeIsNamed
   );
 
   if (cursor.gotoFirstChild()) {

@@ -49,7 +49,7 @@ Extension.register(
       (x) => {
         const indices = ["First", "Second", "Third", "Fourth", "Fifth"];
         for (let i = 0; i < indices.length; i++)
-          e.registerShortcut(x, `insert${indices[i]}Arg`, ([x, view]) =>
+          e.registerShortcut(x, `insert${indices[i]}Arg`, (x, view) =>
             x.exec(
               ...smalltalkMethodArguments,
               (args) => args[i] && view.editor.replaceSelection(args[i].text)

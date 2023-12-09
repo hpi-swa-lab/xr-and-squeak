@@ -1,4 +1,4 @@
-import { exec } from "./utils.js";
+import { exec, rangeEqual } from "./utils.js";
 
 // An extension groups a set of functionality, such as syntax highlighting,
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
@@ -33,11 +33,21 @@ export class Extension {
     return this;
   }
 
+  registerShortcut(identifier, callback, filter = []) {
+    this.registerQuery("shortcut", (e) => [
+      ...filter,
+      (x) => e.registerShortcut(x, identifier, callback),
+    ]);
+    return this;
+  }
+
   instance() {
     return new ExtensionInstance(this);
   }
 }
 
+// An "instance" of an Extension that holds all data of an extension that
+// is needed per editor.
 class ExtensionInstance {
   attachedDataPerTrigger = new Map();
   queuedUpdates = [];
@@ -106,6 +116,7 @@ class ExtensionInstance {
         doubleClick: "parents",
         shortcut: "parents",
         open: "subtree",
+        type: "selection",
       }[trigger] ?? "all"
     );
   }
@@ -127,6 +138,8 @@ class ExtensionInstance {
       return;
     }
 
+    if (trigger === "type") this.suggestions = [];
+
     this.currentAttachedData =
       this.attachedDataPerTrigger.get(trigger) ?? new Map();
     this.newAttachedData = new Map();
@@ -146,6 +159,14 @@ class ExtensionInstance {
         case "all":
           node.root.allNodesDo((node) => this.runQueries(trigger, node));
           break;
+        case "selection":
+          node.root.allNodesDo((nested) => {
+            // pass in all nodes that share the same range. this is important
+            // for a stack of nodes such as (expr_stmt (identifier (#text)))
+            if (rangeEqual(nested.range, node.range))
+              this.runQueries(trigger, nested);
+          });
+          break;
         default:
           console.assert(false, "invalid type");
       }
@@ -161,6 +182,9 @@ class ExtensionInstance {
       widget.noteProcessed(trigger, node);
     }
 
+    if (trigger === "type")
+      node.editor.selected.shard.showSuggestions(this.suggestions);
+
     this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
     this.currentAttachedData = null;
     this.newAttachedData = null;
@@ -173,7 +197,7 @@ class ExtensionInstance {
 
   registerShortcut(node, identifier, callback) {
     if (identifier === this.currentShortcut) {
-      callback([node, this.currentShortcutView]);
+      callback(node, this.currentShortcutView, this);
       this.stopPropagatingShortcut();
     }
   }
@@ -196,6 +220,12 @@ class ExtensionInstance {
   runQueries(trigger, node) {
     for (const query of this.extension.queries.get(trigger) ?? []) {
       exec(node, ...query(this));
+    }
+  }
+
+  addSuggestions(suggestions) {
+    for (const suggestion of suggestions) {
+      this.suggestions.push(suggestion);
     }
   }
 }

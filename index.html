@@ -15,7 +15,9 @@
     </sb-extension-scope>
 
     <h3>Javascript Demo</h3>
-    <sb-extension-scope extensions="javascriptBase javascriptOutline base">
+    <sb-extension-scope
+      extensions="javascriptBase javascriptOutline javascriptWorkspace base identifierSuggestions"
+    >
       <sb-editor
         text="class MyClass {
   field = true
@@ -26,6 +28,7 @@
 
     node.allNodesDo((node) => {
       for (const query of this.queries.get(trigger)) {
+        
         runQuery(query(this), node);
       }
     });
@@ -40,9 +43,13 @@
   }
 }
 
+4 + 4;
+
 function myFunc(hello) {
-  console.log(hello)
-}"
+  console.log(sbWatch(hello, 12398482))
+}
+myFunc('HELLO')
+"
         language="javascript"
       ></sb-editor>
     </sb-extension-scope>

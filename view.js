@@ -39,18 +39,52 @@ export class Shard extends HTMLElement {
     // this.addEventListener("compositionstart", () => { });
     // this.addEventListener("compositionend", () => { });
 
+    document.addEventListener(
+      "selectionchange",
+      (this.selectionHandler = this.onSelectionChange.bind(this))
+    );
+
+    this.addEventListener("blur", (e) => this.suggestions?.show(null, []));
+
     this.addEventListener("keydown", (e) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        document.execCommand("insertText", false, "\t");
+      switch (e.key) {
+        case "Tab":
+          e.preventDefault();
+          if (this.suggestions.active) {
+            this.suggestions.use();
+          } else {
+            document.execCommand("insertText", false, "\t");
+          }
+          break;
+        case "ArrowUp":
+          if (this.suggestions.canMove(-1)) {
+            e.preventDefault();
+            this.suggestions?.moveSelected(-1);
+          }
+          break;
+        case "ArrowDown":
+          if (this.suggestions.canMove(1)) {
+            e.preventDefault();
+            this.suggestions?.moveSelected(1);
+          }
+          break;
       }
 
       for (const [action, key] of Object.entries(Editor.keyMap)) {
         if (this.matchesKey(e, key)) {
           e.preventDefault();
+
+          // dispatch to extensions
           this.editor.extensionsDo((e) =>
             e.dispatchShortcut(action, this.selected)
           );
+
+          // built-in actions
+          switch (action) {
+            case "save":
+              this.editor.extensionsDo((e) => e.process(["save"], this.source));
+              break;
+          }
         }
       }
     });
@@ -62,20 +96,22 @@ export class Shard extends HTMLElement {
 
       ToggleableMutationObserver.ignoreMutation(() => {
         const text = this.sourceString;
-        this.restoreCursorAfter(() => {
-          for (const mutation of mutations)
-            this.observer.undoMutation(mutation);
+        const cursorRange = this.cursorToRange();
+        for (const mutation of mutations) this.observer.undoMutation(mutation);
 
-          this.editor.replaceTextFromTyping({
-            range: this.range,
-            text,
-            cursorRange: this.cursorToRange(),
-            view: this.selected,
-          });
+        this.editor.replaceTextFromTyping({
+          range: this.range,
+          text,
+          cursorRange,
+          view: this.selected,
         });
       });
     });
     this.editor.extensionsDo((e) => e.process(["open", "always"], this.source));
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener("selectionchange", this.selectionHandler);
   }
 
   get editor() {
@@ -89,6 +125,19 @@ export class Shard extends HTMLElement {
     // this conflicts with our updating routines
     if (this.source.isRoot) return [0, this.sourceString.length];
     return this.source.range;
+  }
+
+  previousSelection = null;
+  onSelectionChange() {
+    const newSelection = this.selected;
+    if (newSelection !== this.previousSelection) {
+      this.previousSelection = newSelection;
+      this.suggestions?.onSelected(newSelection);
+      if (newSelection)
+        this.editor.extensionsDo((e) =>
+          e.process(["selection"], newSelection.node)
+        );
+    }
   }
 
   matchesKey(e, key) {
@@ -228,6 +277,13 @@ export class Shard extends HTMLElement {
   get root() {
     return this.childNodes[0];
   }
+
+  showSuggestions(list) {
+    (this.suggestions ??= document.createElement("sb-suggestions")).show(
+      this.selected,
+      list
+    );
+  }
 }
 
 // _EditableElement is the superclass for Text and Block elements, grouping
@@ -283,6 +339,19 @@ export class Block extends _EditableElement {
     super();
     this.hash = nextHash();
   }
+  set node(v) {
+    super.node = v;
+    if (v.named) this.setAttribute("type", v.type);
+    // FIXME js specific
+    if (
+      [
+        "class_declaration",
+        "function_declaration",
+        "method_definition",
+      ].includes(v.type)
+    )
+      this.setAttribute("scope", true);
+  }
   findTextForCursor(cursor) {
     for (const child of this.children) {
       if (["SB-TEXT", "SB-BLOCK"].includes(child.tagName)) {
@@ -316,3 +385,99 @@ export class Text extends _EditableElement {
     }
   }
 }
+
+customElements.define(
+  "sb-suggestions",
+  class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host {
+            position: absolute;
+            z-index: 100;
+            background: #f5f5f5;
+            color: #000;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            font-family: monospace;
+            line-height: 1.5;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid #aaa;
+            min-width: 200px;
+            display: none;
+          }
+          #entries > div[active] {
+            background: #ceddfe;
+            border-radius: 0.25rem;
+          }
+          #entries > div {
+            padding: 0.15rem 1rem;
+          }
+        </style>
+        <div id="entries"><slot></slot></div>
+      `;
+    }
+
+    onSelected(selected) {
+      if (selected !== this.anchor) this.remove();
+    }
+
+    get active() {
+      return this.isConnected;
+    }
+
+    use() {
+      this.anchor.node.replaceWith(
+        this.shadowRoot.querySelector("div[active]").textContent
+      );
+    }
+
+    canMove(delta) {
+      const entries = this.shadowRoot.querySelector("#entries");
+      const children = entries.querySelectorAll("div");
+      const active = entries.querySelector("div[active]");
+      const index = [...children].indexOf(active);
+      if (index === -1) return false;
+      return index + delta >= 0 && index + delta < children.length;
+    }
+
+    moveSelected(delta) {
+      const entries = this.shadowRoot.querySelector("#entries");
+      const children = entries.querySelectorAll("div");
+      const active = entries.querySelector("div[active]");
+      const index = [...children].indexOf(active);
+      if (index === -1) return;
+      const newIndex = clamp(index + delta, 0, children.length - 1);
+      children[index].removeAttribute("active");
+      children[newIndex].setAttribute("active", "true");
+    }
+
+    show(view, list) {
+      this.anchor = view;
+      if (list.length === 0) {
+        this.remove();
+        return;
+      }
+      this.shadowRoot.querySelector("#entries").innerHTML = "";
+      for (const item of list) {
+        const entry = document.createElement("div");
+        entry.textContent = item;
+        entry.addEventListener("click", () => {
+          this.dispatchEvent(new CustomEvent("select", { detail: item }));
+        });
+        this.shadowRoot.querySelector("#entries").appendChild(entry);
+        list.indexOf(item) === 0 && entry.setAttribute("active", "true");
+      }
+      this.shadowRoot.host.style.display = "block";
+      const rect = view.getBoundingClientRect();
+      this.shadowRoot.host.style.top = `${rect.bottom + 5}px`;
+      this.shadowRoot.host.style.left = `${rect.left}px`;
+      document.body.appendChild(this);
+    }
+  }
+);

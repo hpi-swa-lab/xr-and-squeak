@@ -83,7 +83,7 @@ export class Editor extends HTMLElement {
       this.editHistory.push(this.sourceString, cursorRange);
       this.lastEditInView = view;
     }
-    this._replaceText(range, text);
+    this._replaceText(range, text, view.shard, cursorRange);
   }
 
   replaceTextFromCommand(range, text) {
@@ -92,15 +92,17 @@ export class Editor extends HTMLElement {
     this._replaceText(range, text);
   }
 
-  _replaceText(range, text) {
+  _replaceText(range, text, shard, cursorRange) {
     this.setText(
       this.sourceString.slice(0, range[0]) +
         text +
-        this.sourceString.slice(range[1])
+        this.sourceString.slice(range[1]),
+      shard,
+      cursorRange
     );
   }
 
-  setText(text) {
+  setText(text, shard, cursorRange) {
     // FIXME does not support change as replace yet
     if (this.sourceString.length !== text.length)
       this.extensionsDo(
@@ -110,7 +112,11 @@ export class Editor extends HTMLElement {
 
     this.sourceString = text;
     SBParser.updateModelAndView(this.sourceString, null, this.source);
-    this.extensionsDo((e) => e.process(["always"], this.source));
+
+    if (shard) shard.selectRange(...cursorRange);
+    this.extensionsDo((e) =>
+      e.process(["type", "always"], this.selected.node ?? this.source)
+    );
   }
 
   extensionsDo(cb) {
