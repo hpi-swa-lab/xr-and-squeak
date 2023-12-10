@@ -16,7 +16,7 @@
 
     <h3>Javascript Demo</h3>
     <sb-extension-scope
-      extensions="javascriptBase javascriptOutline javascriptWorkspace base identifierSuggestions"
+      extensions="javascriptBase javascriptOutline javascriptWorkspace base identifierSuggestions editorConfig"
     >
       <sb-editor
         text="class MyClass {
@@ -48,7 +48,26 @@
 function myFunc(hello) {
   console.log(sbWatch(hello, 12398482))
 }
-myFunc('HELLO')
+myFunc('HELLO');
+
+let insertIndex = 1;
+Editor.registerKeyMap({
+  undo: 'Ctrl-z',
+  redo: 'Ctrl-Z',
+  save: 'Ctrl-s',
+
+  selectNodeUp: 'Ctrl-ArrowUp',
+
+  insertFirstArg: 'Alt-' + insertIndex++,
+  insertSecondArg: 'Alt-' + insertIndex++,
+  insertThirdArg: 'Alt-' + insertIndex++,
+  insertFourthArg: 'Alt-' + insertIndex++,
+  insertFifthArg: 'Alt-' + insertIndex++,
+
+  wrapWithWatch: 'Ctrl-q',
+  printIt: 'Ctrl-p',
+});
+
 "
         language="javascript"
       ></sb-editor>

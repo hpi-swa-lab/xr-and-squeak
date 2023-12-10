@@ -50,20 +50,20 @@ export class Shard extends HTMLElement {
       switch (e.key) {
         case "Tab":
           e.preventDefault();
-          if (this.suggestions.active) {
+          if (this.suggestions?.active) {
             this.suggestions.use();
           } else {
             document.execCommand("insertText", false, "\t");
           }
           break;
         case "ArrowUp":
-          if (this.suggestions.canMove(-1)) {
+          if (this.suggestions?.canMove(-1)) {
             e.preventDefault();
             this.suggestions?.moveSelected(-1);
           }
           break;
         case "ArrowDown":
-          if (this.suggestions.canMove(1)) {
+          if (this.suggestions?.canMove(1)) {
             e.preventDefault();
             this.suggestions?.moveSelected(1);
           }
@@ -342,6 +342,8 @@ export class Block extends _EditableElement {
   set node(v) {
     super.node = v;
     if (v.named) this.setAttribute("type", v.type);
+    if (v.field) this.setAttribute("field", v.field);
+    else this.removeAttribute("field");
     // FIXME js specific
     if (
       [

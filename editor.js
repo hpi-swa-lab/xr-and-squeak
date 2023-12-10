@@ -115,7 +115,7 @@ export class Editor extends HTMLElement {
 
     if (shard) shard.selectRange(...cursorRange);
     this.extensionsDo((e) =>
-      e.process(["type", "always"], this.selected.node ?? this.source)
+      e.process(["type", "always"], this.selected?.node ?? this.source)
     );
   }
 

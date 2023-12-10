@@ -75,8 +75,8 @@ class ExtensionInstance {
 
   ensureReplacement(node, tag) {
     node.viewsDo((view) => {
-      if (view.tagName === tag) {
-        view.shard.ignoreMutation(() => view.update(node));
+      if (view.tagName.toLowerCase() === tag) {
+        view.update(node);
       } else {
         // FIXME not intended, should work without
         if (!view.shard) return;
@@ -183,7 +183,7 @@ class ExtensionInstance {
     }
 
     if (trigger === "type")
-      node.editor.selected.shard.showSuggestions(this.suggestions);
+      node.editor.selected?.shard.showSuggestions(this.suggestions);
 
     this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
     this.currentAttachedData = null;

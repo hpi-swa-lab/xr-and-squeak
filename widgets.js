@@ -1,14 +1,22 @@
 import { h, render } from "./external/preact.mjs";
 import { nextHash } from "./utils.js";
 
+export { h } from "./external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
 export const ul = (...children) => h("ul", {}, ...children);
 export const div = (...children) => h("div", {}, ...children);
-export const shard = (node) => h("sb-shard", { initNode: node });
+export const table = (...children) => h("table", {}, ...children);
+export const tr = (...children) => h("tr", {}, ...children);
+export const td = (...children) => h("td", {}, ...children);
+export const shard = (node) => h("sb-shard", { initNode: node, key: node });
 
 export class Widget extends HTMLElement {
   disconnectedCallback() {
     this.dispatchEvent(new Event("disconnect"));
+  }
+
+  connectedCallback() {
+    this.setAttribute("contenteditable", "false");
   }
 
   noteProcessed(trigger, node) {

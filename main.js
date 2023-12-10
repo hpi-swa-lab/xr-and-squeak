@@ -5,6 +5,7 @@ import { Block, Text, Shard } from "./view.js";
 import {} from "./extensions/base.js";
 import {} from "./extensions/smalltalk.js";
 import {} from "./extensions/javascript.js";
+import {} from "./extensions/editorConfig.js";
 
 await SBParser.init();
 customElements.define("sb-shard", Shard);

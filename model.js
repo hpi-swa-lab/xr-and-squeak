@@ -59,7 +59,7 @@ class SBNode {
 
   get editor() {
     let editor = null;
-    this.viewsDo(
+    this.root.viewsDo(
       (view) => !editor && view.isConnected && (editor = view.editor)
     );
     return editor;
@@ -102,6 +102,10 @@ class SBNode {
       }
     }
     return null;
+  }
+
+  get childBlocks() {
+    return this.children.filter((child) => !!child.named);
   }
 
   isWhitespace() {
