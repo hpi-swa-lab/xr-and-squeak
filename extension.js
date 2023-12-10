@@ -74,6 +74,7 @@ class ExtensionInstance {
   }
 
   ensureReplacement(node, tag) {
+    console.assert(this.processingTrigger === "replacement");
     node.viewsDo((view) => {
       if (view.tagName.toLowerCase() === tag) {
         view.update(node);
@@ -109,6 +110,13 @@ class ExtensionInstance {
     return !!this.processingNode;
   }
 
+  // type: react to a change in the program initiated by the user
+  // always: be always up-to-date
+  // replacement: same as always but run earlier, such that the view is already up-to-date
+  // open: run each time a new shard is opened, best place to create widgets that are not replacements
+  // selection: run when the selected block changes (does not emit for caret changes within a block)
+  // shortcut: allows you to call registerShortcut
+  // doubleClick: an element was double-clicked
   propagationType(trigger) {
     return (
       {
@@ -118,6 +126,7 @@ class ExtensionInstance {
         open: "subtree",
         type: "selection",
         selection: "selection",
+        replacement: "all",
       }[trigger] ?? "all"
     );
   }
@@ -139,6 +148,7 @@ class ExtensionInstance {
       return;
     }
 
+    this.processingTrigger = trigger;
     this.processingNode = node;
     this.currentAttachedData =
       this.attachedDataPerTrigger.get(trigger) ?? new Map();
@@ -186,6 +196,7 @@ class ExtensionInstance {
     this.currentAttachedData = null;
     this.newAttachedData = null;
     this.processingNode = null;
+    this.processingTrigger = null;
 
     let queued = this.queuedUpdates.pop();
     if (queued) {
@@ -222,7 +233,7 @@ class ExtensionInstance {
   }
 
   addSuggestions(suggestions) {
-    this.processingNode.editor.selected?.shard.addSuggestions(suggestions);
+    this.processingNode.editor.addSuggestions(suggestions);
   }
 
   _data = new Map();

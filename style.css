@@ -9,7 +9,7 @@ sb-block[type] {
   background: rgba(0.4, 0.4, 0.4, 0.006);
   /*border: 1px solid #efefef;*/
 }
-sb-block.has-error {
+sb-block[type="ERROR"] {
   border: 1px solid red;
 }
 sb-shard {

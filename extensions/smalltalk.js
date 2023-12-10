@@ -33,7 +33,7 @@ const smalltalkMethodArguments = [
 Extension.register(
   "smalltalkBase",
   new Extension()
-    .registerQuery("always", (e) => [
+    .registerQuery("replacement", (e) => [
       (x) => true,
       (x) => x.type === "unary_message",
       (x) => x.childNode(1).text === "sbWatch",

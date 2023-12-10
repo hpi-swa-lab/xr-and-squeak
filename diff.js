@@ -331,21 +331,24 @@ class DetachOp extends DiffOp {
     super();
     this.node = node;
   }
+  get detachingFromRoot() {
+    return !this.node.parent;
+  }
   apply(buffer) {
-    if (this.node.parent) {
-      this.node.parent.removeChild(this.node);
-      this.updateViews(this.node, (view, shard) => {
-        // view may have already been removed
-        if (view.parentElement) {
-          view.parentElement.removeChild(view);
-          buffer.rememberDetached(view, shard);
-        }
-      });
-    } else {
+    if (this.detachingFromRoot) {
       this.node.viewsDo((view) => {
         buffer.rememberDetached(view, view.shard);
         buffer.rememberDetachedRootShard(view.shard);
         view.parentElement.removeChild(view);
+      });
+    } else {
+      this.node.parent.removeChild(this.node);
+      this.updateViews(this.node, (view, shard) => {
+        // view may have already been removed
+        if (view.parentElement) {
+          buffer.rememberDetached(view, shard);
+          view.parentElement.removeChild(view);
+        }
       });
     }
   }
@@ -358,10 +361,13 @@ class AttachOp extends DiffOp {
     this.parent = parent;
     this.index = index;
   }
+  get attachingToRoot() {
+    return !this.parent;
+  }
   apply(buffer) {
     this.parent?.insertChild(this.node, this.index);
 
-    if (!this.parent) {
+    if (this.attachingToRoot) {
       buffer.detachedRootShards.forEach((shard) => {
         shard.source = this.node;
         shard.appendChild(buffer.getDetachedOrConstruct(this.node, shard));

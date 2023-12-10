@@ -7,6 +7,7 @@ import {
   parentWithTag,
   allViewsDo,
   clamp,
+  rangeContains,
 } from "./utils.js";
 
 // A Shard is a self-contained editable element.
@@ -18,8 +19,11 @@ import {
 export class Shard extends HTMLElement {
   source = null;
 
-  // provide convenience setter for preact
-  set initNode(node) {
+  // provide convenience setter for preact, we want this to always
+  // call our own update method, so we wrap the arg in an array and
+  // thus force preact to always update the property (as the array
+  // keeps changing identity)
+  set initNode([node]) {
     this.update(node);
   }
 
@@ -39,12 +43,7 @@ export class Shard extends HTMLElement {
     // this.addEventListener("compositionstart", () => { });
     // this.addEventListener("compositionend", () => { });
 
-    document.addEventListener(
-      "selectionchange",
-      (this.selectionHandler = this.onSelectionChange.bind(this))
-    );
-
-    this.addEventListener("blur", (e) => this.suggestions?.clear());
+    this.addEventListener("blur", (e) => this.editor.clearSuggestions());
 
     this.addEventListener("paste", function (event) {
       event.preventDefault();
@@ -59,20 +58,20 @@ export class Shard extends HTMLElement {
       switch (e.key) {
         case "Tab":
           e.preventDefault();
-          if (this.suggestions?.active) {
-            this.suggestions.use();
+          if (this.editor.suggestions.active) {
+            this.editor.suggestions.use();
           } else {
             document.execCommand("insertText", false, "\t");
           }
           break;
         case "ArrowUp":
-          if (this.suggestions?.canMove(-1)) {
+          if (this.editor.suggestions.canMove(-1)) {
             e.preventDefault();
             this.suggestions?.moveSelected(-1);
           }
           break;
         case "ArrowDown":
-          if (this.suggestions?.canMove(1)) {
+          if (this.editor.suggestions.canMove(1)) {
             e.preventDefault();
             this.suggestions?.moveSelected(1);
           }
@@ -82,16 +81,15 @@ export class Shard extends HTMLElement {
       for (const [action, key] of Object.entries(Editor.keyMap)) {
         if (this.matchesKey(e, key)) {
           let preventDefault = true;
+          let selected = this.editor.selected;
 
           // dispatch to extensions
-          this.editor.extensionsDo((e) =>
-            e.dispatchShortcut(action, this.selected)
-          );
+          this.editor.extensionsDo((e) => e.dispatchShortcut(action, selected));
 
           // built-in actions
           switch (action) {
             case "dismiss":
-              this.suggestions?.clear();
+              this.editor.clearSuggestions();
               break;
             case "save":
               this.editor.extensionsDo((e) => e.process(["save"], this.source));
@@ -99,8 +97,8 @@ export class Shard extends HTMLElement {
             case "cut":
             case "copy":
               // if we don't have a selection, cut/copy the full node
-              if (new Set(this.cursorToRange()).size === 1) {
-                this.selectRange(...this.selected.getRange());
+              if (new Set(this.editor.selectionRange).size === 1) {
+                this.selectRange(...selected.getRange());
               }
               preventDefault = false;
               break;
@@ -117,23 +115,21 @@ export class Shard extends HTMLElement {
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
       ToggleableMutationObserver.ignoreMutation(() => {
-        const text = this.sourceString;
-        const cursorRange = this.cursorToRange();
+        const { selectionRange, sourceString } =
+          this._extractSourceStringAndCursorRange();
         for (const mutation of mutations) this.observer.undoMutation(mutation);
 
         this.editor.replaceTextFromTyping({
           range: this.range,
-          text,
-          cursorRange,
-          view: this.selected,
+          text: sourceString,
+          shard: this,
+          selectionRange,
         });
       });
     });
-    this.editor.extensionsDo((e) => e.process(["open", "always"], this.source));
-  }
-
-  disconnectedCallback() {
-    document.removeEventListener("selectionchange", this.selectionHandler);
+    this.editor.extensionsDo((e) =>
+      e.process(["replacement", "open", "always"], this.source)
+    );
   }
 
   get editor() {
@@ -145,24 +141,8 @@ export class Shard extends HTMLElement {
   get range() {
     // if we are the root, tree-sitter reports ranges that start after the first whitespace.
     // this conflicts with our updating routines
-    if (this.source.isRoot) return [0, this.sourceString.length];
+    if (this.source.isRoot) return [0, this.editor.sourceString.length];
     return this.source.range;
-  }
-
-  previousSelection = null;
-  onSelectionChange() {
-    const selection = getSelection(this.getRootNode());
-    if (!this.contains(selection.anchorNode)) return;
-
-    const newSelection = this.selected;
-    if (newSelection !== this.previousSelection) {
-      this.previousSelection = newSelection;
-      this.suggestions?.onSelected(newSelection);
-      if (newSelection)
-        this.editor.extensionsDo((e) =>
-          e.process(["selection"], newSelection.node)
-        );
-    }
   }
 
   matchesKey(e, key) {
@@ -172,34 +152,6 @@ export class Shard extends HTMLElement {
     if (modifiers.includes("Ctrl") && !e.ctrlKey && !e.metaKey) return false;
     if (modifiers.includes("Alt") && !e.altKey) return false;
     return e.key === baseKey;
-  }
-
-  get sourceString() {
-    let start = null;
-    let string = "";
-    for (const nested of [...this.getNestedContentElements(), null]) {
-      const range = document.createRange();
-
-      if (start) range.setStartAfter(start);
-      else range.setStart(this, 0);
-
-      if (nested) range.setEndBefore(nested);
-      else range.setEndAfter(this);
-
-      start = nested;
-      string += range.toString();
-
-      if (nested) string += nested.sourceString ?? "";
-    }
-    return string;
-  }
-
-  getNestedContentElements(parent = this, list = []) {
-    for (const child of parent.childNodes) {
-      if (child instanceof Block) this.getNestedContentElements(child, list);
-      else if (!(child instanceof Text)) list.push(child);
-    }
-    return list;
   }
 
   destroy() {
@@ -226,23 +178,121 @@ export class Shard extends HTMLElement {
       this.source = node;
     } else if (this.source !== node) {
       this.source = node;
-      if (this.childNodes[0].node !== this.source) {
-        this.removeChild(this.childNodes[0]);
+      if (this.childNodes[0]?.node !== this.source) {
+        if (this.childNodes[0]) this.removeChild(this.childNodes[0]);
         this.appendChild(node.toHTML());
       }
+    } else if (this.childNodes.length === 0) {
+      this.appendChild(node.toHTML());
     }
   }
 
-  get selected() {
-    const range = this.cursorToRange();
-    return range ? this.findSelected(this.root, range) : null;
+  get sourceString() {
+    return this.editor.sourceString.slice(...this.range);
   }
+
+  // combined operation to find the source string and cursor range
+  // in the dom. we combine this because it is most commonly needed
+  // after the user typed something, which changes both, and the
+  // way to find them is the same.
+  _extractSourceStringAndCursorRange() {
+    const selection = getSelection(this.getRootNode());
+    const cursorElements = [selection.focusNode, selection.anchorNode];
+    const visibleRanges = [];
+
+    let start = null;
+    let string = "";
+    const nestedElements = this._getNestedContentElements(
+      this,
+      [],
+      cursorElements,
+      true
+    );
+    let focusOffset = null;
+    let anchorOffset = null;
+    const rangeStart = this.range[0];
+    for (const nested of [...nestedElements, null]) {
+      const range = document.createRange();
+
+      if (start) range.setStartAfter(start);
+      else range.setStart(this, 0);
+
+      if (nested === selection.focusNode) {
+        range.setEnd(selection.focusNode, selection.focusOffset);
+        focusOffset = string.length + range.toString().length;
+      }
+      if (nested === selection.anchorNode) {
+        range.setEnd(selection.anchorNode, selection.anchorOffset);
+        anchorOffset = string.length + range.toString().length;
+      }
+      if (cursorElements.includes(nested)) continue;
+
+      if (nested) range.setEndBefore(nested);
+      else range.setEndAfter(this);
+
+      const str = range.toString();
+      visibleRanges.push([
+        rangeStart + string.length,
+        rangeStart + string.length + str.length,
+      ]);
+      start = nested;
+      string += str;
+
+      if (nested) {
+        string += nested.sourceString ?? "";
+      }
+    }
+
+    const selectionRange = [
+      this.range[0] + focusOffset,
+      this.range[0] + anchorOffset,
+    ].sort((a, b) => a - b);
+    this.visibleRanges = visibleRanges;
+
+    return {
+      sourceString: string,
+      selectionRange,
+      selected: this.findSelectedForRange(selectionRange),
+    };
+  }
+
+  containsRange(range) {
+    return this.visibleRanges.some((r) => rangeContains(r, range));
+  }
+
+  // Recursively iterate over all elements within this shard.
+  // when encountering an element that is neither a Block nor a Text,
+  // we note it.
+  // Additionally, we need to insert the two elements that our cursor
+  // is located in this list, in the right position, so that we can
+  // later grab the string from the previous element to the cursor.
+  _getNestedContentElements(parent, list, cursorElements, insideBlocks) {
+    for (const child of parent.childNodes) {
+      if (
+        cursorElements.includes(child) ||
+        (insideBlocks && !(child instanceof Block || child instanceof Text))
+      )
+        list.push(child);
+      this._getNestedContentElements(
+        child,
+        list,
+        cursorElements,
+        insideBlocks && child instanceof Block
+      );
+    }
+    return list;
+  }
+
   // smallest child encompassing range: on a tie, prefer named nodes
   // e.g., for this scenario: `abc|(` even though at index 3 is valid
   // for both the identifier and the parens, we prefer the identifier.
-  findSelected(parent, range) {
+  findSelectedForRange(range) {
     let candidate = null;
-    allViewsDo(parent, (child) => {
+
+    // we may have been deleted entirely
+    if (!this.root) return null;
+
+    allViewsDo(this.root, (child) => {
       const [start, end] = child.getRange();
       if (start <= range[0] && end >= range[1]) {
         if (
@@ -255,23 +305,8 @@ export class Shard extends HTMLElement {
     });
     return candidate;
   }
-  restoreCursorAfter(cb) {
-    const range = this.cursorToRange();
-    cb();
-    if (range) this.selectRange(...range);
-  }
-  selectRange(start, end) {
-    if (end === undefined) end = start;
-    const range = this.rangeToCursor(...this.clampRange(start, end));
-    const selection = getSelection(this.getRootNode());
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
-  clampRange(start, end) {
-    const range = this.range;
-    return [clamp(start, ...range), clamp(end, ...range)];
-  }
-  rangeToCursor(start, end) {
+
+  _rangeToCursor(start, end) {
     const range = document.createRange();
     const startNode = this.root.findTextForCursor(start);
     const endNode = this.root.findTextForCursor(end);
@@ -279,42 +314,22 @@ export class Shard extends HTMLElement {
     range.setEnd(...endNode.rangeParams(end));
     return range;
   }
-  cursorToRange() {
-    const selection = getSelection(this.getRootNode());
-    if (selection.rangeCount === 0) return null;
-    return [
-      this.cursorToIndex(selection.anchorNode, selection.anchorOffset),
-      this.cursorToIndex(selection.focusNode, selection.focusOffset),
-    ].sort((a, b) => a - b);
-  }
-  cursorToIndex(node, offset) {
-    const parent = parentWithTag(node, ["SB-TEXT", "SB-BLOCK"]);
-    if (!parent) return 0;
 
-    const range = document.createRange();
-    range.selectNodeContents(parent);
-    range.setEnd(
-      node,
-      // FIXME I have no idea why we seem to need to add an offset here
-      // for empty lines.
-      node.textContent.slice(-1) === "\n" ? Math.max(1, offset) : offset
-    );
-    return parent.getRange()[0] + range.toString().length;
+  _clampRange(start, end) {
+    const range = this.range;
+    return [clamp(start, ...range), clamp(end, ...range)];
+  }
+
+  selectRange(start, end) {
+    if (end === undefined) end = start;
+    const range = this._rangeToCursor(...this._clampRange(start, end));
+    const selection = getSelection(this.getRootNode());
+    selection.removeAllRanges();
+    selection.addRange(range);
   }
 
   get root() {
     return this.childNodes[0];
-  }
-
-  clearSuggestions() {
-    this.suggestions?.clear();
-  }
-
-  addSuggestions(list) {
-    (this.suggestions ??= document.createElement("sb-suggestions")).add(
-      this.selected,
-      list
-    );
   }
 }
 
@@ -341,7 +356,7 @@ class _EditableElement extends HTMLElement {
 
   isFullySelected() {
     const [a, b] = this.getRange();
-    const [c, d] = this.shard.cursorToRange();
+    const [c, d] = this.editor.selectionRange;
     return a === c && b === d;
   }
 
@@ -419,107 +434,3 @@ export class Text extends _EditableElement {
     }
   }
 }
-
-customElements.define(
-  "sb-suggestions",
-  class extends HTMLElement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `
-        <style>
-          :host {
-            position: absolute;
-            z-index: 100;
-            background: #f5f5f5;
-            color: #000;
-            padding: 0.25rem;
-            border-radius: 0.25rem;
-            white-space: nowrap;
-            cursor: pointer;
-            user-select: none;
-            font-family: monospace;
-            line-height: 1.5;
-            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
-            border: 1px solid #aaa;
-            min-width: 200px;
-            display: none;
-          }
-          #entries > div[active] {
-            background: #ceddfe;
-            border-radius: 0.25rem;
-          }
-          #entries > div {
-            padding: 0.15rem 1rem;
-          }
-        </style>
-        <div id="entries"><slot></slot></div>
-      `;
-    }
-
-    onSelected(selected) {
-      if (selected !== this.anchor) this.remove();
-    }
-
-    get active() {
-      return this.isConnected;
-    }
-
-    use() {
-      this.anchor.node.replaceWith(
-        this.shadowRoot.querySelector("div[active]").textContent
-      );
-    }
-
-    canMove(delta) {
-      const index = this.activeIndex;
-      if (index === -1) return false;
-      return index + delta >= 0 && index + delta < this.entries.length;
-    }
-
-    moveSelected(delta) {
-      const index = this.activeIndex;
-      if (index === -1) return;
-      const newIndex = clamp(index + delta, 0, this.entries.length - 1);
-      this.entries[index].removeAttribute("active");
-      this.entries[newIndex].setAttribute("active", "true");
-    }
-
-    get entries() {
-      return this.shadowRoot.querySelector("#entries").querySelectorAll("div");
-    }
-
-    get activeEntry() {
-      return this.shadowRoot.querySelector("div[active]");
-    }
-
-    get activeIndex() {
-      return [...this.entries].indexOf(this.activeEntry);
-    }
-
-    clear() {
-      this.shadowRoot.querySelector("#entries").innerHTML = "";
-      this.remove();
-    }
-
-    add(view, list) {
-      if (list.length === 0) return;
-
-      this.anchor = view;
-      for (const item of list) {
-        const entry = document.createElement("div");
-        entry.textContent = item;
-        entry.addEventListener("click", () => {
-          this.dispatchEvent(new CustomEvent("select", { detail: item }));
-        });
-        this.shadowRoot.querySelector("#entries").appendChild(entry);
-      }
-      this.entries[0].setAttribute("active", "true");
-      this.shadowRoot.host.style.display = "block";
-      const rect = view.getBoundingClientRect();
-      this.shadowRoot.host.style.top = `${rect.bottom + 5}px`;
-      this.shadowRoot.host.style.left = `${rect.left}px`;
-      document.body.appendChild(this);
-    }
-  }
-);

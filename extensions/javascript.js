@@ -11,14 +11,14 @@ customElements.define(
     }
 
     noteProcessed(trigger, source) {
-      if (trigger !== "always" || source.type !== "program") return;
+      if (trigger !== "replacement") return;
 
       const DECL_TYPES = ["class_declaration", "function_declaration"];
       this.render(
         div(
           "Outline",
           ul(
-            source.children
+            source.root.children
               .filter((x) => DECL_TYPES.includes(x.type))
               .map((x) =>
                 li(
@@ -121,7 +121,7 @@ Extension.register(
       (x) => x.type === "program",
       (x) => eval(x.editor.sourceString),
     ])
-    .registerQuery("always", (e) => [
+    .registerQuery("replacement", (e) => [
       ...jsWatch,
       (x) => e.ensureReplacement(x, "sb-js-watch"),
     ])

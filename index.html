@@ -7,11 +7,7 @@
   <body>
     <h3>Smalltalk Demo</h3>
     <sb-extension-scope extensions="smalltalkBase base">
-      <sb-editor
-        text="initialize
-  2 sbWatching"
-        language="smalltalk"
-      ></sb-editor>
+      <sb-editor text="init" language="smalltalk"></sb-editor>
     </sb-extension-scope>
 
     <h3>Javascript Demo</h3>
@@ -19,55 +15,10 @@
       extensions="javascriptBase javascriptOutline javascriptWorkspace base identifierSuggestions editorConfig"
     >
       <sb-editor
-        text="class MyClass {
-  field = true
+        text="console.log(sbWatch(hello, 12398482))
 
-  func() {}
-  processTrigger(node, trigger) {
-    this.newAttachedData = new Map();
-
-    node.allNodesDo((node) => {
-      for (const query of this.queries.get(trigger)) {
-        
-        runQuery(query(this), node);
-      }
-    });
-
-    for (const key of this.attachedData.keys()) {
-      if (!this.newAttachedData.has(key)) {
-        this.attachedData.get(key)();
-      }
-    }
-
-    this.attachedData = this.newAttachedData;
-  }
+function a() {
 }
-
-4 + 4;
-
-function myFunc(hello) {
-  console.log(sbWatch(hello, 12398482))
-}
-myFunc('HELLO');
-
-let insertIndex = 1;
-Editor.registerKeyMap({
-  undo: 'Ctrl-z',
-  redo: 'Ctrl-Z',
-  save: 'Ctrl-s',
-
-  selectNodeUp: 'Ctrl-ArrowUp',
-
-  insertFirstArg: 'Alt-' + insertIndex++,
-  insertSecondArg: 'Alt-' + insertIndex++,
-  insertThirdArg: 'Alt-' + insertIndex++,
-  insertFourthArg: 'Alt-' + insertIndex++,
-  insertFifthArg: 'Alt-' + insertIndex++,
-
-  wrapWithWatch: 'Ctrl-q',
-  printIt: 'Ctrl-p',
-});
-
 "
         language="javascript"
       ></sb-editor>
