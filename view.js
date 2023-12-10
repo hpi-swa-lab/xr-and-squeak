@@ -46,6 +46,15 @@ export class Shard extends HTMLElement {
 
     this.addEventListener("blur", (e) => this.suggestions?.show(null, []));
 
+    this.addEventListener("paste", function (event) {
+      event.preventDefault();
+      document.execCommand(
+        "inserttext",
+        false,
+        event.clipboardData.getData("text/plain")
+      );
+    });
+
     this.addEventListener("keydown", (e) => {
       switch (e.key) {
         case "Tab":
@@ -72,7 +81,7 @@ export class Shard extends HTMLElement {
 
       for (const [action, key] of Object.entries(Editor.keyMap)) {
         if (this.matchesKey(e, key)) {
-          e.preventDefault();
+          let preventDefault = true;
 
           // dispatch to extensions
           this.editor.extensionsDo((e) =>
@@ -84,7 +93,17 @@ export class Shard extends HTMLElement {
             case "save":
               this.editor.extensionsDo((e) => e.process(["save"], this.source));
               break;
+            case "cut":
+            case "copy":
+              // if we don't have a selection, cut/copy the full node
+              if (new Set(this.cursorToRange()).size === 1) {
+                this.selectRange(...this.selected.getRange());
+              }
+              preventDefault = false;
+              break;
           }
+
+          if (preventDefault) e.preventDefault();
         }
       }
     });

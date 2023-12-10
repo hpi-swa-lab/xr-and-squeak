@@ -17,6 +17,8 @@ Editor.registerKeyMap({
   undo: "Ctrl-z",
   redo: "Ctrl-Z",
   save: "Ctrl-s",
+  cut: "Ctrl-x",
+  copy: "Ctrl-c",
 
   selectNodeUp: "Ctrl-ArrowUp",
 
