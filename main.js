@@ -19,8 +19,10 @@ Editor.registerKeyMap({
   save: "Ctrl-s",
   cut: "Ctrl-x",
   copy: "Ctrl-c",
+  dismiss: "Escape",
 
   selectNodeUp: "Ctrl-ArrowUp",
+  selectNodeDown: "Ctrl-ArrowDown",
 
   insertFirstArg: "Alt-1",
   insertSecondArg: "Alt-2",

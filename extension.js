@@ -106,7 +106,7 @@ class ExtensionInstance {
   }
 
   get currentlyProcessingTrigger() {
-    return !!this.currentAttachedData;
+    return !!this.processingNode;
   }
 
   propagationType(trigger) {
@@ -117,6 +117,7 @@ class ExtensionInstance {
         shortcut: "parents",
         open: "subtree",
         type: "selection",
+        selection: "selection",
       }[trigger] ?? "all"
     );
   }
@@ -138,8 +139,7 @@ class ExtensionInstance {
       return;
     }
 
-    if (trigger === "type") this.suggestions = [];
-
+    this.processingNode = node;
     this.currentAttachedData =
       this.attachedDataPerTrigger.get(trigger) ?? new Map();
     this.newAttachedData = new Map();
@@ -182,12 +182,10 @@ class ExtensionInstance {
       widget.noteProcessed(trigger, node);
     }
 
-    if (trigger === "type")
-      node.editor.selected?.shard.showSuggestions(this.suggestions);
-
     this.attachedDataPerTrigger.set(trigger, this.newAttachedData);
     this.currentAttachedData = null;
     this.newAttachedData = null;
+    this.processingNode = null;
 
     let queued = this.queuedUpdates.pop();
     if (queued) {
@@ -224,9 +222,17 @@ class ExtensionInstance {
   }
 
   addSuggestions(suggestions) {
-    for (const suggestion of suggestions) {
-      this.suggestions.push(suggestion);
-    }
+    this.processingNode.editor.selected?.shard.addSuggestions(suggestions);
+  }
+
+  _data = new Map();
+  data(key, init) {
+    if (init && !this._data.has(key)) this._data.set(key, init());
+    return this._data.get(key);
+  }
+
+  setData(key, value) {
+    this._data.set(key, value);
   }
 }
 

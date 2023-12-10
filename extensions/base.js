@@ -4,9 +4,23 @@ Extension.register(
   "base",
   new Extension()
     .registerShortcut("undo", (x, view) => view.editor.undo())
-    .registerShortcut("selectNodeUp", (x, view) =>
-      !view.isFullySelected() ? x.select(view) : x.parent.select(view)
-    )
+
+    // AST-select up-down
+    .registerShortcut("selectNodeUp", (x, view, e) => {
+      (!view.isFullySelected() ? x : x.parent).select(view);
+      e.data("selectionDownList", () => [])?.push(x);
+    })
+    .registerShortcut("selectNodeDown", (x, view, e) => {
+      const target = e.data("selectionDownList")?.pop();
+      (target ?? x.childBlock(0) ?? x.childNode(0))?.select(view);
+    })
+    .registerQuery("selection", (e) => [
+      (x) => {
+        if (!x.children.some((c) => e.data("selectionDownList")?.includes(c)))
+          e.setData("selectionDownList", []);
+      },
+    ])
+
     .registerChangeFilter((change, text) => {
       if (change.op === "insert" && change.string === "(")
         return insert(text, change.index + 1, ")");
@@ -38,7 +52,7 @@ Extension.register(
         const candidates = [...words];
         const query = x.text.toLowerCase();
         const exactMatches = candidates
-          .filter((word) => word.startsWith(x.text))
+          .filter((word) => word.toLowerCase().startsWith(query))
           .sort((a, b) => a.length - b.length);
         const fuzzyMatches = candidates
           .filter(

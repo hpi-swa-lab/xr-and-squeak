@@ -44,7 +44,7 @@ export class Shard extends HTMLElement {
       (this.selectionHandler = this.onSelectionChange.bind(this))
     );
 
-    this.addEventListener("blur", (e) => this.suggestions?.show(null, []));
+    this.addEventListener("blur", (e) => this.suggestions?.clear());
 
     this.addEventListener("paste", function (event) {
       event.preventDefault();
@@ -90,6 +90,9 @@ export class Shard extends HTMLElement {
 
           // built-in actions
           switch (action) {
+            case "dismiss":
+              this.suggestions?.clear();
+              break;
             case "save":
               this.editor.extensionsDo((e) => e.process(["save"], this.source));
               break;
@@ -148,6 +151,9 @@ export class Shard extends HTMLElement {
 
   previousSelection = null;
   onSelectionChange() {
+    const selection = getSelection(this.getRootNode());
+    if (!this.contains(selection.anchorNode)) return;
+
     const newSelection = this.selected;
     if (newSelection !== this.previousSelection) {
       this.previousSelection = newSelection;
@@ -231,7 +237,9 @@ export class Shard extends HTMLElement {
     const range = this.cursorToRange();
     return range ? this.findSelected(this.root, range) : null;
   }
-  // smallest child encompassing range
+  // smallest child encompassing range: on a tie, prefer named nodes
+  // e.g., for this scenario: `abc|(` even though at index 3 is valid
+  // for both the identifier and the parens, we prefer the identifier.
   findSelected(parent, range) {
     let candidate = null;
     allViewsDo(parent, (child) => {
@@ -239,7 +247,8 @@ export class Shard extends HTMLElement {
       if (start <= range[0] && end >= range[1]) {
         if (
           !candidate ||
-          candidate.getRange()[1] - candidate.getRange()[0] > end - start
+          ((child.node.named || !candidate.node.named) &&
+            candidate.getRange()[1] - candidate.getRange()[0] > end - start)
         )
           candidate = child;
       }
@@ -276,7 +285,7 @@ export class Shard extends HTMLElement {
     return [
       this.cursorToIndex(selection.anchorNode, selection.anchorOffset),
       this.cursorToIndex(selection.focusNode, selection.focusOffset),
-    ].sort();
+    ].sort((a, b) => a - b);
   }
   cursorToIndex(node, offset) {
     const parent = parentWithTag(node, ["SB-TEXT", "SB-BLOCK"]);
@@ -297,8 +306,12 @@ export class Shard extends HTMLElement {
     return this.childNodes[0];
   }
 
-  showSuggestions(list) {
-    (this.suggestions ??= document.createElement("sb-suggestions")).show(
+  clearSuggestions() {
+    this.suggestions?.clear();
+  }
+
+  addSuggestions(list) {
+    (this.suggestions ??= document.createElement("sb-suggestions")).add(
       this.selected,
       list
     );
@@ -459,32 +472,40 @@ customElements.define(
     }
 
     canMove(delta) {
-      const entries = this.shadowRoot.querySelector("#entries");
-      const children = entries.querySelectorAll("div");
-      const active = entries.querySelector("div[active]");
-      const index = [...children].indexOf(active);
+      const index = this.activeIndex;
       if (index === -1) return false;
-      return index + delta >= 0 && index + delta < children.length;
+      return index + delta >= 0 && index + delta < this.entries.length;
     }
 
     moveSelected(delta) {
-      const entries = this.shadowRoot.querySelector("#entries");
-      const children = entries.querySelectorAll("div");
-      const active = entries.querySelector("div[active]");
-      const index = [...children].indexOf(active);
+      const index = this.activeIndex;
       if (index === -1) return;
-      const newIndex = clamp(index + delta, 0, children.length - 1);
-      children[index].removeAttribute("active");
-      children[newIndex].setAttribute("active", "true");
+      const newIndex = clamp(index + delta, 0, this.entries.length - 1);
+      this.entries[index].removeAttribute("active");
+      this.entries[newIndex].setAttribute("active", "true");
     }
 
-    show(view, list) {
-      this.anchor = view;
-      if (list.length === 0) {
-        this.remove();
-        return;
-      }
+    get entries() {
+      return this.shadowRoot.querySelector("#entries").querySelectorAll("div");
+    }
+
+    get activeEntry() {
+      return this.shadowRoot.querySelector("div[active]");
+    }
+
+    get activeIndex() {
+      return [...this.entries].indexOf(this.activeEntry);
+    }
+
+    clear() {
       this.shadowRoot.querySelector("#entries").innerHTML = "";
+      this.remove();
+    }
+
+    add(view, list) {
+      if (list.length === 0) return;
+
+      this.anchor = view;
       for (const item of list) {
         const entry = document.createElement("div");
         entry.textContent = item;
@@ -492,8 +513,8 @@ customElements.define(
           this.dispatchEvent(new CustomEvent("select", { detail: item }));
         });
         this.shadowRoot.querySelector("#entries").appendChild(entry);
-        list.indexOf(item) === 0 && entry.setAttribute("active", "true");
       }
+      this.entries[0].setAttribute("active", "true");
       this.shadowRoot.host.style.display = "block";
       const rect = view.getBoundingClientRect();
       this.shadowRoot.host.style.top = `${rect.bottom + 5}px`;

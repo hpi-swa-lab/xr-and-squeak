@@ -114,9 +114,16 @@ export class Editor extends HTMLElement {
     SBParser.updateModelAndView(this.sourceString, null, this.source);
 
     if (shard) shard.selectRange(...cursorRange);
+    this.processType();
     this.extensionsDo((e) =>
-      e.process(["type", "always"], this.selected?.node ?? this.source)
+      e.process(["always"], this.selected?.node ?? this.source)
     );
+  }
+
+  processType() {
+    const selected = this.selected;
+    selected.shard.clearSuggestions();
+    this.extensionsDo((e) => e.process(["type"], selected.node));
   }
 
   extensionsDo(cb) {
