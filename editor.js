@@ -136,7 +136,8 @@ export class Editor extends HTMLElement {
 
   processType() {
     this.clearSuggestions();
-    this.extensionsDo((e) => e.process(["type"], this.selected.node));
+    if (this.selected)
+      this.extensionsDo((e) => e.process(["type"], this.selected.node));
   }
 
   extensionsDo(cb) {

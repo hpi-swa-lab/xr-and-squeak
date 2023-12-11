@@ -1,5 +1,5 @@
 import { h, render } from "./external/preact.mjs";
-import { nextHash } from "./utils.js";
+import { nextHash, parentWithTag } from "./utils.js";
 
 export { h } from "./external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
@@ -31,6 +31,10 @@ export class Widget extends HTMLElement {
     const editor = this.getRootNode().host.editor;
     console.assert(editor.tagName === "SB-EDITOR");
     return editor;
+  }
+
+  get shard() {
+    return parentWithTag(this, "SB-SHARD");
   }
 
   // polymorphic with Block

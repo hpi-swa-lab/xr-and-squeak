@@ -15,11 +15,38 @@
       extensions="javascriptBase javascriptOutline javascriptWorkspace base identifierSuggestions editorConfig"
     >
       <sb-editor
-        text="console.log(sbWatch(hello, 12398482))
+        text='console.log(sbWatch("hello", 12398482))
 
 function a() {
 }
-"
+
+class MyCls {
+  func() {}
+}
+
+let index = 0
+
+Editor.registerKeyMap({
+  undo: "Ctrl-z",
+  redo: "Ctrl-Z",
+  save: "Ctrl-s",
+  cut: "Ctrl-x",
+  copy: "Ctrl-c",
+  dismiss: "Escape",
+
+  selectNodeUp: "Ctrl-ArrowUp",
+  selectNodeDown: "Ctrl-ArrowDown",
+
+  insertFirstArg: "Alt-1",
+  insertSecondArg: "Alt-" + index++,
+  insertThirdArg: "Alt-3",
+  insertFourthArg: "Alt-4",
+  insertFifthArg: "Alt-5",
+
+  wrapWithWatch: "Ctrl-q",
+  printIt: "Ctrl-p",
+});
+'
         language="javascript"
       ></sb-editor>
     </sb-extension-scope>
