@@ -117,11 +117,14 @@ export class Editor extends HTMLElement {
     if (this.sourceString.length !== text.length)
       this.extensionsDo(
         (e) =>
-          (text = e.filterChange(findChange(this.sourceString, text), text))
+          (text =
+            text && e.filterChange(findChange(this.sourceString, text), text))
       );
 
-    this.sourceString = text;
-    SBParser.updateModelAndView(this.sourceString, null, this.source);
+    if (text) {
+      this.sourceString = text;
+      SBParser.updateModelAndView(this.sourceString, null, this.source);
+    }
 
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     this.resyncSelectionAfterChange(...selectionRange, shard);
