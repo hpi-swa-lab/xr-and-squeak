@@ -48,21 +48,27 @@ customElements.define(
       this.style.color = "#fff";
       this.style.marginLeft = "0.25rem";
       this.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace") {
+        if (e.key === "Backspace" || e.key === "Escape") {
           e.stopPropagation();
           e.preventDefault();
-          ToggleableMutationObserver.ignoreMutation(() => this.remove());
+          this.close();
         }
       });
-      this.addEventListener("click", (e) => {
-        ToggleableMutationObserver.ignoreMutation(() => this.remove());
-      });
+      this.addEventListener("click", (e) => this.close());
       this.setAttribute("contenteditable", "false");
       this.setAttribute("tabindex", "-1");
     }
 
     set result(value) {
-      this.innerHTML = value.toString();
+      let str;
+      if (value === undefined) str = "undefined";
+      else if (value === null) str = "null";
+      else str = value.toString();
+      this.innerHTML = str;
+    }
+    close() {
+      this.shard.focus();
+      ToggleableMutationObserver.ignoreMutation(() => this.remove());
     }
   }
 );
@@ -72,6 +78,8 @@ customElements.define(
   class extends Replacement {
     static registry = new Map();
 
+    count = 0;
+
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
@@ -80,7 +88,10 @@ customElements.define(
         `<div style="background: #fff; padding: 0.1rem;">` +
         `<slot></slot>` +
         `</div>` +
-        `<div style="color: #fff;" id="output"></div>` +
+        `<div style="color: #fff; display: flex; margin-top: 0.25rem;">` +
+        `<div id="count" style="padding: 0.1rem 0.4rem; margin-right: 0.25rem; background: #999; border-radius: 100px;">0</div>` +
+        `<div id="output"></div>` +
+        `</div>` +
         `</div>`;
     }
 
@@ -94,14 +105,17 @@ customElements.define(
     }
 
     reportValue(value) {
+      this.count++;
       this.shadowRoot.getElementById("output").innerHTML = value.toString();
       this.shadowRoot.getElementById("output").style.marginTop = "2px";
+      this.shadowRoot.getElementById("count").innerHTML = this.count.toString();
     }
   }
 );
 
 window.sbWatch = function (value, id) {
   window.sbWatch.registry.get(id)?.reportValue(value);
+  return value;
 };
 window.sbWatch.registry = new Map();
 

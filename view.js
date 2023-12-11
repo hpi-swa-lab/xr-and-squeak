@@ -4,7 +4,6 @@ import {
   ToggleableMutationObserver,
   getSelection,
   nextHash,
-  parentWithTag,
   allViewsDo,
   clamp,
   rangeContains,
@@ -250,6 +249,7 @@ export class Shard extends HTMLElement {
       this.range[0] + focusOffset,
       this.range[0] + anchorOffset,
     ].sort((a, b) => a - b);
+
     this.visibleRanges = visibleRanges;
 
     return {
@@ -295,7 +295,7 @@ export class Shard extends HTMLElement {
     // we may have been deleted entirely
     if (!this.root) return null;
 
-    allViewsDo(this.root, (child) => {
+    allViewsDo(this, (child) => {
       const [start, end] = child.getRange();
       if (start <= range[0] && end >= range[1]) {
         if (

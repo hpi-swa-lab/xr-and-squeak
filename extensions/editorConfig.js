@@ -76,7 +76,7 @@ customElements.define(
 
 Extension.register(
   "editorConfig",
-  new Extension().registerQuery("always", (e) => [
+  new Extension().registerQuery("replacement", (e) => [
     (x) => x.type === "call_expression",
     (x) => !!x.atField("function").editor,
     (x) => x.atField("function").sourceString === "Editor.registerKeyMap",

@@ -8,7 +8,7 @@ Extension.register(
     // AST-select up-down
     .registerShortcut("selectNodeUp", (x, view, e) => {
       (!view.isFullySelected() ? x : x.parent).select(view);
-      e.data("selectionDownList", () => [])?.push(x);
+      if (!x.isRoot) e.data("selectionDownList", () => []).push(x);
     })
     .registerShortcut("selectNodeDown", (x, view, e) => {
       const target = e.data("selectionDownList")?.pop();
@@ -22,7 +22,8 @@ Extension.register(
     ])
 
     .registerChangeFilter((change, text) => {
-      if (change.op === "insert" && change.string === "(")
+      // FIXME disabled until we can reliably type-over closing braces
+      if (false && change.op === "insert" && change.string === "(")
         return insert(text, change.index + 1, ")");
       return text;
     })
