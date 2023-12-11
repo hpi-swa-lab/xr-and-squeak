@@ -3,7 +3,7 @@
 <script>
   import {Parser} from "src/client/tree-sitter.js"
   window.TreeSitter = Parser
-  import md5 from "./md5.js"
+  import md5 from "./external/md5.js"
   ""
 </script>
 
