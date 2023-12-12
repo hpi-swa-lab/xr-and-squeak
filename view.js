@@ -126,15 +126,14 @@ export class Shard extends HTMLElement {
         });
       });
     });
-    if (!this.editor) return
     this.editor.extensionsDo((e) =>
       e.process(["replacement", "open", "always"], this.source)
     );
   }
 
   get editor() {
-    const host = this.getRootNode().host
-    if (!host) return undefined
+    const host = this.getRootNode().host;
+    if (!host) return undefined;
     const editor = host.editor;
     console.assert(editor.tagName === "SB-EDITOR");
     return editor;

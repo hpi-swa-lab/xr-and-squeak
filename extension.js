@@ -260,14 +260,12 @@ export class ExtensionScope extends HTMLElement {
 
   connectedCallback() {
     this.extensions = [];
-    queueMicrotask(() =>
-      this.getAttribute("extensions")
-        ?.split(" ")
-        ?.filter((name) => name.length > 0)
-        ?.forEach((name) => {
-          this.extensions.push(Extension.get(name));
-        })
-    );
+    this.getAttribute("extensions")
+      ?.split(" ")
+      ?.filter((name) => name.length > 0)
+      ?.forEach((name) => {
+        this.extensions.push(Extension.get(name));
+      });
   }
 
   extensionsDo(cb) {
@@ -276,5 +274,3 @@ export class ExtensionScope extends HTMLElement {
     }
   }
 }
-
-customElements.define("sb-extension-scope", ExtensionScope);
