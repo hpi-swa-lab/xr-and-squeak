@@ -39,7 +39,8 @@ Editor.registerKeyMap({
 const reload = document.createElement("button");
 document.body.appendChild(reload);
 reload.innerText = "Reload";
-reload.onclick = () =>
-  (document.body.innerHTML = `<sb-extension-scope extensions="smalltalkBase base">
-      <sb-editor text="init" language="smalltalk"></sb-editor>
-    </sb-extension-scope>`);
+reload.onclick = () => {
+  const body = document.getElementById("root");
+  body.remove();
+  document.body.appendChild(body);
+};

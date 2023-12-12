@@ -26,17 +26,8 @@ export class Shard extends HTMLElement {
     this.update(node);
   }
 
-  connectedCallback() {
-    for (const [key, value] of Object.entries({
-      spellcheck: "false",
-      autocorrect: "off",
-      autocapitalize: "off",
-      translate: "no",
-      contenteditable: "true",
-      role: "textbox",
-      "aria-multiline": "true",
-    }))
-      this.setAttribute(key, value);
+  constructor() {
+    super();
 
     // TODO use queue
     // this.addEventListener("compositionstart", () => { });
@@ -107,6 +98,19 @@ export class Shard extends HTMLElement {
         }
       }
     });
+  }
+
+  connectedCallback() {
+    for (const [key, value] of Object.entries({
+      spellcheck: "false",
+      autocorrect: "off",
+      autocapitalize: "off",
+      translate: "no",
+      contenteditable: "true",
+      role: "textbox",
+      "aria-multiline": "true",
+    }))
+      this.setAttribute(key, value);
 
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
@@ -129,6 +133,13 @@ export class Shard extends HTMLElement {
     this.editor.extensionsDo((e) =>
       e.process(["replacement", "open", "always"], this.source)
     );
+  }
+
+  disconnectedCallback() {
+    this.observer.disconnect();
+    this.observer = null;
+
+    this.addEventListener("blur", (e) => this.editor.clearSuggestions());
   }
 
   get editor() {
