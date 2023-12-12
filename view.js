@@ -130,13 +130,16 @@ export class Shard extends HTMLElement {
         });
       });
     });
+    if (!this.editor) {
+      debugger;
+    }
     this.editor.extensionsDo((e) =>
       e.process(["replacement", "open", "always"], this.source)
     );
   }
 
   disconnectedCallback() {
-    this.observer.disconnect();
+    this.observer.destroy();
     this.observer = null;
 
     this.addEventListener("blur", (e) => this.editor.clearSuggestions());

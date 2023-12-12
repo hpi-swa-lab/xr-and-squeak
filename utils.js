@@ -51,6 +51,7 @@ export class ToggleableMutationObserver {
     this.callback = callback;
     this.observer = new MutationObserver(this.callback);
     this.enabled = false;
+    this.destroyed = false;
     if (this.constructor.enable) this.connect();
     this.constructor.observers.push(this);
   }
@@ -60,6 +61,7 @@ export class ToggleableMutationObserver {
   }
 
   connect() {
+    if (this.destroyed) throw new Error("Cannot connect destroyed observer");
     if (this.enabled) return;
 
     // flush any that precede us listening
@@ -79,6 +81,12 @@ export class ToggleableMutationObserver {
     if (!this.enabled) return;
     this.enabled = false;
     this.observer.disconnect();
+  }
+
+  destroy() {
+    this.disconnect();
+    this.constructor.observers.remove(this);
+    this.destroyed = true;
   }
 
   undoMutation(mutation) {
