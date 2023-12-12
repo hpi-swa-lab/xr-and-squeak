@@ -126,6 +126,9 @@ export class Shard extends HTMLElement {
         });
       });
     });
+    if (!this.editor) {
+      debugger
+    }
     this.editor.extensionsDo((e) =>
       e.process(["replacement", "open", "always"], this.source)
     );

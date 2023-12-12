@@ -181,7 +181,6 @@ export class Editor extends HTMLElement {
     if (!this.getAttribute("language")) return;
 
     let contentRoot = this.shadowRoot.querySelector("#content");
-    contentRoot.innerHTML = "";
     contentRoot.appendChild(
       SBParser.initModelAndView(
         this.sourceString,
@@ -196,6 +195,8 @@ export class Editor extends HTMLElement {
   }
 
   disconnectedCallback() {
+    let contentRoot = this.shadowRoot.querySelector("#content");
+    contentRoot.innerHTML = "";
     document.removeEventListener("selectionchange", this.selectionHandler);
   }
 
