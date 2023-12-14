@@ -188,10 +188,14 @@ export class Editor extends HTMLElement {
 
   static observedAttributes = ["text", "language"];
   attributeChangedCallback() {
+    const text = this.getAttribute("text");
+    const language = this.getAttribute("language");
     // make sure both are set
     if (
-      this.getAttribute("text") !== undefined &&
-      this.getAttribute("language") !== undefined
+      text !== undefined &&
+      text !== null &&
+      language !== undefined &&
+      language !== null
     ) {
       if (!this.isInitialized) {
         this.isInitialized = true;
@@ -199,7 +203,7 @@ export class Editor extends HTMLElement {
         this.style.margin = "1rem";
       }
 
-      this.sourceString = this.getAttribute("text");
+      this.sourceString = text;
       if (this.shard) {
         SBParser.destroyModel(this.shard.source);
         this.shadowRoot.removeChild(this.shard);
@@ -207,7 +211,7 @@ export class Editor extends HTMLElement {
       this.shadowRoot.appendChild(
         SBParser.initModelAndView(
           this.sourceString,
-          this.getAttribute("language"),
+          language,
           this.root
         ).createShard()
       );
