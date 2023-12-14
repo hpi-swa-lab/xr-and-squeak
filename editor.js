@@ -176,22 +176,6 @@ export class Editor extends HTMLElement {
   isInitialized = false;
 
   connectedCallback() {
-    if (this.isInitialized) {
-      return;
-    }
-
-    this.style.display = "block";
-    this.style.margin = "1rem";
-    this.sourceString = this.getAttribute("text");
-
-    this.isInitialized = true;
-    this.shadowRoot.appendChild(
-      SBParser.initModelAndView(
-        this.sourceString,
-        this.getAttribute("language")
-      ).createShard()
-    );
-
     document.addEventListener(
       "selectionchange",
       (this.selectionHandler = this.onSelectionChange.bind(this))
@@ -200,6 +184,30 @@ export class Editor extends HTMLElement {
 
   disconnectedCallback() {
     document.removeEventListener("selectionchange", this.selectionHandler);
+  }
+
+  static observedAttributes = ["text"];
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === "text") {
+      if (!this.isInitialized) {
+        this.isInitialized = true;
+        this.style.display = "block";
+        this.style.margin = "1rem";
+      }
+
+      this.sourceString = newValue;
+      if (this.shard) {
+        SBParser.destroyModel(this.shard.source);
+        this.shadowRoot.removeChild(this.shard);
+      }
+      this.shadowRoot.appendChild(
+        SBParser.initModelAndView(
+          this.sourceString,
+          this.getAttribute("language"),
+          this.root
+        ).createShard()
+      );
+    }
   }
 
   onSelectionChange() {

@@ -5,6 +5,9 @@
     <title>Sandblocks Text</title>
   </head>
   <body>
+    <h3>Squeak Demo</h3>
+    <squeak-browser></squeak-browser>
+
     <h3>Smalltalk Demo</h3>
     <div id="root">
       <sb-extension-scope extensions="smalltalkBase base">
@@ -50,6 +53,20 @@ Editor.registerKeyMap({
 });
 '
         language="javascript"
+      ></sb-editor>
+    </sb-extension-scope>
+
+    <h3>Tla+ Demo</h3>
+    <sb-extension-scope extensions="tlaplusBase base">
+      <sb-editor
+        text="---- MODULE Test ----
+op ==
+    CASE 1 -> 2
+    [] 3 -> 4
+    [] OTHER -> 5
+====
+"
+        language="tlaplus"
       ></sb-editor>
     </sb-extension-scope>
 

@@ -104,6 +104,26 @@ class SBNode {
     return null;
   }
 
+  get nextSiblingNode() {
+    if (this.isRoot) return null;
+    let pickNext = false;
+    for (const sibling of this.parent.children) {
+      if (pickNext && !sibling.isWhitespace()) return sibling;
+      if (sibling === this) pickNext = true;
+    }
+    return null;
+  }
+
+  get previousSiblingNode() {
+    if (this.isRoot) return null;
+    let last = null;
+    for (const sibling of this.parent.children) {
+      if (sibling === this) return last;
+      if (!sibling.isWhitespace()) last = sibling;
+    }
+    return null;
+  }
+
   get childBlocks() {
     return this.children.filter((child) => !!child.named);
   }
@@ -340,10 +360,15 @@ export class SBParser {
     );
   }
 
+  static destroyModel(root) {
+    root._tree.delete();
+    delete root._tree;
+  }
+
   static async init() {
     await TreeSitter.init();
     this._init = true;
-    for (const languageName of ["smalltalk", "javascript"]) {
+    for (const languageName of ["smalltalk", "javascript", "tlaplus"]) {
       this.loadedLanguages.set(
         languageName,
         await TreeSitter.Language.load(
