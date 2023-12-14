@@ -316,6 +316,7 @@ class SqueakBrowser extends HTMLElement {
     :host {
       font-family: DejaVu Sans;
       font-size: 0.9em;
+      min-height: 300px;
     }
     </style>
     <div id="browser"></div>`;
@@ -338,10 +339,20 @@ Extension.register(
     ])
     .registerShortcut("printIt", async (x, view, e) => {
       const widget = e.createWidget("sb-js-print-result");
-      widget.result = await sqEval(x.sourceString);
+      widget.result = await sqEval(x.editor.textForShortcut);
       ToggleableMutationObserver.ignoreMutation(() => {
         view.after(widget);
         widget.focus();
+      });
+    })
+    .registerShortcut("browseIt", async (x, view, e) => {
+      const widget = document.createElement("squeak-browser");
+      widget.initialClass = x.editor.textForShortcut;
+      document.body.appendChild(widget);
+      widget.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
       });
     })
     .registerShortcut("resetContents", async (x, view, e) => {
