@@ -336,12 +336,15 @@ Extension.register(
     .registerShortcut("browseIt", async (x, view, e) => {
       const widget = document.createElement("squeak-browser");
       widget.initialClass = x.editor.textForShortcut;
-      document.body.appendChild(widget);
-      widget.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "center",
-      });
+      const windowComponent = document.createElement("lively-window");
+      windowComponent.appendChild(widget)
+      document.body.appendChild(windowComponent);
+      windowComponent.focus()
+      // widget.scrollIntoView({
+      //   behavior: "smooth",
+      //   block: "center",
+      //   inline: "center",
+      // });
     })
     .registerShortcut("resetContents", async (x, view, e) => {
       const editor = x.editor;
