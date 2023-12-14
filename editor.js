@@ -188,7 +188,8 @@ export class Editor extends HTMLElement {
 
   static observedAttributes = ["text"];
   attributeChangedCallback(name, oldValue, newValue) {
-    if (name === "text") {
+    // make sure both are set
+    if (this.getAttribute("text") && this.getAttribute("language")) {
       if (!this.isInitialized) {
         this.isInitialized = true;
         this.style.display = "block";
