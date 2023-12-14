@@ -290,6 +290,15 @@ export class Editor extends HTMLElement {
     return this.sourceString.slice(...this.selectionRange);
   }
 
+  get textForShortcut() {
+    const range = this.selectionRange;
+    if (range.start === range.end) {
+      return this.selected?.node ?? "";
+    } else {
+      return this.selectedText;
+    }
+  }
+
   findNode(node) {
     return findNode(this.shard, node);
   }

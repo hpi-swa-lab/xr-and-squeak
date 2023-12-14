@@ -36,5 +36,6 @@ Editor.registerKeyMap({
 
   wrapWithWatch: "Ctrl-q",
   printIt: "Ctrl-p",
+  browseIt: "Ctrl-b",
   resetContents: "Ctrl-l",
 });
