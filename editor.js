@@ -286,6 +286,10 @@ export class Editor extends HTMLElement {
     return shard?.editor === this ? shard : null;
   }
 
+  get selectedText() {
+    return this.sourceString.slice(...this.selectionRange);
+  }
+
   findNode(node) {
     return findNode(this.shard, node);
   }

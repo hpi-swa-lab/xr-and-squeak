@@ -337,7 +337,7 @@ Extension.register(
     ])
     .registerShortcut("printIt", async (x, view, e) => {
       const widget = e.createWidget("sb-js-print-result");
-      widget.result = await sqEval(x.sourceString);
+      widget.result = await sqEval(x.editor.selectedText);
       ToggleableMutationObserver.ignoreMutation(() => {
         view.after(widget);
         widget.focus();
