@@ -7,8 +7,8 @@ import {
 } from "../external/preact-hooks.mjs";
 import { render } from "../external/preact.mjs";
 import { ToggleableMutationObserver } from "../utils.js";
-import { div, h } from "../widgets.js";
-import {config} from "../model.js"
+import { div, editor, h } from "../widgets.js";
+import { config } from "../model.js";
 
 function List({ items, onSelect, selected }) {
   return h(
@@ -296,18 +296,6 @@ function SqueakBrowserComponent({ initialClass }) {
   );
 }
 
-function editor({ extensions, sourceString, onSave, language }) {
-  return h(
-    "sb-extension-scope",
-    { extensions: extensions.join(" ") },
-    h("sb-editor", {
-      text: sourceString ?? "",
-      language,
-      onsave: (e) => onSave(e.detail),
-    })
-  );
-}
-
 class SqueakBrowser extends HTMLElement {
   constructor() {
     super();
@@ -374,7 +362,6 @@ if (!init) {
   // x.editor.shadowRoot.appendChild(e.createWidget("squeak-browser"));
 }
 
-
 async function runHeadless(imageUrl) {
   const imageData = await (
     await fetch(imageUrl, {
@@ -402,7 +389,3 @@ async function runHeadless(imageUrl) {
     run();
   });
 }
-
-
-
-

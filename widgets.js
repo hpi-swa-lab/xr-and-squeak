@@ -9,6 +9,16 @@ export const table = (...children) => h("table", {}, ...children);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) => h("sb-shard", { initNode: [node], key: node });
+export const editor = ({ extensions, sourceString, onSave, language }) =>
+  h(
+    "sb-extension-scope",
+    { extensions: extensions.join(" ") },
+    h("sb-editor", {
+      text: sourceString ?? "",
+      language,
+      onsave: (e) => onSave(e.detail),
+    })
+  );
 
 export class Widget extends HTMLElement {
   disconnectedCallback() {

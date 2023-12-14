@@ -1,6 +1,16 @@
 import { Extension } from "../extension.js";
+import { config } from "../model.js";
 import { ToggleableMutationObserver, exec } from "../utils.js";
-import { Widget, ul, li, shard, div, Replacement } from "../widgets.js";
+import {
+  Widget,
+  ul,
+  li,
+  shard,
+  div,
+  Replacement,
+  editor,
+  h,
+} from "../widgets.js";
 
 customElements.define(
   "sb-outline",
@@ -128,6 +138,47 @@ const jsWatch = [
   (x) => x.atField("function").text === "sbWatch",
 ];
 
+customElements.define(
+  "sb-js-language-box",
+  class extends Replacement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.innerHTML = `<style>
+      :host {
+        border: 1px solid #ccc;
+        padding: 0.25rem;
+        display: inline-block;
+        border-radius: 4px;
+      }
+      </style><slot></slot>`;
+    }
+
+    update(source) {
+      this.render(
+        div(
+          div(
+            h("img", {
+              width: 16,
+              src: `${config.baseURL}/assets/smalltalk.png`,
+              style: "margin-right: 0.25rem;",
+            }),
+            shard(source.atField("arguments").childBlock(0))
+          ),
+          editor({
+            extensions: ["smalltalkBase"],
+            sourceString: source
+              .atField("arguments")
+              .childBlock(1)
+              .childBlock(0).text,
+            language: "smalltalk",
+          })
+        )
+      );
+    }
+  }
+);
+
 Extension.register(
   "javascriptWorkspace",
   new Extension()
@@ -160,6 +211,15 @@ Extension.register(
   new Extension().registerQuery("open", (e) => [
     (x) => x.type === "program",
     (x) => x.editor.shadowRoot.appendChild(e.createWidget("sb-outline")),
+  ])
+);
+
+Extension.register(
+  "javascriptMultilingual",
+  new Extension().registerQuery("replacement", (e) => [
+    (x) => x.type === "call_expression",
+    (x) => x.atField("function").text === "sqCompile",
+    (x) => e.ensureReplacement(x, "sb-js-language-box"),
   ])
 );
 
