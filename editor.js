@@ -182,8 +182,17 @@ export class Editor extends HTMLElement {
 
     this.style.display = "block";
     this.style.margin = "1rem";
-    this.sourceString = this.getAttribute("text");
+    this.sourceString = this.getAttribute("text") ;
 
+    if (!this.getAttribute("text")) {
+      console.warn("connectedCallback text is missing")
+      return 
+    }
+    if (!this.getAttribute("language")) {
+      console.warn("connectedCallback language is missing")
+      return 
+    }
+                
     this.isInitialized = true;
     this.shadowRoot.appendChild(
       SBParser.initModelAndView(
