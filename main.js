@@ -38,12 +38,3 @@ Editor.registerKeyMap({
   printIt: "Ctrl-p",
   resetContents: "Ctrl-l",
 });
-
-const reload = document.createElement("button");
-document.body.appendChild(reload);
-reload.innerText = "Reload";
-reload.onclick = () => {
-  const body = document.getElementById("root");
-  body.remove();
-  document.body.appendChild(body);
-};
