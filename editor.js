@@ -186,8 +186,8 @@ export class Editor extends HTMLElement {
     document.removeEventListener("selectionchange", this.selectionHandler);
   }
 
-  static observedAttributes = ["text"];
-  attributeChangedCallback(name, oldValue, newValue) {
+  static observedAttributes = ["text", "language"];
+  attributeChangedCallback() {
     // make sure both are set
     if (this.getAttribute("text") && this.getAttribute("language")) {
       if (!this.isInitialized) {
@@ -196,7 +196,7 @@ export class Editor extends HTMLElement {
         this.style.margin = "1rem";
       }
 
-      this.sourceString = newValue;
+      this.sourceString = this.getAttribute("text");
       if (this.shard) {
         SBParser.destroyModel(this.shard.source);
         this.shadowRoot.removeChild(this.shard);
