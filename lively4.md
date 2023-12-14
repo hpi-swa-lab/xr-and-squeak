@@ -36,3 +36,12 @@ function a() {
     </sb-extension-scope>)
   ui 
 </script>
+
+
+## Squeak
+
+
+<script>
+  var ui = await (<squeak-browser></squeak-browser>)
+  ui 
+</script>

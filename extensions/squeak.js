@@ -8,6 +8,7 @@ import {
 import { render } from "../external/preact.mjs";
 import { ToggleableMutationObserver } from "../utils.js";
 import { div, h } from "../widgets.js";
+import {config} from "../model.js"
 
 function List({ items, onSelect, selected }) {
   return h(
@@ -367,8 +368,41 @@ if (!init) {
   const module = await import(
     "../external/squeak_headless_with_plugins_bundle.js"
   );
-  module.runHeadless("../external/squeak-minimal.image");
+  runHeadless(config.baseURL + "/external/squeak-minimal.image");
   await wait(1000);
   customElements.define("squeak-browser", SqueakBrowser);
   // x.editor.shadowRoot.appendChild(e.createWidget("squeak-browser"));
 }
+
+
+async function runHeadless(imageUrl) {
+  const imageData = await (
+    await fetch(imageUrl, {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store",
+    })
+  ).arrayBuffer();
+
+  const image = new Squeak.Image("minimal");
+  image.readFromBuffer(imageData, function startRunning() {
+    const display = { vmOptions: ["-vm-display-null", "-nodisplay"] };
+    const vm = new Squeak.Interpreter(image, display);
+    function run() {
+      try {
+        vm.interpret(50, function (ms) {
+          if (!display.quitFlag) {
+            setTimeout(run, ms === "sleep" ? 10 : 100);
+          }
+        });
+      } catch (e) {
+        console.error("Failure during Squeak run: ", e);
+      }
+    }
+    run();
+  });
+}
+
+
+
+
