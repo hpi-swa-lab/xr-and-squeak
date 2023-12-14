@@ -131,7 +131,9 @@ export class Shard extends HTMLElement {
       });
     });
 
-    this.editor.extensionsDo((e) => e.process(["always"], this.source));
+    this.editor.extensionsDo((e) =>
+      e.process(["replacement", "always"], this.source)
+    );
 
     if (!this.editor) {
       debugger;
