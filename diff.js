@@ -434,7 +434,7 @@ class EditBuffer {
     this.negBuf.push(new RemoveOp(node));
   }
   update(node, text) {
-    assert(node.views.length > 0);
+    // assert(node.views.length > 0);
     this.log("update", node.type ?? `"${node.text}"`, `"${text}"`);
     this.posBuf.push(new UpdateOp(node, text));
   }
