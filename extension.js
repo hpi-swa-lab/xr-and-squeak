@@ -216,7 +216,7 @@ class ExtensionInstance {
   dispatchShortcut(identifier, selected) {
     this.currentShortcut = identifier;
     this.currentShortcutView = selected;
-    this._processTrigger("shortcut", selected.node);
+    this._processTrigger("shortcut", selected?.node);
     this.currentShortcut = null;
     this.currentShortcutView = null;
   }

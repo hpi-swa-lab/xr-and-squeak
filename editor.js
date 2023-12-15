@@ -173,8 +173,6 @@ export class Editor extends HTMLElement {
     this.selectRange(...cursorRange);
   }
 
-  isInitialized = false;
-
   connectedCallback() {
     document.addEventListener(
       "selectionchange",
@@ -197,12 +195,6 @@ export class Editor extends HTMLElement {
       language !== undefined &&
       language !== null
     ) {
-      if (!this.isInitialized) {
-        this.isInitialized = true;
-        this.style.display = "block";
-        this.style.margin = "1rem";
-      }
-
       this.sourceString = text;
       if (this.shard) {
         SBParser.destroyModel(this.shard.source);
