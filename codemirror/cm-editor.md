@@ -22,6 +22,6 @@
 
 import {} from './cm-editor.js';
 
-await (<cm-dc-editor text="asd" language="javascript"></cm-dc-editor>)
+await (<cm-dc-editor text="asd" language="javascript" extensions="javascript:base"></cm-dc-editor>)
 
 </script>
