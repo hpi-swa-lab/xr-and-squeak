@@ -15,36 +15,58 @@ customElements.define("cm-dc-editor", class extends HTMLElement {
     
     const livelyCM = this.shadowRoot.querySelector('lively-code-mirror')
     livelyCM.addEventListener("change", e => {
-        SBParser.updateModelAndView(livelyCM.value, null, this.root);
-        
-        // TODO trigger "type" for selected node not root
-        this.extensions.forEach(e => e.process(["replacement", "type", "always"], this.root))
-      })
+      if (this.initializing) return
+      SBParser.updateModelAndView(livelyCM.value, null, this.root);
+      
+      // TODO trigger "type" for selected node not root
+      this.extensions.forEach(e => e.process(["replacement", "type", "always"], this.root))
+    })
   }
 
   static observedAttributes = ["text", "language", "extensions"]
   
+  lastText = null
+  lastLanguage = null
+  lastExtensions = null
+  initializing = false
+  
   attributeChangedCallback(name, oldValue, newValue) {
     const text = this.getAttribute("text");
     const language = this.getAttribute("language");
-    // make sure both are set
+    const extensions = this.getAttribute("extensions");
+  
     if (
-      (name === 'text' || name === 'language') &&
       text !== undefined &&
       text !== null &&
       language !== undefined &&
-      language !== null
+      language !== null &&
+      extensions !== undefined &&
+      extensions !== null &&
+      (text !== this.lastText ||
+        language !== this.lastLanguage ||
+        extensions !== this.lastExtensions)
     ) {
-      const livelyCM = this.shadowRoot.querySelector('lively-code-mirror')
+      this.lastLanguage = language
+      this.lastText = text
+      this.lastExtensions = extensions
+      
+      this.initEditor(text, language, extensions.split(' ').filter(n => n.length > 0))
+    }
+  }
+
+  async initEditor(text, language, extensions) {
+    if (this.initializing) throw new Error('overlapping initialize')
+    this.initializing = true
+    const livelyCM = this.shadowRoot.querySelector('lively-code-mirror')
       livelyCM.value = text
-      this.root = SBParser.initModelAndView(
+      // FIXME does not consider overlapping updates (async!)
+      this.root = await SBParser.initModelAndView(
           text,
           language,
           this.root
-      );
-    } else if (name === 'extensions') {
-      this.loadExtensions(newValue.split(' ').filter(n => n.length > 0))
-    }
+      )
+    await this.loadExtensions(extensions)
+    this.initializing = false
   }
 
   async loadExtensions(list) {

@@ -9,19 +9,16 @@
 </script>
 
 <script>
-  import  {SBParser, setConfig} from "../model.js"
+  import  {setConfig} from "../model.js"
 
   var baseDir = lively.query(this, "lively-container").getDir()
   setConfig({baseURL: baseDir + '../'})
-
-  // await System.import(baseDir + "/main.js");
-  await SBParser.init();
 </script>
 
 <script>
 
 import {} from './cm-editor.js';
 
-await (<cm-dc-editor text="asd" language="javascript" extensions="javascript:base"></cm-dc-editor>)
+await (<cm-dc-editor text="asd" language="javascript" extensions="javascript:base javascript:workspace"></cm-dc-editor>)
 
 </script>
