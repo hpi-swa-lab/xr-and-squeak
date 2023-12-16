@@ -1,14 +1,4 @@
-import { SBParser } from "./model.js";
 import { Editor } from "./editor.js";
-import { Block, Text, Shard } from "./view.js";
-import { ExtensionScope } from "./extension.js";
-
-await SBParser.init();
-customElements.define("sb-extension-scope", ExtensionScope);
-customElements.define("sb-shard", Shard);
-customElements.define("sb-block", Block);
-customElements.define("sb-text", Text);
-customElements.define("sb-editor", Editor);
 
 Editor.registerKeyMap({
   undo: "Ctrl-z",
@@ -32,3 +22,5 @@ Editor.registerKeyMap({
   browseIt: "Ctrl-b",
   resetContents: "Ctrl-l",
 });
+
+await Editor.init();

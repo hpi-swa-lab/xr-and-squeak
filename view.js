@@ -8,6 +8,7 @@ import {
   clamp,
   rangeContains,
 } from "./utils.js";
+import { Extension } from "./extension.js";
 
 // A Shard is a self-contained editable element.
 //
@@ -74,7 +75,9 @@ export class Shard extends HTMLElement {
           let selected = this.editor.selected;
 
           // dispatch to extensions
-          this.editor.extensionsDo((e) => e.dispatchShortcut(action, selected));
+          this.editor.extensionsDo((e) =>
+            e.dispatchShortcut(action, selected, this.editor.source)
+          );
 
           // built-in actions
           switch (action) {
@@ -130,6 +133,10 @@ export class Shard extends HTMLElement {
         });
       });
     });
+
+    this.editor.extensionsDo((e) =>
+      e.process(["replacement", "always"], this.source)
+    );
   }
 
   disconnectedCallback() {
@@ -445,5 +452,41 @@ export class Text extends _EditableElement {
     if (name === "text") {
       this.textContent = newValue;
     }
+  }
+}
+
+// An ExtensionScope is added as a parent of an editor.
+// When extension functionality is required by the editor, it will
+// traverse up the DOM, calling each extension that is registered
+// in the visited scopes.
+export class ExtensionScope extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this.shadowRoot.innerHTML = `<slot></slot>`;
+    this._extensions = [];
+  }
+
+  static observedAttributes = ["extensions"];
+  async attributeChangedCallback(name, _oldValue, newValue) {
+    console.assert(name === "extensions");
+
+    this._extensions = await Promise.all(
+      (newValue ?? "")
+        .split(" ")
+        .filter((name) => name.length > 0)
+        .map((name) => Extension.get(name))
+    );
+    // send to all editors that are already open
+    this.editorsInit();
+  }
+
+  editorsInit() {
+    for (const editor of this.querySelectorAll("sb-editor"))
+      this.extensionsDo((e) => editor.extensionConnected(e));
+  }
+
+  extensionsDo(cb) {
+    for (const extension of this._extensions) cb(extension);
   }
 }

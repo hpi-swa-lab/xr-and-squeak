@@ -1,4 +1,3 @@
-import { ExtensionScope } from "./extension.js";
 import { SBParser, config } from "./model.js";
 import {
   ToggleableMutationObserver,
@@ -7,7 +6,7 @@ import {
   parentWithTag,
   parentsWithTagDo,
 } from "./utils.js";
-import {} from "./view.js";
+import { Block, ExtensionScope, Shard, Text } from "./view.js";
 
 class EditHistory {
   undoStack = [];
@@ -48,6 +47,16 @@ class EditHistory {
 // Consequently, the Editor manages any state that is global to
 // the model, such as its undo/redo history.
 export class Editor extends HTMLElement {
+  static async init() {
+    await SBParser.init();
+
+    customElements.define("sb-extension-scope", ExtensionScope);
+    customElements.define("sb-shard", Shard);
+    customElements.define("sb-block", Block);
+    customElements.define("sb-text", Text);
+    customElements.define("sb-editor", Editor);
+  }
+
   lastEditInView = null;
   extensionInstances = {};
 
