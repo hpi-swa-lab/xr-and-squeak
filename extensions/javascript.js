@@ -182,7 +182,11 @@ customElements.define(
 export const workspace = new Extension()
   .registerSave((e) => [
     (x) => x.type === "program",
-    (x) => eval(x.editor.sourceString),
+    (x) => {
+      try {
+        eval(x.editor.sourceString)
+      } catch (e) { console.log(e); }
+    },
   ])
   .registerReplacement((e) => [
     ...jsWatch,
