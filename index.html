@@ -6,19 +6,21 @@
   </head>
   <body>
     <h3>Squeak Demo</h3>
-    <squeak-browser></squeak-browser>
-    <squeak-browser></squeak-browser>
+    <!--<sb-extension-scope extensions="squeak:base">
+      <squeak-browser></squeak-browser>
+      <squeak-browser></squeak-browser>
+    </sb-extension-scope>-->
 
     <h3>Smalltalk Demo</h3>
     <div id="root">
-      <sb-extension-scope extensions="smalltalkBase base">
+      <sb-extension-scope extensions="smalltalk:base base:base">
         <sb-editor text="init" language="smalltalk"></sb-editor>
       </sb-extension-scope>
     </div>
 
     <h3>Javascript Demo</h3>
     <sb-extension-scope
-      extensions="javascriptBase javascriptOutline javascriptWorkspace base identifierSuggestions editorConfig javascriptMultilingual"
+      extensions="javascript:base javascript:outline javascript:workspace javascript:multilingual base:base base:identifierSuggestions editorConfig:base"
     >
       <sb-editor
         text='console.log(sbWatch("hello", 12398482))
@@ -59,7 +61,7 @@ Editor.registerKeyMap({
     </sb-extension-scope>
 
     <h3>Tla+ Demo</h3>
-    <sb-extension-scope extensions="tlaplusBase base">
+    <sb-extension-scope extensions="tlaplus:base base:base">
       <sb-editor
         text="---- MODULE Test ----
 op ==

@@ -1,20 +1,50 @@
-import { exec, rangeEqual } from "./utils.js";
+import { ToggleableMutationObserver, exec, rangeEqual } from "./utils.js";
 
 // An extension groups a set of functionality, such as syntax highlighting,
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
 // store their runtime data in separate ExtensionInstances, per editor.
 export class Extension {
   static extensionRegistry = new Map();
+  static packageLoaders = new Map();
 
-  static register(name, extension) {
-    extension.name = name;
-    this.extensionRegistry.set(name, extension);
+  static async get(name) {
+    let extension = this.extensionRegistry.get(name);
+    if (!extension) {
+      const [pkg, extName] = name.split(":");
+      if (!pkg || !extName) throw new Error(`Invalid extension name ${name}`);
+      if (
+        [...this.extensionRegistry.keys()].some(
+          (ext) => ext.split(":")[0] === pkg
+        )
+      )
+        throw new Error(
+          `Package ${pkg} does not include an extension named ${extName}`
+        );
+      const p = this._loadPackage(name);
+      this.packageLoaders.set(pkg, p);
+      await p;
+      extension = this.extensionRegistry.get(name);
+    }
+    if (!extension) {
+      throw new Error(`No extension registered for ${name}`);
+    }
+    return extension;
   }
 
-  static get(name) {
-    const extension = this.extensionRegistry.get(name);
-    if (!extension) throw new Error(`No extension registered for ${name}`);
-    return extension;
+  static async _loadPackage(name) {
+    const [pkg, _] = name.split(":");
+    if (this.packageLoaders.has(pkg)) return this.packageLoaders.get(pkg);
+
+    const extensions = await import(`./extensions/${pkg}.js`);
+    for (const [name, ext] of Object.entries(extensions)) {
+      ext.name = `${pkg}:${name}`;
+      this.extensionRegistry.set(ext.name, ext);
+    }
+
+    if (!this.extensionRegistry.has(name))
+      throw new Error(
+        `Package ${pkg} does not include an extension named ${extName}`
+      );
   }
 
   constructor() {
@@ -31,6 +61,34 @@ export class Extension {
   registerChangeFilter(filter) {
     this.changeFilters.push(filter);
     return this;
+  }
+
+  registerAlways(query) {
+    return this.registerQuery("always", query);
+  }
+
+  registerType(query) {
+    return this.registerQuery("type", query);
+  }
+
+  registerExtensionConnected(query) {
+    return this.registerQuery("extensionConnected", query);
+  }
+
+  registerDoubleClick(query) {
+    return this.registerQuery("doubleClick", query);
+  }
+
+  registerReplacement(query) {
+    return this.registerQuery("replacement", query);
+  }
+
+  registerSave(query) {
+    return this.registerQuery("save", query);
+  }
+
+  registerSelection(query) {
+    return this.registerQuery("selection", query);
   }
 
   registerShortcut(identifier, callback, filter = []) {
@@ -256,21 +314,29 @@ export class ExtensionScope extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `<slot></slot>`;
+    this._extensions = [];
   }
 
-  connectedCallback() {
-    this.extensions = [];
-    this.getAttribute("extensions")
-      ?.split(" ")
-      ?.filter((name) => name.length > 0)
-      ?.forEach((name) => {
-        this.extensions.push(Extension.get(name));
-      });
+  static observedAttributes = ["extensions"];
+  async attributeChangedCallback(name, _oldValue, newValue) {
+    console.assert(name === "extensions");
+
+    this._extensions = await Promise.all(
+      (newValue ?? "")
+        .split(" ")
+        .filter((name) => name.length > 0)
+        .map((name) => Extension.get(name))
+    );
+    // send to all editors that are already open
+    this.editorsInit();
+  }
+
+  editorsInit() {
+    for (const editor of this.querySelectorAll("sb-editor"))
+      this.extensionsDo((e) => editor.extensionConnected(e));
   }
 
   extensionsDo(cb) {
-    for (const extension of this.extensions) {
-      cb(extension);
-    }
+    for (const extension of this._extensions) cb(extension);
   }
 }

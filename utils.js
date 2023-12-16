@@ -154,6 +154,14 @@ export function parentWithTag(node, tag) {
   return node;
 }
 
+export function parentsWithTagDo(node, tag, cb) {
+  while (node) {
+    if (Array.isArray(tag) ? tag.includes(node.tagName) : node.tagName === tag)
+      cb(node);
+    node = node.parentNode;
+  }
+}
+
 export class SortedArray {
   constructor(compare) {
     this.array = [];

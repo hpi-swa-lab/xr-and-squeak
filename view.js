@@ -130,14 +130,6 @@ export class Shard extends HTMLElement {
         });
       });
     });
-
-    this.editor.extensionsDo((e) =>
-      e.process(["replacement", "always"], this.source)
-    );
-
-    if (!this.editor) {
-      debugger;
-    }
   }
 
   disconnectedCallback() {
@@ -214,7 +206,10 @@ export class Shard extends HTMLElement {
   // way to find them is the same.
   _extractSourceStringAndCursorRange() {
     const selection = getSelection(this.getRootNode());
-    const cursorElements = [selection.focusNode, selection.anchorNode];
+    const hasSelection = selection.anchorNode && selection.focusNode;
+    const cursorElements = hasSelection
+      ? [selection.focusNode, selection.anchorNode]
+      : [];
     const visibleRanges = [];
 
     let start = null;
@@ -234,11 +229,11 @@ export class Shard extends HTMLElement {
       if (start) range.setStartAfter(start);
       else range.setStart(this, 0);
 
-      if (nested === selection.focusNode) {
+      if (hasSelection && nested === selection.focusNode) {
         range.setEnd(selection.focusNode, selection.focusOffset);
         focusOffset = string.length + range.toString().length;
       }
-      if (nested === selection.anchorNode) {
+      if (hasSelection && nested === selection.anchorNode) {
         range.setEnd(selection.anchorNode, selection.anchorOffset);
         anchorOffset = string.length + range.toString().length;
       }

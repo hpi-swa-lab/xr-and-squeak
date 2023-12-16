@@ -5,6 +5,7 @@ import {
   findChange,
   getSelection,
   parentWithTag,
+  parentsWithTagDo,
 } from "./utils.js";
 import {} from "./view.js";
 
@@ -71,6 +72,10 @@ export class Editor extends HTMLElement {
     this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
     this.editHistory = new EditHistory();
     this.suggestions = document.createElement("sb-suggestions");
+
+    parentsWithTagDo(this, "SB-EXTENSION-SCOPE", (scope) =>
+      scope.extensionsDo((e) => this.extensionConnected(e))
+    );
   }
 
   replaceSelection(text) {
@@ -140,18 +145,23 @@ export class Editor extends HTMLElement {
       this.extensionsDo((e) => e.process(["type"], this.selected.node));
   }
 
+  extensionConnected(extension) {
+    if (this.extensionInstances[extension.name]) {
+      throw new Error("Extension already connected");
+    }
+
+    const instance = extension.instance();
+    this.extensionInstances[extension.name] = instance;
+    ToggleableMutationObserver.ignoreMutation(() => {
+      instance.process(
+        ["extensionConnected", "replacement", "always"],
+        this.source
+      );
+    });
+  }
+
   extensionsDo(cb) {
     ToggleableMutationObserver.ignoreMutation(() => {
-      let current = this.parentElement;
-      while (current) {
-        if (current instanceof ExtensionScope) {
-          current.extensionsDo((e) => {
-            if (!this.extensionInstances[e.name])
-              this.extensionInstances[e.name] = e.instance();
-          });
-        }
-        current = current.parentElement;
-      }
       for (const e of Object.values(this.extensionInstances)) cb(e);
     });
   }
@@ -206,6 +216,9 @@ export class Editor extends HTMLElement {
           language,
           this.root
         ).createShard()
+      );
+      this.extensionsDo((e) =>
+        e.process(["replacement", "always"], this.source)
       );
     }
   }
@@ -292,7 +305,7 @@ export class Editor extends HTMLElement {
   get textForShortcut() {
     const range = this.selectionRange;
     if (range.start === range.end) {
-      return this.selected?.node ?? "";
+      return this.selected?.node?.sourceString ?? "";
     } else {
       return this.selectedText;
     }

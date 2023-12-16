@@ -1,13 +1,6 @@
 import { SBParser } from "./model.js";
 import { Editor } from "./editor.js";
 import { Block, Text, Shard } from "./view.js";
-
-import {} from "./extensions/base.js";
-import {} from "./extensions/smalltalk.js";
-// import {} from "./extensions/squeak.js";
-import {} from "./extensions/tlaplus.js";
-import {} from "./extensions/javascript.js";
-import {} from "./extensions/editorConfig.js";
 import { ExtensionScope } from "./extension.js";
 
 await SBParser.init();

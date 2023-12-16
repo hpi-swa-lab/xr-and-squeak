@@ -74,12 +74,9 @@ customElements.define(
   }
 );
 
-Extension.register(
-  "editorConfig",
-  new Extension().registerQuery("replacement", (e) => [
-    (x) => x.type === "call_expression",
-    (x) => !!x.atField("function").editor,
-    (x) => x.atField("function").sourceString === "Editor.registerKeyMap",
-    (x) => e.ensureReplacement(x, "sb-editor-config"),
-  ])
-);
+export const base = new Extension().registerReplacement((e) => [
+  (x) => x.type === "call_expression",
+  (x) => !!x.atField("function").editor,
+  (x) => x.atField("function").sourceString === "Editor.registerKeyMap",
+  (x) => e.ensureReplacement(x, "sb-editor-config"),
+]);

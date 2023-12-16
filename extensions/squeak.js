@@ -10,6 +10,16 @@ import { ToggleableMutationObserver } from "../utils.js";
 import { div, editor, h } from "../widgets.js";
 import { config } from "../model.js";
 
+class ToolBuilder {
+  createElement(tag) {
+    return document.createElement(tag);
+  }
+
+  addChild(child, parent) {
+    parent.appendChild(child);
+  }
+}
+
 function List({ items, onSelect, selected }) {
   return h(
     "div",
@@ -273,7 +283,7 @@ function SqueakBrowserComponent({ initialClass }) {
       "div",
       { style: { border: "1px solid black" } },
       editor({
-        extensions: ["smalltalkBase", "squeak", "base"],
+        extensions: ["smalltalk:base", "squeak:base", "base:base"],
         sourceString,
         language: "smalltalk",
         onSave: async (source) => {
@@ -315,43 +325,41 @@ class SqueakBrowser extends HTMLElement {
   }
 }
 
-Extension.register(
-  "squeak",
-  new Extension()
-    .registerQuery("save", (e) => [
-      (x) => x.type === "method",
-      (x) =>
-        x.editor.dispatchEvent(
-          new CustomEvent("save", { detail: x.editor.sourceString })
-        ),
-    ])
-    .registerShortcut("printIt", async (x, view, e) => {
-      const widget = e.createWidget("sb-js-print-result");
-      widget.result = await sqEval(x.editor.textForShortcut);
-      ToggleableMutationObserver.ignoreMutation(() => {
-        view.after(widget);
-        widget.focus();
-      });
-    })
-    .registerShortcut("browseIt", async (x, view, e) => {
-      const widget = document.createElement("squeak-browser");
-      widget.initialClass = x.editor.textForShortcut;
-      const windowComponent = document.createElement("lively-window");
-      windowComponent.appendChild(widget)
-      document.body.appendChild(windowComponent);
-      windowComponent.focus()
-      // widget.scrollIntoView({
-      //   behavior: "smooth",
-      //   block: "center",
-      //   inline: "center",
-      // });
-    })
-    .registerShortcut("resetContents", async (x, view, e) => {
-      const editor = x.editor;
-      editor.setAttribute("text", x.editor.getAttribute("text"));
-      editor.shard.focus();
-    })
-);
+export const base = new Extension()
+  .registerSave((e) => [
+    (x) => x.type === "method",
+    (x) =>
+      x.editor.dispatchEvent(
+        new CustomEvent("save", { detail: x.editor.sourceString })
+      ),
+  ])
+  .registerShortcut("printIt", async (x, view, e) => {
+    const widget = e.createWidget("sb-js-print-result");
+    console.log(x.editor.textForShortcut);
+    widget.result = await sqEval(x.editor.textForShortcut);
+    ToggleableMutationObserver.ignoreMutation(() => {
+      view.after(widget);
+      widget.focus();
+    });
+  })
+  .registerShortcut("browseIt", async (x, view, e) => {
+    const widget = document.createElement("squeak-browser");
+    widget.initialClass = x.editor.textForShortcut;
+    const windowComponent = document.createElement("lively-window");
+    windowComponent.appendChild(widget);
+    document.body.appendChild(windowComponent);
+    windowComponent.focus();
+    // widget.scrollIntoView({
+    //   behavior: "smooth",
+    //   block: "center",
+    //   inline: "center",
+    // });
+  })
+  .registerShortcut("resetContents", async (x, view, e) => {
+    const editor = x.editor;
+    editor.setAttribute("text", x.editor.getAttribute("text"));
+    editor.shard.focus();
+  });
 
 let init = false;
 if (!init) {
