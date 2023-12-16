@@ -353,10 +353,10 @@ export class SBParser {
     return newRoot;
   }
 
-  static initModelAndView(text, languageName) {
+  static async initModelAndView(text, languageName) {
     return this.updateModelAndView(
       text,
-      this.loadedLanguages.get(languageName)
+      await this._loadLanguage(languageName)
     );
   }
 
@@ -365,17 +365,17 @@ export class SBParser {
     delete root._tree;
   }
 
-  static async init() {
-    await TreeSitter.init();
+  static async _loadLanguage(languageName) {
+    if (!this._init) await TreeSitter.init();
     this._init = true;
-    for (const languageName of ["smalltalk", "javascript", "tlaplus"]) {
-      this.loadedLanguages.set(
-        languageName,
-        await TreeSitter.Language.load(
-          config.baseURL + `external/tree-sitter-${languageName}.wasm`
-        )
-      );
+    if (this.loadedLanguages.has(languageName)) {
+      return await this.loadedLanguages.get(languageName);
     }
+    const languagePromise = TreeSitter.Language.load(
+      config.baseURL + `external/tree-sitter-${languageName}.wasm`
+    );
+    this.loadedLanguages.set(languageName, languagePromise);
+    return await languagePromise;
   }
 
   static async parseText(text, languageName) {

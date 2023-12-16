@@ -6,24 +6,22 @@
   </head>
   <body>
     <h3>Squeak Demo</h3>
-    <!--<sb-extension-scope extensions="squeak:base">
-      <squeak-browser></squeak-browser>
-      <squeak-browser></squeak-browser>
-    </sb-extension-scope>-->
+    <!--<squeak-browser></squeak-browser>
+    <squeak-browser></squeak-browser>-->
 
     <h3>Smalltalk Demo</h3>
     <div id="root">
-      <sb-extension-scope extensions="smalltalk:base base:base">
-        <sb-editor text="init" language="smalltalk"></sb-editor>
-      </sb-extension-scope>
+      <sb-editor
+        text="init"
+        language="smalltalk"
+        extensions="smalltalk:base base:base"
+      ></sb-editor>
     </div>
 
     <h3>Javascript Demo</h3>
-    <sb-extension-scope
+    <sb-editor
       extensions="javascript:base javascript:outline javascript:workspace javascript:multilingual base:base base:identifierSuggestions editorConfig:base"
-    >
-      <sb-editor
-        text='console.log(sbWatch("hello", 12398482))
+      text='console.log(sbWatch("hello", 12398482))
 
 function a() {
   sqCompile("Behavior", "initialize ^ self new")
@@ -56,23 +54,21 @@ Editor.registerKeyMap({
   printIt: "Ctrl-p",
 });
 '
-        language="javascript"
-      ></sb-editor>
-    </sb-extension-scope>
+      language="javascript"
+    ></sb-editor>
 
     <h3>Tla+ Demo</h3>
-    <sb-extension-scope extensions="tlaplus:base base:base">
-      <sb-editor
-        text="---- MODULE Test ----
+    <sb-editor
+      text="---- MODULE Test ----
 op ==
     CASE 1 -> 2
     [] 3 -> 4
     [] OTHER -> 5
 ====
 "
-        language="tlaplus"
-      ></sb-editor>
-    </sb-extension-scope>
+      language="tlaplus"
+      extensions="tlaplus:base base:base"
+    ></sb-editor>
 
     <script src="external/tree-sitter.js"></script>
     <script src="external/md5.min.js"></script>

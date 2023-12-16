@@ -16,25 +16,24 @@
   await System.import(baseDir + "/main.js");
 
   var ui = await (
-    <sb-extension-scope extensions="smalltalk:base base:base">
-      <sb-editor text={`initialize
+      <sb-editor
+        extensions="smalltalk:base base:base"
+        text={`initialize
 
-  true ifTrue: [2 + 2]`} language="smalltalk"></sb-editor>
-    </sb-extension-scope>)
+  true ifTrue: [2 + 2]`}
+        language="smalltalk"></sb-editor>)
   ui 
 </script>
 
 ## JavaScript
 
 <script>
-  var ui = await (
-    <sb-extension-scope extensions="javascript:base javascript:outline javascript:workspace base:base base:identifierSuggestions editorConfig:base">
-      <sb-editor text={`console.log(sbWatch(hello, 12398482))
+  var ui = await (<sb-editor
+    extensions="javascript:base javascript:outline javascript:workspace base:base base:identifierSuggestions editorConfig:base"
+    text={`console.log(sbWatch(hello, 12398482))
 
 function a() {
-}`} language="javascript"></sb-editor>
-    </sb-extension-scope>)
+}`}
+    language="javascript"></sb-editor>)
   ui 
 </script>
-
-

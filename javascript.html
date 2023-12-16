@@ -6,18 +6,15 @@
   </head>
   <body>
     <h3>Simple Jvascript</h3>
-    <sb-extension-scope
+    <sb-editor
       extensions="javascript:base javascript:outline javascript:workspace base:base base:identifierSuggestions editorConfig:base"
-    >
-      <sb-editor
-        text='console.log(sbWatch("hello", 12398482))
+      text='console.log(sbWatch("hello", 12398482))
 
 function a() {
 }
 '
-        language="javascript"
-      ></sb-editor>
-    </sb-extension-scope>
+      language="javascript"
+    ></sb-editor>
 
     <script src="external/tree-sitter.js"></script>
     <script src="external/md5.min.js"></script>

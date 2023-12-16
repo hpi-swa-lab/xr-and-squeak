@@ -12,15 +12,12 @@ export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) =>
   h(Extension.SHARD_TAG, { initNode: [node], key: node });
 export const editor = ({ extensions, sourceString, onSave, language }) =>
-  h(
-    "sb-extension-scope",
-    { extensions: extensions.join(" ") },
-    h("sb-editor", {
-      text: sourceString ?? "",
-      language,
-      onsave: (e) => onSave(e.detail),
-    })
-  );
+  h("sb-editor", {
+    extensions: extensions.join(" "),
+    text: sourceString ?? "",
+    language,
+    onsave: (e) => onSave(e.detail),
+  });
 
 export class Widget extends HTMLElement {
   disconnectedCallback() {

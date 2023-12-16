@@ -77,6 +77,10 @@ export class Extension {
     return this.registerQuery("extensionConnected", query);
   }
 
+  registerExtensionDisconnected(query) {
+    return this.registerQuery("extensionDisconnected", query);
+  }
+
   registerDoubleClick(query) {
     return this.registerQuery("doubleClick", query);
   }
@@ -112,6 +116,7 @@ class ExtensionInstance {
   attachedDataPerTrigger = new Map();
   queuedUpdates = [];
   widgets = [];
+  cleanup = [];
 
   constructor(extension) {
     this.extension = extension;
@@ -126,11 +131,15 @@ class ExtensionInstance {
 
   createWidget(tag) {
     const widget = document.createElement(tag);
-    widget.addEventListener("disconnect", (e) =>
-      this.widgets.splice(this.widgets.indexOf(widget), 1)
-    );
+    widget.addEventListener("disconnect", (e) => {
+      this.widgets.splice(this.widgets.indexOf(widget), 1);
+    });
     this.widgets.push(widget);
     return widget;
+  }
+
+  destroy() {
+    this.widgets.forEach((w) => w.remove());
   }
 
   ensureReplacement(node, tag) {

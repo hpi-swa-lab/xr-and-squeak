@@ -1,3 +1,4 @@
+import { Extension } from "./extension.js";
 import { SBParser, config } from "./model.js";
 import {
   ToggleableMutationObserver,
@@ -6,7 +7,7 @@ import {
   parentWithTag,
   parentsWithTagDo,
 } from "./utils.js";
-import { Block, ExtensionScope, Shard, Text } from "./view.js";
+import { Block, Shard, Text } from "./view.js";
 
 class EditHistory {
   undoStack = [];
@@ -48,9 +49,6 @@ class EditHistory {
 // the model, such as its undo/redo history.
 export class Editor extends HTMLElement {
   static async init() {
-    await SBParser.init();
-
-    customElements.define("sb-extension-scope", ExtensionScope);
     customElements.define("sb-shard", Shard);
     customElements.define("sb-block", Block);
     customElements.define("sb-text", Text);
@@ -58,7 +56,7 @@ export class Editor extends HTMLElement {
   }
 
   lastEditInView = null;
-  extensionInstances = {};
+  extensionInstances = [];
 
   _sourceString = null;
   get sourceString() {
@@ -81,10 +79,6 @@ export class Editor extends HTMLElement {
     this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
     this.editHistory = new EditHistory();
     this.suggestions = document.createElement("sb-suggestions");
-
-    parentsWithTagDo(this, "SB-EXTENSION-SCOPE", (scope) =>
-      scope.extensionsDo((e) => this.extensionConnected(e))
-    );
   }
 
   replaceSelection(text) {
@@ -154,24 +148,9 @@ export class Editor extends HTMLElement {
       this.extensionsDo((e) => e.process(["type"], this.selected.node));
   }
 
-  extensionConnected(extension) {
-    if (this.extensionInstances[extension.name]) {
-      throw new Error("Extension already connected");
-    }
-
-    const instance = extension.instance();
-    this.extensionInstances[extension.name] = instance;
-    ToggleableMutationObserver.ignoreMutation(() => {
-      instance.process(
-        ["extensionConnected", "replacement", "always"],
-        this.source
-      );
-    });
-  }
-
   extensionsDo(cb) {
     ToggleableMutationObserver.ignoreMutation(() => {
-      for (const e of Object.values(this.extensionInstances)) cb(e);
+      for (const e of this.extensionInstances) cb(e);
     });
   }
 
@@ -204,32 +183,59 @@ export class Editor extends HTMLElement {
   }
 
   static observedAttributes = ["text", "language"];
-  attributeChangedCallback() {
+  initializing = false;
+  lastText = null;
+  lastLanguage = null;
+  lastExtensions = null;
+
+  attributeChangedCallback(name) {
     const text = this.getAttribute("text");
     const language = this.getAttribute("language");
-    // make sure both are set
+    const extensions = this.getAttribute("extensions");
+
+    // make sure all are set
     if (
       text !== undefined &&
       text !== null &&
       language !== undefined &&
-      language !== null
+      language !== null &&
+      extensions !== undefined &&
+      extensions !== null &&
+      (text !== this.lastText ||
+        language !== this.lastLanguage ||
+        extensions !== this.lastExtensions)
     ) {
-      this.sourceString = text;
-      if (this.shard) {
-        SBParser.destroyModel(this.shard.source);
-        this.shadowRoot.removeChild(this.shard);
-      }
-      this.shadowRoot.appendChild(
-        SBParser.initModelAndView(
-          this.sourceString,
-          language,
-          this.root
-        ).createShard()
-      );
-      this.extensionsDo((e) =>
-        e.process(["replacement", "always"], this.source)
-      );
+      this.lastText = text;
+      this.lastLanguage = language;
+      this.lastExtensions = extensions;
+      this.initEditor(text, language, extensions.split(" ").filter(Boolean));
     }
+  }
+
+  async initEditor(text, language, extensionNames) {
+    if (this.initializing) throw new Error("overlapping initialize");
+    this.initializing = true;
+
+    this.sourceString = text;
+    if (this.shard) {
+      SBParser.destroyModel(this.shard.source);
+      this.shadowRoot.removeChild(this.shard);
+    }
+    this.extensionsDo((e) => e.process(["extensionDisonnected"], this.source));
+    this.extensionInstances.forEach((e) => e.destroy());
+
+    const [root, ...extensions] = await Promise.all([
+      SBParser.initModelAndView(text, language, this.root),
+      ...extensionNames.map((e) => Extension.get(e)),
+    ]);
+
+    this.shadowRoot.appendChild(root.createShard());
+
+    this.extensionInstances = extensions.map((e) => e.instance());
+    this.extensionsDo((e) =>
+      e.process(["extensionConnected", "replacement", "always"], this.source)
+    );
+    this.initializing = false;
   }
 
   onSelectionChange() {
