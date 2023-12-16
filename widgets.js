@@ -1,3 +1,4 @@
+import { Extension } from "./extension.js";
 import { h, render } from "./external/preact.mjs";
 import { nextHash, parentWithTag } from "./utils.js";
 
@@ -8,7 +9,8 @@ export const div = (...children) => h("div", {}, ...children);
 export const table = (...children) => h("table", {}, ...children);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
-export const shard = (node) => h("sb-shard", { initNode: [node], key: node });
+export const shard = (node) =>
+  h(Extension.SHARD_TAG, { initNode: [node], key: node });
 export const editor = ({ extensions, sourceString, onSave, language }) =>
   h(
     "sb-extension-scope",

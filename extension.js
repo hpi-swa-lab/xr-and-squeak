@@ -4,6 +4,8 @@ import { exec, rangeEqual } from "./utils.js";
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
 // store their runtime data in separate ExtensionInstances, per editor.
 export class Extension {
+  static SHARD_TAG = "sb-shard";
+
   static extensionRegistry = new Map();
   static packageLoaders = new Map();
 
