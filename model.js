@@ -31,12 +31,181 @@ class Language {
       config.baseURL + `external/tree-sitter-${this.languageName}.wasm`
     );
 
-    this.grammar = await (
+    this.grammar = this._prepareGrammar(await this._loadGrammar());
+  }
+
+  async _loadGrammar() {
+    const saved = localStorage.getItem(this.languageName + "-grammar");
+    if (saved) {
+      const info = JSON.parse(saved);
+      if (
+        info.repo === this.repo &&
+        info.branch === this.branch &&
+        info.path === this.path
+      ) {
+        return info.grammar;
+      }
+    }
+
+    const grammar = await (
       await fetch(
         `https://raw.githubusercontent.com/${this.repo}/${this.branch}${this.path}src/grammar.json`
       )
     ).json();
+    localStorage.setItem(
+      this.languageName + "-grammar",
+      JSON.stringify({
+        repo: this.repo,
+        branch: this.branch,
+        path: this.path,
+        grammar,
+      })
+    );
+    return grammar;
   }
+
+  _prepareGrammar(grammar) {
+    for (const [name, rule] of Object.entries(grammar.rules)) {
+      grammar.rules[name] = new GrammarNode(rule, null, name);
+    }
+
+    for (const external of grammar.externals) {
+      grammar.rules[external.name] = new GrammarNode(
+        { type: "BLANK" },
+        null,
+        external.name
+      );
+    }
+
+    return grammar;
+  }
+}
+
+class GrammarNode extends Object {
+  static buildRegex(node) {
+    switch (node.type) {
+      case "PREC":
+      case "PREC_DYNAMIC":
+      case "PREC_LEFT":
+      case "PREC_RIGHT":
+      case "FIELD":
+        return this.buildRegex(node.content);
+      case "SEQ":
+        return node.children.map((c) => this.buildRegex(c)).join("");
+      case "CHOICE":
+        return `(${node.children.map((c) => this.buildRegex(c)).join("|")})`;
+      case "TOKEN":
+      case "IMMEDIATE_TOKEN":
+        return this.buildRegex(node.content);
+      case "REPEAT":
+        return `(${this.buildRegex(node.content)})*`;
+      case "REPEAT1":
+        return `(${this.buildRegex(node.content)})+`;
+      case "PATTERN":
+        return `(${node.value})`;
+      case "BLANK":
+        return "";
+      case "STRING":
+        return node.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      default:
+        throw new Error("unknown node type " + node.type);
+    }
+  }
+  constructor(rule, parent, name = undefined) {
+    super();
+    this.parent = parent;
+    if (name) this.name = name;
+    if (rule.members)
+      this.members = rule.members.map((r) => new GrammarNode(r, this));
+    if (rule.content) this.content = new GrammarNode(rule.content, this);
+    for (const key of Object.keys(rule)) {
+      if (key === "members" || key === "content") continue;
+      this[key] = rule[key];
+    }
+    if (this.type === "TOKEN" || this.type === "IMMEDIATE_TOKEN") {
+      this.regex = new RegExp(this.constructor.buildRegex(this.content));
+    }
+    if (this.type === "PATTERN") {
+      this.regex = new RegExp(this.value);
+    }
+    this.detectSeparator();
+  }
+
+  get children() {
+    return this.members ?? (this.content ? [this.content] : []);
+  }
+
+  get root() {
+    while (this.parent) return this.parent.root;
+    return this;
+  }
+
+  get structure() {
+    return [this.type, ...this.children.map((c) => c.structure)];
+  }
+
+  get separatorContext() {
+    if (this.repeatSeparator) return this;
+    while (this.parent) return this.parent.separatorContext;
+    return null;
+  }
+
+  matchesStructure(structure) {
+    return matchesStructure(this.structure, structure);
+  }
+
+  detectSeparator() {
+    if (
+      this.matchesStructure([
+        "CHOICE",
+        [
+          "SEQ",
+          ["SEQ", ["SYMBOL"], ["REPEAT", ["SEQ", ["STRING"], ["SYMBOL"]]]],
+          ["CHOICE", ["STRING"], ["BLANK"]],
+        ],
+        ["BLANK"],
+      ])
+    ) {
+      const sep1 = this.children[0].children[1].children[0].value;
+      const sep2 =
+        this.children[0].children[0].children[1].children[0].children[0].value;
+      const sym1 = this.children[0].children[0].children[0].name;
+      const sym2 =
+        this.children[0].children[0].children[1].children[0].children[1].name;
+      if (sep1 === sep2 && sym1 === sym2) {
+        this.repeatSeparator = sep1;
+        this.repeatSymbol = sym1;
+        return;
+      }
+    }
+
+    if (
+      this.matchesStructure([
+        "SEQ",
+        ["SYMBOL"],
+        ["REPEAT", ["SEQ", ["STRING"], ["SYMBOL"]]],
+      ])
+    ) {
+      const sep = this.children[1].children[0].children[0].value;
+      const sym1 = this.children[0].name;
+      const sym2 = this.children[1].children[0].children[1].name;
+      if (sym1 === sym2) {
+        this.repeatSeparator = sep;
+        this.repeatSymbol = sym1;
+        return;
+      }
+    }
+  }
+}
+
+function matchesStructure(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (Array.isArray(a[i]) && Array.isArray(b[i])) {
+      if (!matchesStructure(a[i], b[i])) return false;
+    } else if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 export let config = {
@@ -150,6 +319,10 @@ class SBNode {
     return null;
   }
 
+  get childNodes() {
+    return this.children.filter((child) => !child.isWhitespace());
+  }
+
   childBlock(index) {
     for (let i = 0; i < this.children.length; i++) {
       if (!!this.children[i].named) {
@@ -210,7 +383,51 @@ class SBNode {
   // on this node. the concept and wording originates from cursorless'
   // `removalRange`.
   get removalNodes() {
-    return [this];
+    if (!this.parent) return [this];
+
+    const rule = this.language.grammar.rules[this.parent.type];
+    const pending = this.parent.childNodes;
+    if (
+      this.isText ||
+      this.type === "ERROR" ||
+      this.parent.type === "ERROR" ||
+      pending.some((node) => node.type === "ERROR")
+    ) {
+      return [this];
+    }
+    let ret = [this];
+    matchRule(
+      rule,
+      pending,
+      this.language,
+      (node, rule) => {
+        if (this === node) {
+          const separator = rule.separatorContext;
+          if (
+            separator &&
+            this.nextSiblingNode.text === separator.repeatSeparator
+          ) {
+            ret.push(this.nextSiblingNode);
+            if (this.nextSiblingNode.nextSiblingChild.isWhitespace()) {
+              ret.push(this.nextSiblingNode.nextSiblingChild);
+            }
+          } else if (
+            separator &&
+            this.previousSiblingNode.text === separator.repeatSeparator
+          ) {
+            ret.push(this.previousSiblingNode);
+            if (this.previousSiblingNode.previousSiblingChild.isWhitespace()) {
+              ret.push(this.previousSiblingNode.previousSiblingChild);
+            }
+            if (this.previousSiblingChild.isWhitespace()) {
+              ret.push(this.previousSiblingChild);
+            }
+          }
+        }
+      },
+      new Set()
+    );
+    return ret;
   }
 
   isWhitespace() {
@@ -287,6 +504,109 @@ class SBNode {
 
   select(adjacentView) {
     adjacentView.editor.findNode(this).select();
+  }
+}
+
+class NoMatch {}
+
+function compatibleType(node, grammarType, language) {
+  if (node?.type === grammarType) return true;
+  const rule = language.grammar.rules[grammarType];
+  console.assert(rule);
+  return matchesType(rule, node, language);
+}
+
+function matchesType(rule, node, language) {
+  switch (rule.type) {
+    case "SYMBOL":
+      return (
+        rule.name === node?.type ||
+        matchesType(language.grammar.rules[rule.name], node, language)
+      );
+    case "CHOICE":
+      return rule.members.some((member) => matchesType(member, node, language));
+    case "PREC_DYNAMIC":
+    case "PREC_LEFT":
+    case "PREC_RIGHT":
+    case "PREC":
+    case "FIELD":
+      return matchesType(rule.content, node, language);
+    case "ALIAS":
+      return (
+        rule.value === node?.type || matchesType(rule.content, node, language)
+      );
+    case "BLANK":
+      return !node;
+    default:
+      return false;
+  }
+}
+
+function matchRule(rule, pending, language, cb) {
+  switch (rule.type) {
+    case "SEQ":
+      for (const member of rule.members) {
+        matchRule(member, pending, language, cb);
+      }
+      break;
+    case "STRING":
+      if (rule.value === (pending[0]?.text ?? "")) {
+        cb(pending.shift(), rule);
+      } else {
+        throw new NoMatch();
+      }
+      break;
+    case "SYMBOL":
+      if (compatibleType(pending[0], rule.name, language)) {
+        cb(pending.shift(), rule);
+      } else {
+        throw new NoMatch();
+      }
+      break;
+    case "ALIAS":
+      if (pending[0].type === rule.value) {
+        cb(pending.shift(), rule);
+      } else {
+        throw new NoMatch();
+      }
+      break;
+    case "CHOICE":
+      for (const member of rule.members) {
+        try {
+          matchRule(member, pending, language, cb);
+        } catch (e) {
+          if (!(e instanceof NoMatch)) throw e;
+        }
+      }
+      break;
+    case "REPEAT":
+      for (let i = 0; ; i++) {
+        try {
+          matchRule(rule.content, pending, language, cb);
+        } catch (e) {
+          if (!(e instanceof NoMatch)) throw e;
+          break;
+        }
+      }
+      break;
+    case "TOKEN":
+    case "IMMEDIATE_TOKEN":
+      if (rule.regex.test(pending[0].text ?? "")) {
+        cb(pending.shift(), rule);
+      } else {
+        throw new NoMatch();
+      }
+      break;
+    case "PREC_DYNAMIC":
+    case "PREC_LEFT":
+    case "PREC_RIGHT":
+    case "PREC":
+    case "FIELD":
+      return matchRule(rule.content, pending, language, cb);
+    case "BLANK":
+      break;
+    default:
+      debugger;
   }
 }
 
