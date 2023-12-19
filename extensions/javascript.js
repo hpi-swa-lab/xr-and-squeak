@@ -133,11 +133,6 @@ function randomId() {
   return Math.floor(Math.random() * 1e9);
 }
 
-const jsWatch = [
-  (x) => x.type === "call_expression",
-  (x) => x.atField("function").text === "sbWatch",
-];
-
 customElements.define(
   "sb-js-language-box",
   class extends Replacement {
@@ -179,13 +174,22 @@ customElements.define(
   }
 );
 
+const jsWatch = [
+  (x) => x.type === "call_expression",
+  (x) => x.atField("function").text === "sbWatch",
+  (x) => x.atField("arguments").childBlocks.length === 2,
+  (x) => x.atField("arguments")?.childBlock(0)?.type === "number",
+];
+
 export const workspace = new Extension()
   .registerSave((e) => [
     (x) => x.type === "program",
     (x) => {
       try {
-        eval(x.editor.sourceString)
-      } catch (e) { console.log(e); }
+        eval(x.editor.sourceString);
+      } catch (e) {
+        console.log(e);
+      }
     },
   ])
   .registerReplacement((e) => [

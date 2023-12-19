@@ -1,5 +1,6 @@
 import { Extension } from "../extension.js";
-import { Replacement } from "../widgets.js";
+import { exec, mapSeparated } from "../utils.js";
+import { Replacement, shard } from "../widgets.js";
 
 customElements.define(
   "sb-watch",
@@ -126,3 +127,64 @@ export const base = new Extension()
     (x) => x.type === "identifier" && x.parent.type === "temporaries",
     (x) => e.applySyntaxHighlighting(x, "punctuation"),
   ]);
+
+customElements.define(
+  "sb-smalltalk-destructuring-assignment",
+  class extends Replacement {
+    update(source) {
+      const assignments = destructuredAssignments(source);
+      this.render([
+        "{ ",
+        mapSeparated(
+          assignments,
+          (a) => shard(a.childBlock(0).childBlock(0)),
+          () => ". "
+        ),
+        " }",
+        " := ",
+        shard(source.childBlock(1)),
+      ]);
+    }
+  }
+);
+
+function destructuredAssignments(x) {
+  const statement = x.parent;
+  const name = x.childBlock(0).text;
+  const assignments = [];
+  const selectors = ["first", "second", "third", "fourth", "fifth"];
+  let current = statement;
+  do {
+    current = current.nextSiblingBlock;
+  } while (
+    exec(
+      current,
+      (x) => x.childBlock(0),
+      (x) => x.type === "assignment",
+      (x) => x.childBlock(1),
+      (x) => x.type === "unary_message",
+      (x) => x.atField("receiver").text === name,
+      (x) => x.childBlock(1).text === selectors[assignments.length],
+      (x) => (assignments.push(x.parent.parent), true)
+    )
+  );
+  return assignments;
+}
+
+export const destructuringAssignment = new Extension().registerReplacement(
+  (e) => [
+    (x) => x.type === "assignment" && x.parent.type === "statement",
+    (x) => {
+      const assignments = destructuredAssignments(x);
+      return assignments.length > 0 ? [x, assignments] : null;
+    },
+    ([x, assignments]) => {
+      e.ensureReplacement(x, "sb-smalltalk-destructuring-assignment");
+      for (const a of assignments) {
+        e.ensureHidden(a.previousSiblingChild);
+        e.ensureHidden(a);
+        e.ensureHidden(a.nextSiblingNode);
+      }
+    },
+  ]
+);

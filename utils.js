@@ -200,12 +200,21 @@ export function allViewsDo(parent, cb) {
   }
 }
 
+export function mapSeparated(list, item, separator) {
+  const result = [];
+  for (let i = 0; i < list.length; i++) {
+    result.push(item(list[i]));
+    if (i < list.length - 1) result.push(separator());
+  }
+  return result;
+}
+
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
 export function exec(arg, ...script) {
-  if (!arg) throw new Error("No argument provided");
+  if (!arg) return null;
 
   let current = arg;
   for (const predicate of script) {

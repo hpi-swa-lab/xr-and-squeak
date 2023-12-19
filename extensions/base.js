@@ -24,7 +24,17 @@ export const base = new Extension()
     if (false && change.op === "insert" && change.string === "(")
       return insert(text, change.index + 1, ")");
     return text;
-  });
+  })
+
+  .registerSelection((e) => [
+    (x) =>
+      e.attachData(
+        x,
+        "removalHighlight",
+        (v) => v.classList.add("removal-range"),
+        (v) => v.classList.remove("removal-range")
+      ),
+  ]);
 
 function sequenceMatch(query, word) {
   if (query.length < 2) return false;

@@ -354,18 +354,45 @@ export const base = new Extension()
       x.parent.type === "theorem" &&
       x.parent?.field === "name",
     (x) => e.applySyntaxHighlighting(x, "constant"),
+  ])
+  // ; Comments and tags
+  // (block_comment "(*" @comment)
+  .registerAlways((e) => [
+    (x) => x.parent?.type === "block_comment" && x.text === "(*",
+    (x) => e.applySyntaxHighlighting(x, "comment"),
+  ])
+  // (block_comment "*)" @comment)
+  .registerAlways((e) => [
+    (x) => x.parent?.type === "block_comment" && x.text === "*)",
+    (x) => e.applySyntaxHighlighting(x, "comment"),
+  ])
+  // (block_comment_text) @comment
+  .registerAlways((e) => [
+    (x) => x.type === "block_comment_text",
+    (x) => e.applySyntaxHighlighting(x, "comment"),
+  ])
+  // (comment) @comment
+  .registerAlways((e) => [
+    (x) => x.type === "comment",
+    (x) => e.applySyntaxHighlighting(x, "comment"),
+  ])
+  // (single_line) @comment
+  .registerAlways((e) => [
+    (x) => x.type === "single_line",
+    (x) => e.applySyntaxHighlighting(x, "comment"),
+  ])
+  // (_ label: (identifier) @tag)
+  .registerAlways((e) => [
+    (x) => x.type === "identifier" && x.field === "label",
+    (x) => e.applySyntaxHighlighting(x, "tag"),
+  ])
+  // (label name: (_) @tag)
+  .registerAlways((e) => [
+    (x) => x.field === "name" && x.parent.type === "label",
+    (x) => e.applySyntaxHighlighting(x, "tag"),
   ]);
 
 // TODO
-// ; Comments and tags
-// (block_comment "(*" @comment)
-// (block_comment "*)" @comment)
-// (block_comment_text) @comment
-// (comment) @comment
-// (single_line) @comment
-// (_ label: (identifier) @tag)
-// (label name: (_) @tag)
-//
 // ; Put these last so they are overridden by everything else
 // (bound_infix_op symbol: (_) @function.builtin)
 // (bound_nonfix_op symbol: (_) @function.builtin)

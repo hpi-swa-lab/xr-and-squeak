@@ -78,6 +78,12 @@ export class Replacement extends Widget {
     // subclasses may perform initialization here, such as creating shards
   }
 
+  destroy() {
+    // TODO reuse shards instead of re-creating the entire subtree by
+    // passing a map of node=>view to toHTML
+    this.replaceWith(this.source.toHTML());
+  }
+
   createShard(locator) {
     const shard = document.createElement("sb-shard");
     this.shards.push([locator, shard]);
@@ -91,3 +97,5 @@ export class Replacement extends Widget {
     );
   }
 }
+
+customElements.define("sb-hidden", class extends Replacement {});

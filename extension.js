@@ -116,7 +116,6 @@ class ExtensionInstance {
   attachedDataPerTrigger = new Map();
   queuedUpdates = [];
   widgets = [];
-  cleanup = [];
 
   constructor(extension) {
     this.extension = extension;
@@ -142,11 +141,17 @@ class ExtensionInstance {
     this.widgets.forEach((w) => w.remove());
   }
 
+  ensureHidden(node) {
+    this.ensureReplacement(node, "sb-hidden");
+  }
+
   ensureReplacement(node, tag) {
     console.assert(this.processingTrigger === "replacement");
     node.viewsDo((view) => {
       if (view.tagName.toLowerCase() === tag) {
+        view.source = node;
         view.update(node);
+        this.newReplacements.add(view);
       } else {
         // FIXME not intended, should work without
         if (!view.shard) return;
@@ -158,6 +163,7 @@ class ExtensionInstance {
         view.replaceWith(replacement);
         node.allNodesDo((node) => node.views.remove(view));
         node.views.push(replacement);
+        this.newReplacements.add(replacement);
       }
     });
   }
@@ -169,6 +175,18 @@ class ExtensionInstance {
       if (!this.currentAttachedData.has(hash)) {
         for (const c of cls) view.classList.add(c);
         this.newAttachedData.set(hash, () => view.classList.remove(cls));
+      } else {
+        this.newAttachedData.set(hash, this.currentAttachedData.get(hash));
+      }
+    });
+  }
+
+  attachData(node, identifier, add, remove) {
+    node.viewsDo((view) => {
+      const hash = `${view.hash}:${identifier}`;
+      if (!this.currentAttachedData.has(hash)) {
+        add(view);
+        this.newAttachedData.set(hash, () => remove(view));
       } else {
         this.newAttachedData.set(hash, this.currentAttachedData.get(hash));
       }
@@ -217,8 +235,12 @@ class ExtensionInstance {
       return;
     }
 
+    this.currentReplacements ??= new Set();
+    this.newReplacements = new Set();
+
     this.processingTrigger = trigger;
     this.processingNode = node;
+
     this.currentAttachedData =
       this.attachedDataPerTrigger.get(trigger) ?? new Map();
     this.newAttachedData = new Map();
@@ -255,6 +277,16 @@ class ExtensionInstance {
           this.currentAttachedData.get(key)();
         }
       }
+    }
+
+    // diff replacements
+    if (trigger === "replacement") {
+      for (const view of this.currentReplacements) {
+        if (!this.newReplacements.has(view)) {
+          view.destroy();
+        }
+      }
+      this.currentReplacements = this.newReplacements;
     }
 
     for (const widget of this.widgets) {

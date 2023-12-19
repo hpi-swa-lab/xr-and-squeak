@@ -104,6 +104,20 @@ class SBNode {
     return null;
   }
 
+  get childBlocks() {
+    return this.children.filter((child) => !!child.named);
+  }
+
+  get nextSiblingBlock() {
+    if (this.isRoot) return null;
+    let pickNext = false;
+    for (const sibling of this.parent.children) {
+      if (pickNext && sibling.named) return sibling;
+      if (sibling === this) pickNext = true;
+    }
+    return null;
+  }
+
   get nextSiblingNode() {
     if (this.isRoot) return null;
     let pickNext = false;
@@ -122,6 +136,14 @@ class SBNode {
       if (!sibling.isWhitespace()) last = sibling;
     }
     return null;
+  }
+
+  get previousSiblingChild() {
+    return this.parent.children[this.parent.children.indexOf(this) - 1];
+  }
+
+  get nextSiblingChild() {
+    return this.parent.children[this.parent.children.indexOf(this) + 1];
   }
 
   get childBlocks() {

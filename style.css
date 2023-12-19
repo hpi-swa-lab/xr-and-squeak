@@ -23,6 +23,10 @@ sb-shard {
   color: rgb(38, 127, 153);
 }
 
+.removal-range {
+  border-bottom: 3px solid red;
+}
+
 .function,
 .variable,
 .tag,

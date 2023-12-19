@@ -12,16 +12,22 @@
     <h3>Smalltalk Demo</h3>
     <div id="root">
       <sb-editor
-        text="init"
+        text="init
+
+  | destruct1 firstField secondField |
+  destruct1 := self call.
+  firstField := destruct1 first.
+  secondField := destruct1 second.
+  self yourself"
         language="smalltalk"
-        extensions="smalltalk:base base:base"
+        extensions="smalltalk:base base:base smalltalk:destructuringAssignment"
       ></sb-editor>
     </div>
 
     <h3>Javascript Demo</h3>
     <sb-editor
       extensions="javascript:base javascript:outline javascript:workspace javascript:multilingual base:base base:identifierSuggestions editorConfig:base"
-      text='console.log(sbWatch("hello", 12398482))
+      text='console.log(sbWatch(123, 12398482))
 
 function a() {
   sqCompile("Behavior", "initialize ^ self new")
@@ -61,8 +67,14 @@ Editor.registerKeyMap({
     <sb-editor
       text="---- MODULE Test ----
 op ==
+(* This is a comment
+   over multiple lines *)
     CASE 1 -> 2
     [] 3 -> 4
+(**************************************************************************)
+(* Commonly you would also see comments like this in specs                *)
+(* Also spanning over multiple lines                                      *)
+(**************************************************************************)
     [] OTHER -> 5
 ====
 "

@@ -5,7 +5,6 @@ import {
   findChange,
   getSelection,
   parentWithTag,
-  parentsWithTagDo,
 } from "./utils.js";
 import { Block, Shard, Text } from "./view.js";
 
@@ -239,12 +238,15 @@ export class Editor extends HTMLElement {
   }
 
   onSelectionChange() {
-    const oldSelection = this.selected;
     const { selectionRange, selected } =
       this.selectedShard?._extractSourceStringAndCursorRange() ?? {};
-    this.selectionRange = selectionRange;
-    this.selected = selected;
+    this._updateSelected(selected, selectionRange);
+  }
 
+  _updateSelected(newSelected, selectionRange) {
+    const oldSelection = this.selected;
+    this.selected = newSelected;
+    this.selectionRange = selectionRange;
     if (oldSelection !== this.selected) {
       this.suggestions.onSelected(this.selected);
       if (this.selected)
@@ -260,11 +262,10 @@ export class Editor extends HTMLElement {
     const shard = this.selectRange(start, end, preferredShard);
     // the selection may have gone away entirely as a side-effect of a mutation
     if (shard) {
-      this.selected = shard.findSelectedForRange([start, end]);
-      this.selectionRange = [start, end];
+      const r = [start, end];
+      this._updateSelected(shard.findSelectedForRange(r), r);
     } else {
-      this.selected = null;
-      this.selectionRange = null;
+      this._updateSelected(null, null);
     }
   }
 
