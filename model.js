@@ -73,6 +73,10 @@ class SBNode {
     this._id = this.constructor.next().toString();
   }
 
+  get language() {
+    return this.isRoot ? this._language : this.root.language;
+  }
+
   get id() {
     return this._id;
   }
@@ -414,7 +418,7 @@ export class SBParser {
     if (text.slice(-1) !== "\n") text += "\n";
 
     const parser = new TreeSitter();
-    language ??= oldRoot.language;
+    language ??= oldRoot._language;
     parser.setLanguage(language.tsLanguage);
 
     // TODO reuse currentTree (breaks indices, need to update or use new nodes)
@@ -426,12 +430,12 @@ export class SBParser {
       newRoot = new TrueDiff().applyEdits(oldRoot, newRoot);
       if (oldRoot !== newRoot) {
         delete oldRoot._tree;
-        delete oldRoot.language;
+        delete oldRoot._language;
       }
     }
 
     newRoot._tree = newTree;
-    newRoot.language = language;
+    newRoot._language = language;
     console.assert(newRoot.range[1] === text.length, "root range is wrong");
 
     return newRoot;
