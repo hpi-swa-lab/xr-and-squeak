@@ -1,8 +1,60 @@
 import { TrueDiff } from "./diff.js";
 import { WeakArray, exec } from "./utils.js";
 
+class Language {
+  static _initPromise = null;
+  static async initTS() {
+    await (this._initPromise ??= this._initTS());
+  }
+  static async _initTS() {
+    await TreeSitter.init();
+  }
+
+  _readyPromise = null;
+  tsLanguage = null;
+
+  constructor(repo, branch = "master", path = "/") {
+    this.repo = repo;
+    this.branch = branch;
+    this.path = path;
+    this.languageName = this.repo.match(/.+\/tree-sitter-(.+)/)[1];
+  }
+
+  async ready() {
+    await (this._readyPromise ??= this._load());
+  }
+
+  async _load() {
+    await this.constructor.initTS();
+
+    this.tsLanguage = await TreeSitter.Language.load(
+      config.baseURL + `external/tree-sitter-${this.languageName}.wasm`
+    );
+
+    this.grammar = await (
+      await fetch(
+        `https://raw.githubusercontent.com/${this.repo}/${this.branch}${this.path}src/grammar.json`
+      )
+    ).json();
+  }
+}
+
 export let config = {
   baseURL: "",
+  languages: {
+    javascript: new Language(
+      "tree-sitter/tree-sitter-javascript",
+      "0c0b18de798a90cd22819cec4802a27b914e395c"
+    ),
+    smalltalk: new Language(
+      "tom95/tree-sitter-smalltalk",
+      "fd6a5a256f831f0882b435d976c9baab04fb9e2b"
+    ),
+    tlaplus: new Language(
+      "tlaplus-community/tree-sitter-tlaplus",
+      "c5fae9e4ad9f483fb6232a8688a2c940be6b496b"
+    ),
+  },
 };
 
 export function setConfig(options) {
@@ -358,35 +410,40 @@ export class SBParser {
   static _init = false;
   static loadedLanguages = new Map();
 
-  static updateModelAndView(text, language, root = null) {
+  static updateModelAndView(text, oldRoot = null, language = null) {
     if (text.slice(-1) !== "\n") text += "\n";
 
     const parser = new TreeSitter();
-    parser.setLanguage(language ?? root._tree.language);
+    language ??= oldRoot.language;
+    parser.setLanguage(language.tsLanguage);
 
     // TODO reuse currentTree (breaks indices, need to update or use new nodes)
     const newTree = parser.parse(text);
-    if (root?._tree) root._tree.delete();
+    if (oldRoot?._tree) oldRoot._tree.delete();
 
     let newRoot = nodeFromCursor(newTree.walk(), text);
-    if (root) {
-      newRoot = new TrueDiff().applyEdits(root, newRoot);
-      if (root !== newRoot) {
-        delete root._tree;
+    if (oldRoot) {
+      newRoot = new TrueDiff().applyEdits(oldRoot, newRoot);
+      if (oldRoot !== newRoot) {
+        delete oldRoot._tree;
+        delete oldRoot.language;
       }
     }
 
     newRoot._tree = newTree;
+    newRoot.language = language;
     console.assert(newRoot.range[1] === text.length, "root range is wrong");
 
     return newRoot;
   }
 
   static async initModelAndView(text, languageName) {
-    return this.updateModelAndView(
-      text,
-      await this._loadLanguage(languageName)
-    );
+    const language = config.languages[languageName];
+    if (!language) throw new Error("No registered language " + languageName);
+
+    await language.ready();
+
+    return this.updateModelAndView(text, null, language);
   }
 
   static destroyModel(root) {

@@ -52,6 +52,8 @@ export class Editor extends HTMLElement {
     customElements.define("sb-block", Block);
     customElements.define("sb-text", Text);
     customElements.define("sb-editor", Editor);
+
+    await config.languages.javascript.ready();
   }
 
   lastEditInView = null;
@@ -130,7 +132,7 @@ export class Editor extends HTMLElement {
 
     if (text) {
       this.sourceString = text;
-      SBParser.updateModelAndView(this.sourceString, null, this.source);
+      SBParser.updateModelAndView(this.sourceString, this.source);
     }
 
     this.extensionsDo((e) => e.process(["replacement"], this.source));
