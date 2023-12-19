@@ -150,6 +150,13 @@ class SBNode {
     return this.children.filter((child) => !!child.named);
   }
 
+  // The nodes that should be deleted, when a delete action is invoked
+  // on this node. the concept and wording originates from cursorless'
+  // `removalRange`.
+  get removalNodes() {
+    return [this];
+  }
+
   isWhitespace() {
     return false;
   }

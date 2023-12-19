@@ -181,6 +181,19 @@ class ExtensionInstance {
     });
   }
 
+  ensureClass(node, ...cls) {
+    this.attachData(
+      node,
+      `class:${cls.join(":")}`,
+      (v) => {
+        for (const c of cls) v.classList.add(c);
+      },
+      (v) => {
+        for (const c of cls) v.classList.remove(c);
+      }
+    );
+  }
+
   attachData(node, identifier, add, remove) {
     node.viewsDo((view) => {
       const hash = `${view.hash}:${identifier}`;

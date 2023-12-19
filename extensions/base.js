@@ -27,13 +27,9 @@ export const base = new Extension()
   })
 
   .registerSelection((e) => [
-    (x) =>
-      e.attachData(
-        x,
-        "removalHighlight",
-        (v) => v.classList.add("removal-range"),
-        (v) => v.classList.remove("removal-range")
-      ),
+    (x) => {
+      for (const n of x.removalNodes) e.ensureClass(n, "removal-range");
+    },
   ]);
 
 function sequenceMatch(query, word) {
