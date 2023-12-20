@@ -1,0 +1,14 @@
+sb-block {
+  vertical-align: middle;
+}
+sb-block[type] {
+  display: inline-block;
+  padding: 2px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+sb-block[type].selected {
+  outline: 3px solid black !important;
+}

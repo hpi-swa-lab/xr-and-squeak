@@ -77,9 +77,15 @@ export class Editor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${config.baseURL}style.css"><slot></slot>`;
+    this.shadowRoot.innerHTML = `
+    <link rel="stylesheet" href="${config.baseURL}style.css">
+    <link rel="stylesheet" href="${config.baseURL}style-blocks.css">
+    <slot></slot>`;
     this.editHistory = new EditHistory();
     this.suggestions = document.createElement("sb-suggestions");
+
+    this.hideSelection = document.createElement("style");
+    this.hideSelection.textContent = `*::selection { background: transparent; }`;
   }
 
   replaceSelection(text) {
@@ -253,6 +259,16 @@ export class Editor extends HTMLElement {
       this.suggestions.onSelected(this.selected);
       if (this.selected)
         this.extensionsDo((e) => e.process(["selection"], this.selected.node));
+    }
+
+    const selectionIsExact =
+      selectionRange &&
+      selectionRange[0] === this.selected.range[0] &&
+      selectionRange[1] === this.selected.range[1];
+    if (selectionIsExact && !this.hideSelection.isConnected) {
+      this.shadowRoot.appendChild(this.hideSelection);
+    } else if (!selectionIsExact && this.hideSelection.isConnected) {
+      this.shadowRoot.removeChild(this.hideSelection);
     }
   }
 

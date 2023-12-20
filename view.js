@@ -8,7 +8,6 @@ import {
   clamp,
   rangeContains,
 } from "./utils.js";
-import { Extension } from "./extension.js";
 
 // A Shard is a self-contained editable element.
 //
@@ -374,6 +373,10 @@ class _EditableElement extends HTMLElement {
     return this.node.range;
   }
 
+  get range() {
+    return this.node.range;
+  }
+
   isFullySelected() {
     const [a, b] = this.getRange();
     const [c, d] = this.editor.selectionRange;
@@ -405,6 +408,21 @@ export class Block extends _EditableElement {
   constructor() {
     super();
     this.hash = nextHash();
+
+    let start;
+    this.addEventListener("mousedown", (e) => {
+      start = [e.clientX, e.clientY];
+      if (e.target === this) this.select();
+    });
+    this.addEventListener("click", (e) => {
+      if (e.target === this && e.clientX === start[0] && e.clientY === start[1])
+        this.select();
+    });
+    this.addEventListener("dragstart", (e) => {});
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this.setAttribute("draggable", true);
   }
   set node(v) {
     super.node = v;

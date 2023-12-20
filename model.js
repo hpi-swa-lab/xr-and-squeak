@@ -77,6 +77,10 @@ class Language {
       );
     }
 
+    for (const rule of Object.values(grammar.rules)) {
+      rule.postProcess(grammar);
+    }
+
     return grammar;
   }
 }
@@ -128,7 +132,6 @@ class GrammarNode extends Object {
     if (this.type === "PATTERN") {
       this.regex = new RegExp(this.value);
     }
-    this.detectSeparator();
   }
 
   get children() {
@@ -150,8 +153,25 @@ class GrammarNode extends Object {
     return null;
   }
 
+  postProcess(grammar) {
+    this.detectSeparator();
+
+    for (const child of this.children) {
+      child.postProcess(grammar);
+    }
+  }
+
   matchesStructure(structure) {
     return matchesStructure(this.structure, structure);
+  }
+
+  deepEqual(other) {
+    if (this.type !== other.type) return false;
+    if (this.children.length !== other.children.length) return false;
+    for (let i = 0; i < this.children.length; i++) {
+      if (!this.children[i].deepEqual(other.children[i])) return false;
+    }
+    return true;
   }
 
   detectSeparator() {
@@ -160,7 +180,7 @@ class GrammarNode extends Object {
         "CHOICE",
         [
           "SEQ",
-          ["SEQ", ["SYMBOL"], ["REPEAT", ["SEQ", ["STRING"], ["SYMBOL"]]]],
+          ["SEQ", ["*"], ["REPEAT", ["SEQ", ["STRING"], ["*"]]]],
           ["CHOICE", ["STRING"], ["BLANK"]],
         ],
         ["BLANK"],
@@ -169,10 +189,10 @@ class GrammarNode extends Object {
       const sep1 = this.children[0].children[1].children[0].value;
       const sep2 =
         this.children[0].children[0].children[1].children[0].children[0].value;
-      const sym1 = this.children[0].children[0].children[0].name;
+      const sym1 = this.children[0].children[0].children[0];
       const sym2 =
-        this.children[0].children[0].children[1].children[0].children[1].name;
-      if (sep1 === sep2 && sym1 === sym2) {
+        this.children[0].children[0].children[1].children[0].children[1];
+      if (sep1 === sep2 && sym1.deepEqual(sym2)) {
         this.repeatSeparator = sep1;
         this.repeatSymbol = sym1;
         return;
@@ -182,14 +202,31 @@ class GrammarNode extends Object {
     if (
       this.matchesStructure([
         "SEQ",
-        ["SYMBOL"],
-        ["REPEAT", ["SEQ", ["STRING"], ["SYMBOL"]]],
+        ["*"],
+        ["REPEAT", ["SEQ", ["STRING"], ["*"]]],
       ])
     ) {
       const sep = this.children[1].children[0].children[0].value;
-      const sym1 = this.children[0].name;
-      const sym2 = this.children[1].children[0].children[1].name;
-      if (sym1 === sym2) {
+      const sym1 = this.children[0];
+      const sym2 = this.children[1].children[0].children[1];
+      if (sym1.deepEqual(sym2)) {
+        this.repeatSeparator = sep;
+        this.repeatSymbol = sym1;
+        return;
+      }
+    }
+
+    if (
+      this.matchesStructure([
+        "CHOICE",
+        ["SEQ", ["*"], ["REPEAT", ["SEQ", ["STRING"], ["*"]]]],
+        ["BLANK"],
+      ])
+    ) {
+      const sep = this.children[0].children[1].children[0].children[0].value;
+      const sym1 = this.children[0].children[0];
+      const sym2 = this.children[0].children[1].children[0].children[1];
+      if (sym1.deepEqual(sym2)) {
         this.repeatSeparator = sep;
         this.repeatSymbol = sym1;
         return;
@@ -199,6 +236,7 @@ class GrammarNode extends Object {
 }
 
 function matchesStructure(a, b) {
+  if (a[0] === "*" || b[0] === "*") return true;
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     if (Array.isArray(a[i]) && Array.isArray(b[i])) {
@@ -385,7 +423,9 @@ class SBNode {
   get removalNodes() {
     if (!this.parent) return [this];
 
+    // TODO resolve aliases --> type would not be found
     const rule = this.language.grammar.rules[this.parent.type];
+
     const pending = this.parent.childNodes;
     if (
       this.isText ||
@@ -405,7 +445,7 @@ class SBNode {
           const separator = rule.separatorContext;
           if (
             separator &&
-            this.nextSiblingNode.text === separator.repeatSeparator
+            this.nextSiblingNode?.text === separator.repeatSeparator
           ) {
             ret.push(this.nextSiblingNode);
             if (this.nextSiblingNode.nextSiblingChild.isWhitespace()) {
@@ -413,7 +453,7 @@ class SBNode {
             }
           } else if (
             separator &&
-            this.previousSiblingNode.text === separator.repeatSeparator
+            this.previousSiblingNode?.text === separator.repeatSeparator
           ) {
             ret.push(this.previousSiblingNode);
             if (this.previousSiblingNode.previousSiblingChild.isWhitespace()) {
@@ -505,6 +545,10 @@ class SBNode {
   select(adjacentView) {
     adjacentView.editor.findNode(this).select();
   }
+
+  get isSelected() {
+    return this.editor.selected?.node === this;
+  }
 }
 
 class NoMatch {}
@@ -564,7 +608,7 @@ function matchRule(rule, pending, language, cb) {
       }
       break;
     case "ALIAS":
-      if (pending[0].type === rule.value) {
+      if (pending[0]?.type === rule.value) {
         cb(pending.shift(), rule);
       } else {
         throw new NoMatch();
@@ -579,10 +623,16 @@ function matchRule(rule, pending, language, cb) {
         }
       }
       break;
+    case "REPEAT1":
+      matchRule(rule.content, pending, language, cb);
+    // fallthrough /!\
     case "REPEAT":
       for (let i = 0; ; i++) {
         try {
+          let previousLength = pending.length;
           matchRule(rule.content, pending, language, cb);
+          if (pending.length === previousLength) break;
+          else previousLength = pending.length;
         } catch (e) {
           if (!(e instanceof NoMatch)) throw e;
           break;

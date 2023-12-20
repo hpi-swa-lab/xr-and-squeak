@@ -24,7 +24,7 @@ sb-shard {
 }
 
 .removal-range {
-  border-bottom: 3px solid red;
+  border-bottom: 3px solid red !important;
 }
 
 .function,
