@@ -6,17 +6,20 @@ export { h } from "./external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
 export const ul = (...children) => h("ul", {}, ...children);
 export const div = (...children) => h("div", {}, ...children);
+export const el = (cls, ...children) => h("div", {class: el}, ...children);
 export const table = (...children) => h("table", {}, ...children);
+export const button = (label, onclick) => h("button", { onclick }, label);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) =>
   h(Extension.SHARD_TAG, { initNode: [node], key: node });
-export const editor = ({ extensions, sourceString, onSave, language }) =>
+export const editor = ({ extensions, sourceString, onSave, onChange, language }) =>
   h("sb-editor", {
     extensions: extensions.join(" "),
     text: sourceString ?? "",
     language,
     onsave: (e) => onSave(e.detail),
+    onchange: (e) => onChange(e.detail),
   });
 
 export class Widget extends HTMLElement {

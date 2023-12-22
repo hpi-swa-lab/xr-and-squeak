@@ -1,4 +1,5 @@
 import { Editor } from "./editor.js";
+import {} from "./extensions/squeak.js";
 
 Editor.registerKeyMap({
   undo: "Ctrl-z",

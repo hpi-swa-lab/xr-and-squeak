@@ -101,20 +101,24 @@ export class Editor extends HTMLElement {
   replaceTextFromTyping({ range, text, shard, selectionRange }) {
     this._replaceText(range, text, shard, selectionRange);
     if (this.selected !== this.lastEditInView) {
-      this.editHistory.push(this.sourceString, this.selectionRange);
-      this.lastEditInView = this.selected;
+      this.noteChangeFromUser(this.selected);
     }
   }
 
   replaceTextFromCommand(range, text) {
-    this.editHistory.push(this.sourceString, range);
-    this.lastEditInView = null;
+    this.noteChangeFromUser(null);
     this._replaceText(
       range,
       text,
       this.selectedShard ?? this.shardForRange(range),
       range
     );
+  }
+
+  noteChangeFromUser(view) {
+    this.editHistory.push(this.sourceString, range);
+    this.lastEditInView = null;
+    this.dispatchEvent(new CustomEvent("save", { detail: this.sourceString }));
   }
 
   _replaceText(range, text, shard, selectionRange) {

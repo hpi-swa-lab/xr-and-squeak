@@ -85,6 +85,7 @@ export class Shard extends HTMLElement {
               break;
             case "save":
               this.editor.extensionsDo((e) => e.process(["save"], this.source));
+              this.editor.dispatchEvent(new CustomEvent("save", { detail: this.editor.sourceString }));
               break;
             case "cut":
             case "copy":

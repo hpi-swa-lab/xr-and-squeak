@@ -13,10 +13,11 @@ class Language {
   _readyPromise = null;
   tsLanguage = null;
 
-  constructor(repo, branch = "master", path = "/") {
+  constructor({ repo, branch, path, extensions }) {
     this.repo = repo;
-    this.branch = branch;
-    this.path = path;
+    this.branch = branch ?? "master";
+    this.path = path ?? "/";
+    this.extensions = extensions;
     this.languageName = this.repo.match(/.+\/tree-sitter-(.+)/)[1];
   }
 
@@ -249,18 +250,21 @@ function matchesStructure(a, b) {
 export let config = {
   baseURL: "",
   languages: {
-    javascript: new Language(
-      "tree-sitter/tree-sitter-javascript",
-      "0c0b18de798a90cd22819cec4802a27b914e395c"
-    ),
-    smalltalk: new Language(
-      "tom95/tree-sitter-smalltalk",
-      "fd6a5a256f831f0882b435d976c9baab04fb9e2b"
-    ),
-    tlaplus: new Language(
-      "tlaplus-community/tree-sitter-tlaplus",
-      "c5fae9e4ad9f483fb6232a8688a2c940be6b496b"
-    ),
+    javascript: new Language({
+      repo: "tree-sitter/tree-sitter-javascript",
+      branch: "0c0b18de798a90cd22819cec4802a27b914e395c",
+      extensions: ["js"],
+    }),
+    smalltalk: new Language({
+      repo: "tom95/tree-sitter-smalltalk",
+      branch: "fd6a5a256f831f0882b435d976c9baab04fb9e2b",
+      extensions: ["st"],
+    }),
+    tlaplus: new Language({
+      repo: "tlaplus-community/tree-sitter-tlaplus",
+      branch: "c5fae9e4ad9f483fb6232a8688a2c940be6b496b",
+      extensions: ["tla"],
+    }),
   },
 };
 
