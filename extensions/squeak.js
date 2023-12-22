@@ -431,6 +431,9 @@ async function setupTHREEJS() {
     scene := JS Scene new.
     renderer := JS WebGLRenderer new.
     renderer xr enabled: true.
+    renderer setAnimationLoop: [
+      cam position y: cam position y + 0.01.
+      renderer render: scene camera: cam].
   
     JS window document body appendChild: renderer domElement.
 
@@ -442,13 +445,9 @@ async function setupTHREEJS() {
     cam position z: 5.
 
     JS window document body appendChild: (JS VRButton createButton: renderer).
-
-    renderer setAnimationLoop: [
-      cam position y: cam position y + 0.01.
-      renderer render: scene camera: cam].
     `)
   );
   console.log("SETUP");
 }
 
-await setupTHREEJS();
+// await setupTHREEJS();

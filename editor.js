@@ -224,16 +224,21 @@ export class Editor extends HTMLElement {
   }
 
   async initEditor(text, language, extensionNames) {
-    if (this.initializing) throw new Error("overlapping initialize");
+    if (this.initializing) {
+      this.queuedUpdate = arguments;
+      return;
+    }
     this.initializing = true;
 
     this.sourceString = text;
     if (this.shard) {
+      this.extensionsDo((e) =>
+        e.process(["extensionDisconnected"], this.source)
+      );
+      this.extensionInstances.forEach((e) => e.destroy());
       SBParser.destroyModel(this.shard.source);
       this.shadowRoot.removeChild(this.shard);
     }
-    this.extensionsDo((e) => e.process(["extensionDisonnected"], this.source));
-    this.extensionInstances.forEach((e) => e.destroy());
 
     const [root, ...extensions] = await Promise.all([
       SBParser.initModelAndView(text, language, this.root),
@@ -247,6 +252,11 @@ export class Editor extends HTMLElement {
       e.process(["extensionConnected", "replacement", "always"], this.source)
     );
     this.initializing = false;
+
+    if (this.queuedUpdate) {
+      this.initEditor(...this.queuedUpdate);
+      this.queuedUpdate = null;
+    }
   }
 
   onSelectionChange() {
