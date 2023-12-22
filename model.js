@@ -13,12 +13,13 @@ class Language {
   _readyPromise = null;
   tsLanguage = null;
 
-  constructor({ repo, branch, path, extensions }) {
+  constructor({ repo, branch, path, extensions, languageName }) {
     this.repo = repo;
     this.branch = branch ?? "master";
     this.path = path ?? "/";
     this.extensions = extensions;
-    this.languageName = this.repo.match(/.+\/tree-sitter-(.+)/)[1];
+    this.languageName =
+      languageName ?? this.repo.match(/.+\/tree-sitter-(.+)/)[1];
   }
 
   async ready() {
@@ -249,23 +250,23 @@ function matchesStructure(a, b) {
 
 export let config = {
   baseURL: "",
-  languages: {
-    javascript: new Language({
+  languages: [
+    new Language({
       repo: "tree-sitter/tree-sitter-javascript",
       branch: "0c0b18de798a90cd22819cec4802a27b914e395c",
       extensions: ["js"],
     }),
-    smalltalk: new Language({
+    new Language({
       repo: "tom95/tree-sitter-smalltalk",
       branch: "fd6a5a256f831f0882b435d976c9baab04fb9e2b",
       extensions: ["st"],
     }),
-    tlaplus: new Language({
+    new Language({
       repo: "tlaplus-community/tree-sitter-tlaplus",
       branch: "c5fae9e4ad9f483fb6232a8688a2c940be6b496b",
       extensions: ["tla"],
     }),
-  },
+  ],
 };
 
 export function setConfig(options) {
@@ -816,7 +817,9 @@ export class SBParser {
   }
 
   static async initModelAndView(text, languageName) {
-    const language = config.languages[languageName];
+    const language = config.languages.find(
+      (l) => l.languageName === languageName
+    );
     if (!language) throw new Error("No registered language " + languageName);
 
     await language.ready();

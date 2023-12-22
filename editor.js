@@ -47,13 +47,11 @@ class EditHistory {
 // Consequently, the Editor manages any state that is global to
 // the model, such as its undo/redo history.
 export class Editor extends HTMLElement {
-  static async init() {
+  static init() {
     customElements.define("sb-shard", Shard);
     customElements.define("sb-block", Block);
     customElements.define("sb-text", Text);
     customElements.define("sb-editor", Editor);
-
-    await config.languages.javascript.ready();
   }
 
   lastEditInView = null;
@@ -101,12 +99,12 @@ export class Editor extends HTMLElement {
   replaceTextFromTyping({ range, text, shard, selectionRange }) {
     this._replaceText(range, text, shard, selectionRange);
     if (this.selected !== this.lastEditInView) {
-      this.noteChangeFromUser(this.selected);
+      this.noteChangeFromUser(this.selected, selectionRange);
     }
   }
 
   replaceTextFromCommand(range, text) {
-    this.noteChangeFromUser(null);
+    this.noteChangeFromUser(null, range);
     this._replaceText(
       range,
       text,
@@ -115,10 +113,12 @@ export class Editor extends HTMLElement {
     );
   }
 
-  noteChangeFromUser(view) {
+  noteChangeFromUser(view, range) {
     this.editHistory.push(this.sourceString, range);
     this.lastEditInView = null;
-    this.dispatchEvent(new CustomEvent("save", { detail: this.sourceString }));
+    this.dispatchEvent(
+      new CustomEvent("change", { detail: this.sourceString })
+    );
   }
 
   _replaceText(range, text, shard, selectionRange) {

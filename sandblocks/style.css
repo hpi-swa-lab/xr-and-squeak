@@ -1,0 +1,29 @@
+.sb-window {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 1px solid #ccc;
+  position: absolute;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-window-bar {
+  background-color: #ccc;
+  cursor: move;
+  padding: 2px;
+}
+
+.sb-window-resize {
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  background-color: #ccc;
+  cursor: nwse-resize;
+}
+
+.sb-window-content {
+  overflow: auto;
+  flex-grow: 1;
+}
