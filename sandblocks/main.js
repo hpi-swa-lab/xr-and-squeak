@@ -97,16 +97,20 @@ function FileEditor({ path, onClose }) {
     Window,
     { onClose, barChildren: [unsavedChanges ? "Unsaved." : "Saved."] },
     [
-      editor({
-        extensions: ["base:base"],
-        sourceString,
-        language: language.languageName,
-        onSave: async (data) => {
-          await request("writeFile", { path, data });
-          setUnsavedChanges(false);
-        },
-        onChange: () => setUnsavedChanges(true),
-      }),
+      h(
+        "div",
+        { style: { padding: "12px" } },
+        editor({
+          extensions: ["base:base", ...language.defaultExtensions],
+          sourceString,
+          language: language.languageName,
+          onSave: async (data) => {
+            await request("writeFile", { path, data });
+            setUnsavedChanges(false);
+          },
+          onChange: () => setUnsavedChanges(true),
+        })
+      ),
     ]
   );
 }

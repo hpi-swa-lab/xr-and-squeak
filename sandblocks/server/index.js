@@ -30,11 +30,10 @@ function handler(socket, name, cb) {
 }
 
 io.on("connection", (socket) => {
-  handler(
-    socket,
-    "writeFile",
-    async ({ path, data }) => await promisify(fs.writeFile)(path, data)
-  );
+  handler(socket, "writeFile", async ({ path, data }) => {
+    await promisify(fs.writeFile)(path, data);
+    return {};
+  });
 
   handler(socket, "readFile", async ({ path, data }) =>
     (await promisify(fs.readFile)(path, "utf-8")).toString()

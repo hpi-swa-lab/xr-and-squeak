@@ -11,6 +11,8 @@
   background-color: #ccc;
   cursor: move;
   padding: 2px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .sb-window-resize {

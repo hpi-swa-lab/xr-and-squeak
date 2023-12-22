@@ -48,6 +48,29 @@ class EditHistory {
 // the model, such as its undo/redo history.
 export class Editor extends HTMLElement {
   static init() {
+    this.registerKeyMap({
+      undo: "Ctrl-z",
+      redo: "Ctrl-Z",
+      save: "Ctrl-s",
+      cut: "Ctrl-x",
+      copy: "Ctrl-c",
+      dismiss: "Escape",
+
+      selectNodeUp: "Ctrl-ArrowUp",
+      selectNodeDown: "Ctrl-ArrowDown",
+
+      insertFirstArg: "Alt-1",
+      insertSecondArg: "Alt-2",
+      insertThirdArg: "Alt-3",
+      insertFourthArg: "Alt-4",
+      insertFifthArg: "Alt-5",
+
+      wrapWithWatch: "Ctrl-q",
+      printIt: "Ctrl-p",
+      browseIt: "Ctrl-b",
+      resetContents: "Ctrl-l",
+    });
+
     customElements.define("sb-shard", Shard);
     customElements.define("sb-block", Block);
     customElements.define("sb-text", Text);
@@ -75,9 +98,14 @@ export class Editor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    const blockStyle = false;
     this.shadowRoot.innerHTML = `
     <link rel="stylesheet" href="${config.baseURL}style.css">
-    <link rel="stylesheet" href="${config.baseURL}style-blocks.css">
+    ${
+      blockStyle
+        ? `<link rel="stylesheet" href="${config.baseURL}style-blocks.css">`
+        : ""
+    }
     <slot></slot>`;
     this.editHistory = new EditHistory();
     this.suggestions = document.createElement("sb-suggestions");

@@ -13,11 +13,19 @@ class Language {
   _readyPromise = null;
   tsLanguage = null;
 
-  constructor({ repo, branch, path, extensions, languageName }) {
+  constructor({
+    repo,
+    branch,
+    path,
+    extensions,
+    languageName,
+    defaultExtensions,
+  }) {
     this.repo = repo;
     this.branch = branch ?? "master";
     this.path = path ?? "/";
     this.extensions = extensions;
+    this.defaultExtensions = defaultExtensions;
     this.languageName =
       languageName ?? this.repo.match(/.+\/tree-sitter-(.+)/)[1];
   }
@@ -255,6 +263,7 @@ export let config = {
       repo: "tree-sitter/tree-sitter-javascript",
       branch: "0c0b18de798a90cd22819cec4802a27b914e395c",
       extensions: ["js"],
+      defaultExtensions: ["javascript:base"],
     }),
     new Language({
       repo: "tom95/tree-sitter-smalltalk",

@@ -27,6 +27,7 @@ export const base = new Extension()
   })
 
   .registerSelection((e) => [
+    (x) => false,
     (x) => x.isSelected,
     (x) => {
       for (const n of x.removalNodes) e.ensureClass(n, "removal-range");
