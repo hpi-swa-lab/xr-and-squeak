@@ -1,5 +1,5 @@
 import { Extension } from "../extension.js";
-import { config } from "../model.js";
+import { config } from "../core/config.js";
 import { ToggleableMutationObserver, exec } from "../utils.js";
 import {
   Widget,

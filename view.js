@@ -99,7 +99,12 @@ export class Shard extends HTMLElement {
               break;
           }
 
-          if (preventDefault) e.preventDefault();
+          if (preventDefault) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+
+          break;
         }
       }
     });
@@ -119,6 +124,7 @@ export class Shard extends HTMLElement {
 
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
+      if (mutations.some((m) => m.type === "attributes")) return;
       console.assert(!mutations.some((m) => m.type === "attributes"));
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
@@ -252,10 +258,11 @@ export class Shard extends HTMLElement {
       else range.setEndAfter(this);
 
       const str = range.toString();
-      visibleRanges.push([
-        rangeStart + string.length,
-        rangeStart + string.length + str.length,
-      ]);
+      if (str.length > 0)
+        visibleRanges.push([
+          rangeStart + string.length,
+          rangeStart + string.length + str.length,
+        ]);
       start = nested;
       string += str;
 
@@ -279,6 +286,7 @@ export class Shard extends HTMLElement {
   }
 
   containsRange(range) {
+    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
     return this.visibleRanges.some((r) => rangeContains(r, range));
   }
 

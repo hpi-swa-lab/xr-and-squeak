@@ -1,4 +1,4 @@
-import { SortedArray, zipOrNullDo } from "./utils.js";
+import { SortedArray, zipOrNullDo } from "../utils.js";
 
 class SubtreeShare {
   constructor() {

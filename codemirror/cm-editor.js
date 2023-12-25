@@ -1,4 +1,4 @@
-import { SBParser } from "../model.js";
+import { SBParser } from "../core/model.js";
 import { Extension } from "../extension.js";
 
 customElements.define(

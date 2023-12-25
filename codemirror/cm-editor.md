@@ -9,7 +9,7 @@
 </script>
 
 <script>
-  import  {setConfig} from "../model.js"
+  import {setConfig} from "../core/config.js"
 
   var baseDir = lively.query(this, "lively-container").getDir()
   setConfig({baseURL: baseDir + '../'})

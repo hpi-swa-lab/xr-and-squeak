@@ -1,0 +1,143 @@
+import { Extension } from "../extension.js";
+import { Widget } from "../widgets.js";
+
+customElements.define(
+  "sb-markdown-math-result",
+  class extends Widget {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.innerHTML = `<style>
+      span {
+        padding: 0.1rem;
+        background: #333;
+        color: #fff;
+        border-radius: 3px;
+        margin-left: 0.5rem;
+      }
+      </style><span>2</span>`;
+    }
+
+    update(node) {
+      let result;
+      try {
+        result = math.evaluate(node.sourceString);
+      } catch (e) {
+        result = "---";
+      }
+      this.shadowRoot.querySelector("span").textContent = result;
+    }
+  }
+);
+
+export const calc = new Extension().registerReplacement((e) => [
+  (x) => x.type === "inline" && x.parent?.type === "paragraph",
+  (x) => x.sourceString.split("\n").length === 1,
+  (x) => {
+    return e.attachData(
+      x,
+      "math-eval",
+      (v) => {
+        const el = document.createElement("sb-markdown-math-result");
+        v.after(el);
+        return el;
+      },
+      (v, widget) => widget.remove(),
+      (v, node, widget) => widget.update(node)
+    );
+  },
+]);
+
+export const base = new Extension()
+  // [ (link_label) ] @text.reference
+  .registerAlways((e) => [
+    (x) => x.type === "link_label",
+    (x) => e.applySyntaxHighlighting(x, "text", "reference"),
+  ])
+
+  // (atx_heading (inline) @text.title)
+  .registerAlways((e) => [
+    (x) => x.type === "inline" && x.parent?.type === "atx_heading",
+    (x) => e.applySyntaxHighlighting(x, "text", "title"),
+  ])
+
+  // (setext_heading (paragraph) @text.title)
+  .registerAlways((e) => [
+    (x) => x.type === "paragraph" && x.parent?.type === "setext_heading",
+    (x) => e.applySyntaxHighlighting(x, "text", "title"),
+  ])
+
+  // [ (atx_h1_marker) (atx_h2_marker) (atx_h3_marker) (atx_h4_marker) (atx_h5_marker) (atx_h6_marker) (setext_h1_underline) (setext_h2_underline) ] @punctuation.special
+  .registerAlways((e) => [
+    (x) =>
+      [
+        "atx_h1_marker",
+        "atx_h2_marker",
+        "atx_h3_marker",
+        "atx_h4_marker",
+        "atx_h5_marker",
+        "atx_h6_marker",
+        "setext_h1_underline",
+        "setext_h2_underline",
+      ].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "punctuation", "special"),
+  ])
+
+  // [ (link_title) (indented_code_block) (fenced_code_block) ] @text.literal
+  .registerAlways((e) => [
+    (x) =>
+      ["link_title", "indented_code_block", "fenced_code_block"].includes(
+        x.type
+      ),
+    (x) => e.applySyntaxHighlighting(x, "text", "literal"),
+  ])
+
+  // [ (fenced_code_block_delimiter) ] @punctuation.delimiter
+  .registerAlways((e) => [
+    (x) => x.type === "fenced_code_block_delimiter",
+    (x) => e.applySyntaxHighlighting(x, "punctuation", "delimiter"),
+  ])
+
+  // (code_fence_content) @none
+  .registerAlways((e) => [
+    (x) => x.type === "code_fence_content",
+    (x) => e.applySyntaxHighlighting(x, "none"),
+  ])
+
+  // [ (link_destination) ] @text.uri
+  .registerAlways((e) => [
+    (x) => x.type === "link_destination",
+    (x) => e.applySyntaxHighlighting(x, "text", "uri"),
+  ])
+
+  // [ (link_label) ] @text.reference
+  .registerAlways((e) => [
+    (x) => x.type === "link_label",
+    (x) => e.applySyntaxHighlighting(x, "text", "reference"),
+  ])
+
+  // [ (list_marker_plus) (list_marker_minus) (list_marker_star) (list_marker_dot) (list_marker_parenthesis) (thematic_break) ] @punctuation.special
+  .registerAlways((e) => [
+    (x) =>
+      [
+        "list_marker_plus",
+        "list_marker_minus",
+        "list_marker_star",
+        "list_marker_dot",
+        "list_marker_parenthesis",
+        "thematic_break",
+      ].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "punctuation", "special"),
+  ])
+
+  // [ (block_continuation) (block_quote_marker) ] @punctuation.special
+  .registerAlways((e) => [
+    (x) => ["block_continuation", "block_quote_marker"].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "punctuation", "special"),
+  ])
+
+  // [ (backslash_escape) ] @string.escape
+  .registerAlways((e) => [
+    (x) => x.type === "backslash_escape",
+    (x) => e.applySyntaxHighlighting(x, "string", "escape"),
+  ]);

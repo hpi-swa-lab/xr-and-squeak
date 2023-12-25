@@ -2,31 +2,43 @@ import { Extension } from "./extension.js";
 import { h, render } from "./external/preact.mjs";
 import { nextHash, parentWithTag } from "./utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
+import { useMemo } from "./external/preact-hooks.mjs";
 
 export { h, render } from "./external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
 export const ul = (...children) => h("ul", {}, ...children);
 export const div = (...children) => h("div", {}, ...children);
-export const el = (cls, ...children) => h("div", { class: el }, ...children);
+export const el = (cls, ...children) => h("div", { class: cls }, ...children);
 export const table = (...children) => h("table", {}, ...children);
 export const button = (label, onclick) => h("button", { onclick }, label);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) =>
   h(Extension.SHARD_TAG, { initNode: [node], key: node });
+
+function _Editor({ inlineExtensions, ...args }) {
+  const i = useMemo(
+    () => inlineExtensions?.map((e) => e.instance()) ?? [],
+    // use array directly for content-compare
+    inlineExtensions ?? []
+  );
+  return h("sb-editor", { ...args, inlineExtensions: i });
+}
 export const editor = ({
   extensions,
+  inlineExtensions,
   sourceString,
   onSave,
   onChange,
   language,
 }) =>
-  h("sb-editor", {
+  h(_Editor, {
+    inlineExtensions,
     extensions: extensions.join(" "),
     text: sourceString ?? "",
     language,
     onsave: (e) => onSave(e.detail),
-    onchange: (e) => onChange(e.detail),
+    onchange: (e) => onChange?.(e.detail),
   });
 export const useAsyncEffect = (fn, deps) => {
   useEffect(() => {

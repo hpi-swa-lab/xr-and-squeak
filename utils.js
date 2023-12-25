@@ -140,8 +140,20 @@ function findInsertedString(prev, current) {
   return { string, index: start };
 }
 
-export function getSelection(root) {
-  return root.getSelection ? root.getSelection() : document.getSelection();
+// on firefox, we pierce to the inner-most shadow root.
+// on chrome, we can call getSelection on the shadow root, so we repeat
+// until there is no more shadowRoot to pierce.
+export function getSelection() {
+  let selection = document.getSelection();
+  while (
+    selection.type !== "None" &&
+    selection.anchorNode.firstChild?.shadowRoot &&
+    selection.anchorNode.firstChild.shadowRoot.getSelection
+  ) {
+    selection = selection.anchorNode.firstChild.shadowRoot.getSelection();
+  }
+
+  return selection;
 }
 
 export function parentWithTag(node, tag) {

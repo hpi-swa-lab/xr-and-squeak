@@ -1,5 +1,6 @@
 import { Extension } from "./extension.js";
-import { SBParser, config } from "./model.js";
+import { SBParser } from "./core/model.js";
+import { config } from "./core/config.js";
 import {
   ToggleableMutationObserver,
   findChange,
@@ -69,6 +70,7 @@ export class Editor extends HTMLElement {
       printIt: "Ctrl-p",
       browseIt: "Ctrl-b",
       resetContents: "Ctrl-l",
+      addNewBlock: "Ctrl-Enter",
     });
 
     customElements.define("sb-shard", Shard);
@@ -99,19 +101,20 @@ export class Editor extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     const blockStyle = false;
-    this.shadowRoot.innerHTML = `
-    <link rel="stylesheet" href="${config.baseURL}style.css">
-    ${
+    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${
+      config.baseURL
+    }style.css">${
       blockStyle
         ? `<link rel="stylesheet" href="${config.baseURL}style-blocks.css">`
         : ""
-    }
-    <slot></slot>`;
+    }<slot></slot>`;
     this.editHistory = new EditHistory();
     this.suggestions = document.createElement("sb-suggestions");
 
     this.hideSelection = document.createElement("style");
-    this.hideSelection.textContent = `*::selection { background: transparent; }`;
+    this.hideSelection.textContent = blockStyle
+      ? `*::selection { background: transparent; }`
+      : "";
   }
 
   replaceSelection(text) {
@@ -129,6 +132,10 @@ export class Editor extends HTMLElement {
     if (this.selected !== this.lastEditInView) {
       this.noteChangeFromUser(this.selected, selectionRange);
     }
+  }
+
+  insertTextFromCommand(position, text) {
+    this.replaceTextFromCommand([position, position], text);
   }
 
   replaceTextFromCommand(range, text) {
@@ -187,9 +194,21 @@ export class Editor extends HTMLElement {
       this.extensionsDo((e) => e.process(["type"], this.selected.node));
   }
 
+  set inlineExtensions(extensions) {
+    this._inlineExtensions = extensions;
+  }
+
+  get inlineExtensions() {
+    return this._inlineExtensions;
+  }
+
   extensionsDo(cb) {
     ToggleableMutationObserver.ignoreMutation(() => {
-      for (const e of this.extensionInstances) cb(e);
+      for (const e of [
+        ...this.extensionInstances,
+        ...(this.inlineExtensions ?? []),
+      ])
+        cb(e);
     });
   }
 
@@ -305,6 +324,7 @@ export class Editor extends HTMLElement {
 
     const selectionIsExact =
       selectionRange &&
+      this.selected &&
       selectionRange[0] === this.selected.range[0] &&
       selectionRange[1] === this.selected.range[1];
     if (selectionIsExact && !this.hideSelection.isConnected) {
@@ -369,7 +389,7 @@ export class Editor extends HTMLElement {
   }
 
   get selectedShard() {
-    const selection = getSelection(this.shadowRoot);
+    const selection = getSelection();
     const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
     return shard?.editor === this ? shard : null;
   }

@@ -8,7 +8,7 @@ import {
 import { render } from "../external/preact.mjs";
 import { ToggleableMutationObserver } from "../utils.js";
 import { div, editor, h } from "../widgets.js";
-import { config } from "../model.js";
+import { config } from "../core/config.js";
 
 class ToolBuilder {
   createElement(tag) {

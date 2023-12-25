@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import http from "http";
 import express from "express";
 import { Server } from "socket.io";
+import { exec } from "child_process";
 
 const app = express();
 const server = http.createServer(app);
@@ -53,6 +54,25 @@ io.on("connection", (socket) => {
       return output;
     };
     return { name: fsPath.basename(path), children: await recurse(path) };
+  });
+
+  handler(socket, "installLanguage", async ({ repo, branch, path }) => {
+    console.log("INSTALL");
+    const repoName = repo.split("/")[1];
+    const upToRoot = path
+      .split("/")
+      .map(() => "..")
+      .join("/");
+
+    await promisify(exec)(`bash -c "mkdir -p languages
+cd languages
+wget https://github.com/${repo}/archive/${branch}.zip
+unzip ${branch}.zip
+cd ${repoName}-${branch}/${path}
+npm install
+npx tree-sitter generate
+npx tree-sitter build-wasm
+cp ${repoName}.wasm ${upToRoot}../../../../external/${repoName}.wasm"`);
   });
 });
 

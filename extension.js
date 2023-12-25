@@ -169,16 +169,7 @@ class ExtensionInstance {
   }
 
   applySyntaxHighlighting(node, ...cls) {
-    node.viewsDo((view) => {
-      console.assert(view.hash, "view has no hash");
-      const hash = `${view.hash}:syntax:${cls.join(":")}`;
-      if (!this.currentAttachedData.has(hash)) {
-        for (const c of cls) view.classList.add(c);
-        this.newAttachedData.set(hash, () => view.classList.remove(cls));
-      } else {
-        this.newAttachedData.set(hash, this.currentAttachedData.get(hash));
-      }
-    });
+    this.ensureClass(node, ...cls);
   }
 
   ensureClass(node, ...cls) {
@@ -194,14 +185,20 @@ class ExtensionInstance {
     );
   }
 
-  attachData(node, identifier, add, remove) {
+  attachData(node, identifier, add, remove, update = null) {
     node.viewsDo((view) => {
       const hash = `${view.hash}:${identifier}`;
       if (!this.currentAttachedData.has(hash)) {
-        add(view);
-        this.newAttachedData.set(hash, () => remove(view));
+        const customData = add(view);
+        update?.(view, node, customData);
+        this.newAttachedData.set(hash, {
+          remove: (data) => remove(view, data),
+          customData,
+        });
       } else {
-        this.newAttachedData.set(hash, this.currentAttachedData.get(hash));
+        const current = this.currentAttachedData.get(hash);
+        this.newAttachedData.set(hash, current);
+        update?.(view, node, current.customData);
       }
     });
   }
@@ -287,7 +284,8 @@ class ExtensionInstance {
 
       for (const key of this.currentAttachedData.keys()) {
         if (!this.newAttachedData.has(key)) {
-          this.currentAttachedData.get(key)();
+          const current = this.currentAttachedData.get(key);
+          current.remove(current.customData);
         }
       }
     }
