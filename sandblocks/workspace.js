@@ -2,6 +2,7 @@ import { Window } from "./base.js";
 import { Replacement, div, editor, h, shard } from "../widgets.js";
 import { Extension } from "../extension.js";
 import { config } from "../core/config.js";
+import { languageFor } from "../core/languages.js";
 
 const extraExtensions = {
   markdown: ["markdown:calc"],
@@ -11,13 +12,11 @@ customElements.define(
   "sb-workspace-block",
   class extends Replacement {
     update(node) {
-      const language = config.languages.find(
-        (l) =>
-          l.languageName ===
-          node.childBlocks
-            .find((b) => b.atField("key").childBlock(0).text === "language")
-            .atField("value")
-            .childBlock(0).text
+      const language = languageFor(
+        node.childBlocks
+          .find((b) => b.atField("key").childBlock(0).text === "language")
+          .atField("value")
+          .childBlock(0).text
       );
 
       const sourceString = JSON.parse(
@@ -34,11 +33,11 @@ customElements.define(
             extensions: [
               "base:base",
               ...language.defaultExtensions,
-              ...(extraExtensions[language.languageName] ?? []),
+              ...(extraExtensions[language.name] ?? []),
             ],
             inlineExtensions: [nestedWorkspaceShortcuts],
             sourceString,
-            language: language.languageName,
+            language: language.name,
           })
         )
       );

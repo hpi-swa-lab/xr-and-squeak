@@ -1,5 +1,4 @@
 import { Extension } from "./extension.js";
-import { SBParser } from "./core/model.js";
 import { config } from "./core/config.js";
 import {
   ToggleableMutationObserver,
@@ -8,38 +7,7 @@ import {
   parentWithTag,
 } from "./utils.js";
 import { Block, Shard, Text } from "./view.js";
-
-class EditHistory {
-  undoStack = [];
-  redoStack = [];
-
-  push(sourceString, cursorRange) {
-    this.redoStack = [];
-    this.undoStack.push({ sourceString, cursorRange });
-  }
-
-  undo() {
-    if (this.undoStack.length === 0) return;
-    const item = this.undoStack.pop();
-    this.redoStack.push(item);
-    return item;
-  }
-
-  redo() {
-    if (this.redoStack.length === 0) return;
-    const item = this.redoStack.pop();
-    this.undoStack.push(item);
-    return item;
-  }
-
-  canUndo() {
-    return this.undoStack.length > 0;
-  }
-
-  canRedo() {
-    return this.redoStack.length > 0;
-  }
-}
+import { languageFor } from "./core/languages.js";
 
 // An Editor manages the view for a single model.
 //
@@ -48,6 +16,11 @@ class EditHistory {
 // Consequently, the Editor manages any state that is global to
 // the model, such as its undo/redo history.
 export class Editor extends HTMLElement {
+  static keyMap = {};
+  static registerKeyMap(map) {
+    this.keyMap = map;
+  }
+
   static init() {
     this.registerKeyMap({
       undo: "Ctrl-z",
@@ -90,11 +63,6 @@ export class Editor extends HTMLElement {
     // need a trailing newline for contenteditable, empty nodes cannot be edited
     if (text && text.slice(-1) !== "\n") text += "\n";
     this._sourceString = text;
-  }
-
-  static keyMap = {};
-  static registerKeyMap(map) {
-    this.keyMap = map;
   }
 
   constructor() {
@@ -177,7 +145,7 @@ export class Editor extends HTMLElement {
 
     if (text) {
       this.sourceString = text;
-      SBParser.updateModelAndView(this.sourceString, this.source);
+      this.source.updateModelAndView(this.sourceString);
     }
 
     this.extensionsDo((e) => e.process(["replacement"], this.source));
@@ -283,12 +251,12 @@ export class Editor extends HTMLElement {
         e.process(["extensionDisconnected"], this.source)
       );
       this.extensionInstances.forEach((e) => e.destroy());
-      SBParser.destroyModel(this.shard.source);
+      this.shard.source.destroy();
       this.shadowRoot.removeChild(this.shard);
     }
 
     const [root, ...extensions] = await Promise.all([
-      SBParser.initModelAndView(text, language, this.root),
+      languageFor(language).initModelAndView(text, language, this.root),
       ...extensionNames.map((e) => Extension.get(e)),
     ]);
 
@@ -531,3 +499,35 @@ customElements.define(
     }
   }
 );
+
+class EditHistory {
+  undoStack = [];
+  redoStack = [];
+
+  push(sourceString, cursorRange) {
+    this.redoStack = [];
+    this.undoStack.push({ sourceString, cursorRange });
+  }
+
+  undo() {
+    if (this.undoStack.length === 0) return;
+    const item = this.undoStack.pop();
+    this.redoStack.push(item);
+    return item;
+  }
+
+  redo() {
+    if (this.redoStack.length === 0) return;
+    const item = this.redoStack.pop();
+    this.undoStack.push(item);
+    return item;
+  }
+
+  canUndo() {
+    return this.undoStack.length > 0;
+  }
+
+  canRedo() {
+    return this.redoStack.length > 0;
+  }
+}

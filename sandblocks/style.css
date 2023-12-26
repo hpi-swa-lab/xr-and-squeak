@@ -39,3 +39,11 @@ body {
 .sb-file-list {
   margin-left: 0.5rem;
 }
+
+.sb-file-name {
+  cursor: pointer;
+  padding: 0.1rem;
+}
+.sb-file-name:hover {
+  background-color: #eee;
+}

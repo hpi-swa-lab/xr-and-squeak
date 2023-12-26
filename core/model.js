@@ -1,6 +1,29 @@
-import { WeakArray, exec } from "../utils.js";
-import { GrammarNode, compatibleType, matchRule } from "./tree-sitter.js";
-export { SBParser } from "./tree-sitter.js";
+import { WeakArray } from "../utils.js";
+
+export class SBLanguage {
+  constructor(name) {
+    this.name = name;
+  }
+
+  async ready() {}
+
+  async initModelAndView(text) {
+    await this.ready();
+    return this.updateModelAndView(text);
+  }
+
+  separatorContextFor(node) {
+    return null;
+  }
+
+  compatibleType(type, other) {
+    return type === other;
+  }
+
+  updateModelAndView(text, oldRoot = null) {}
+
+  destroyRoot(root) {}
+}
 
 class SBNode {
   static _id = 0;
@@ -42,6 +65,14 @@ class SBNode {
 
   get sourceString() {
     return this.editor.sourceString.slice(...this.range);
+  }
+
+  updateModelAndView(text) {
+    this.language.updateModelAndView(text, this);
+  }
+
+  destroy() {
+    this._language.destroyRoot(this);
   }
 
   createShard() {
@@ -151,39 +182,13 @@ class SBNode {
     return this.children.filter((child) => !!child.named);
   }
 
-  get grammarNode() {
-    if (this.isRoot)
-      return new GrammarNode({ type: "SYMBOL", name: this.type }, null);
-    const rule = this.parent.grammarBody;
-    let res;
-    matchRule(
-      rule,
-      [...this.parent.childNodes],
-      this.language,
-      (node, rule) => {
-        if (this === node) res = rule;
-      }
-    );
-    return res;
-  }
-
-  get grammarBody() {
-    // TODO resolve aliases --> type would not be found
-    return this.language.grammar.rules[this.type];
-  }
-
-  repeaterGrammarNodeFor(cb) {
-    return (
-      this.grammarNode.repeaterFor(cb) ??
-      this.parent?.repeaterGrammarNodeFor(cb)
-    );
+  compatibleWith(type) {
+    return this.language.compatibleType(this.type, type);
   }
 
   insert(string, type, index) {
-    const list = this.childBlocks.filter((child) =>
-      compatibleType(child.type, type, this.language)
-    );
-    const sep = list[index].grammarNode.separatorContext.repeatSeparator;
+    const list = this.childBlocks.filter((child) => child.compatibleWith(type));
+    const sep = this.language.separatorContextFor(list[index]);
     this.editor.insertTextFromCommand(list[index].range[0], string + sep);
   }
 
@@ -213,17 +218,13 @@ class SBNode {
       return [this];
     }
 
-    const rule = this.grammarNode;
-    const separator = rule.separatorContext;
-    if (separator && this.nextSiblingNode?.text === separator.repeatSeparator) {
+    const separator = this.language.separatorContextFor(this);
+    if (separator && this.nextSiblingNode?.text === separator) {
       ret.push(this.nextSiblingNode);
       if (this.nextSiblingNode.nextSiblingChild.isWhitespace()) {
         ret.push(this.nextSiblingNode.nextSiblingChild);
       }
-    } else if (
-      separator &&
-      this.previousSiblingNode?.text === separator.repeatSeparator
-    ) {
+    } else if (separator && this.previousSiblingNode?.text === separator) {
       ret.push(this.previousSiblingNode);
       if (this.previousSiblingNode.previousSiblingChild.isWhitespace()) {
         ret.push(this.previousSiblingNode.previousSiblingChild);
@@ -275,10 +276,6 @@ class SBNode {
     const leafs = [];
     this.allLeafsDo((leaf) => leafs.push(leaf));
     return leafs;
-  }
-
-  exec(...script) {
-    return exec(this, ...script);
   }
 
   get isText() {

@@ -1,126 +1,321 @@
 import { TrueDiff } from "./diff.js";
 import { config } from "./config.js";
-import { SBBlock, SBText } from "./model.js";
+import { SBBlock, SBText, SBLanguage } from "./model.js";
+
+export class TreeSitterLanguage extends SBLanguage {
+  static _initPromise = null;
+  static async initTS() {
+    await (this._initPromise ??= this._initTS());
+  }
+  static async _initTS() {
+    await TreeSitter.init();
+  }
+
+  _readyPromise = null;
+  tsLanguage = null;
+
+  constructor({ repo, branch, path, extensions, name, defaultExtensions }) {
+    super(name ?? repo.match(/.+\/tree-sitter-(.+)/)[1]);
+
+    this.repo = repo;
+    this.branch = branch ?? "master";
+    this.path = path ?? "/";
+    this.extensions = extensions;
+    this.defaultExtensions = defaultExtensions;
+  }
+
+  // init API
+  async ready() {
+    await (this._readyPromise ??= this._load());
+  }
+
+  async _load() {
+    await this.constructor.initTS();
+
+    this.tsLanguage = await TreeSitter.Language.load(
+      config.url(`external/tree-sitter-${this.name}.wasm`)
+    );
+
+    this.grammar = this._prepareGrammar(await this._loadGrammar());
+  }
+
+  async _loadGrammar() {
+    const saved = localStorage.getItem(this.name + "-grammar");
+    if (saved) {
+      const info = JSON.parse(saved);
+      if (
+        info.repo === this.repo &&
+        info.branch === this.branch &&
+        info.path === this.path
+      ) {
+        return info.grammar;
+      }
+    }
+
+    const grammar = await (
+      await fetch(
+        `https://raw.githubusercontent.com/${this.repo}/${this.branch}${this.path}src/grammar.json`
+      )
+    ).json();
+    localStorage.setItem(
+      this.name + "-grammar",
+      JSON.stringify({
+        repo: this.repo,
+        branch: this.branch,
+        path: this.path,
+        grammar,
+      })
+    );
+    return grammar;
+  }
+
+  _prepareGrammar(grammar) {
+    for (const [name, rule] of Object.entries(grammar.rules)) {
+      grammar.rules[name] = new GrammarNode(rule, null, name);
+    }
+
+    for (const external of grammar.externals) {
+      grammar.rules[external.name] = new GrammarNode(
+        { type: "BLANK" },
+        null,
+        external.name
+      );
+    }
+
+    for (const rule of Object.values(grammar.rules)) {
+      rule.postProcess(grammar);
+    }
+
+    return grammar;
+  }
+
+  updateModelAndView(text, oldRoot = null) {
+    if (text.slice(-1) !== "\n") text += "\n";
+
+    const parser = new TreeSitter();
+    parser.setLanguage(this.tsLanguage);
+
+    // TODO reuse currentTree (breaks indices, need to update or use new nodes)
+    const newTree = parser.parse(text);
+    if (oldRoot?._tree) oldRoot._tree.delete();
+
+    let newRoot = this.nodeFromCursor(newTree.walk(), text);
+    if (oldRoot) {
+      newRoot = new TrueDiff().applyEdits(oldRoot, newRoot);
+      if (oldRoot !== newRoot) {
+        delete oldRoot._tree;
+        delete oldRoot._language;
+      }
+    }
+
+    newRoot._tree = newTree;
+    newRoot._language = this;
+    console.assert(newRoot.range[1] === text.length, "root range is wrong");
+
+    return newRoot;
+  }
+
+  destroyRoot(root) {
+    root._tree.delete();
+    delete root._tree;
+  }
+
+  // node construction
+  lastLeafIndex;
+  nodeFromCursor(cursor, text) {
+    this.lastLeafIndex = 0;
+    let node = this._nodeFromCursor(cursor, text);
+    return node;
+  }
+
+  _nodeFromCursor(cursor, text) {
+    const node = new SBBlock(
+      cursor.nodeType,
+      cursor.currentFieldName(),
+      cursor.startIndex,
+      cursor.endIndex,
+      cursor.nodeIsNamed
+    );
+
+    if (cursor.gotoFirstChild()) {
+      do {
+        this.addTextFromCursor(cursor, node, false, text);
+        node.addChild(this._nodeFromCursor(cursor, text));
+      } while (cursor.gotoNextSibling());
+      this.addTextFromCursor(cursor, node, false, text);
+      cursor.gotoParent();
+    } else {
+      this.addTextFromCursor(cursor, node, true, text);
+    }
+
+    // see if there is some trailing whitespace we are supposed to include
+    if (this.lastLeafIndex < node.range[1]) {
+      node.addChild(
+        new SBText(
+          text.slice(this.lastLeafIndex, node.range[1]),
+          this.lastLeafIndex,
+          node.range[1]
+        )
+      );
+      this.lastLeafIndex = node.range[1];
+    }
+
+    return node;
+  }
+
+  addTextFromCursor(cursor, node, isLeaf, text) {
+    const gap = text.slice(this.lastLeafIndex, cursor.startIndex);
+    if (gap) {
+      node.addChild(new SBText(gap, this.lastLeafIndex, cursor.startIndex));
+      this.lastLeafIndex = cursor.startIndex;
+    }
+
+    if (isLeaf && cursor.nodeText.length > 0) {
+      node.addChild(
+        new SBText(cursor.nodeText, cursor.startIndex, cursor.endIndex)
+      );
+      this.lastLeafIndex = cursor.endIndex;
+    }
+  }
+
+  // node API
+  _grammarBodyFor(node) {
+    // TODO resolve aliases --> type would not be found
+    return this.grammar.rules[node.type];
+  }
+
+  _grammarNodeFor(node) {
+    if (node.isRoot)
+      return new GrammarNode({ type: "SYMBOL", name: this.type }, null);
+    const rule = this._grammarBodyFor(node.parent);
+    let res;
+    this._matchRule(rule, [...node.parent.childNodes], (n, rule) => {
+      if (node === n) res = rule;
+    });
+    return res;
+  }
+
+  separatorContextFor(node) {
+    const rule = this._grammarNodeFor(node);
+    return rule.separatorContext?.repeatSeparator;
+  }
+
+  compatibleType(myType, grammarType) {
+    if (myType === grammarType) return true;
+    const rule = this.grammar.rules[grammarType];
+    console.assert(rule);
+    return this._matchesType(rule, myType);
+  }
+
+  // FIXME cb should only be called once we know that we have a full match
+  _matchRule(rule, pending, cb) {
+    switch (rule.type) {
+      case "SEQ":
+        for (const member of rule.members) {
+          this._matchRule(member, pending, cb);
+        }
+        break;
+      case "STRING":
+        if (rule.value === (pending[0]?.text ?? "")) {
+          cb(pending.shift(), rule);
+        } else {
+          throw new NoMatch();
+        }
+        break;
+      case "SYMBOL":
+        if (this.compatibleType(pending[0]?.type, rule.name)) {
+          cb(pending.shift(), rule);
+        } else {
+          throw new NoMatch();
+        }
+        break;
+      case "ALIAS":
+        if (pending[0]?.type === rule.value) {
+          cb(pending.shift(), rule);
+        } else {
+          throw new NoMatch();
+        }
+        break;
+      case "CHOICE":
+        for (const member of rule.members) {
+          // FIXME assumes that is can commit early to a choice,
+          // instead we should be exploring all possible results
+          try {
+            const copy = [...pending];
+            this._matchRule(member, copy, cb);
+            // shrink to same size and continue
+            while (pending.length > copy.length) pending.shift();
+            break;
+          } catch (e) {
+            if (!(e instanceof NoMatch)) throw e;
+          }
+        }
+        break;
+      case "REPEAT1":
+        this._matchRule(rule.content, pending, cb);
+      // fallthrough /!\
+      case "REPEAT":
+        for (let i = 0; ; i++) {
+          try {
+            let previousLength = pending.length;
+            this._matchRule(rule.content, pending, cb);
+            if (pending.length === previousLength) break;
+            else previousLength = pending.length;
+          } catch (e) {
+            if (!(e instanceof NoMatch)) throw e;
+            break;
+          }
+        }
+        break;
+      case "TOKEN":
+      case "IMMEDIATE_TOKEN":
+        if (rule.regex.test(pending[0]?.text ?? "")) {
+          cb(pending.shift(), rule);
+        } else {
+          throw new NoMatch();
+        }
+        break;
+      case "PREC_DYNAMIC":
+      case "PREC_LEFT":
+      case "PREC_RIGHT":
+      case "PREC":
+      case "FIELD":
+        return this._matchRule(rule.content, pending, cb);
+      case "BLANK":
+        break;
+      default:
+        debugger;
+    }
+  }
+
+  _matchesType(rule, myType) {
+    switch (rule.type) {
+      case "SYMBOL":
+        return (
+          rule.name === myType ||
+          this._matchesType(this.grammar.rules[rule.name], myType)
+        );
+      case "CHOICE":
+        return rule.members.some((member) => this._matchesType(member, myType));
+      case "PREC_DYNAMIC":
+      case "PREC_LEFT":
+      case "PREC_RIGHT":
+      case "PREC":
+      case "FIELD":
+        return this._matchesType(rule.content, myType);
+      case "ALIAS":
+        return rule.value === myType || this._matchesType(rule.content, myType);
+      case "BLANK":
+        return !myType;
+      default:
+        return false;
+    }
+  }
+}
 
 class NoMatch {}
 
-export function compatibleType(myType, grammarType, language) {
-  if (myType === grammarType) return true;
-  const rule = language.grammar.rules[grammarType];
-  console.assert(rule);
-  return matchesType(rule, myType, language);
-}
-
-function matchesType(rule, myType, language) {
-  switch (rule.type) {
-    case "SYMBOL":
-      return (
-        rule.name === myType ||
-        matchesType(language.grammar.rules[rule.name], myType, language)
-      );
-    case "CHOICE":
-      return rule.members.some((member) =>
-        matchesType(member, myType, language)
-      );
-    case "PREC_DYNAMIC":
-    case "PREC_LEFT":
-    case "PREC_RIGHT":
-    case "PREC":
-    case "FIELD":
-      return matchesType(rule.content, myType, language);
-    case "ALIAS":
-      return (
-        rule.value === myType || matchesType(rule.content, myType, language)
-      );
-    case "BLANK":
-      return !myType;
-    default:
-      return false;
-  }
-}
-
-// FIXME cb should only be called once we know that we have a full match
-export function matchRule(rule, pending, language, cb) {
-  switch (rule.type) {
-    case "SEQ":
-      for (const member of rule.members) {
-        matchRule(member, pending, language, cb);
-      }
-      break;
-    case "STRING":
-      if (rule.value === (pending[0]?.text ?? "")) {
-        cb(pending.shift(), rule);
-      } else {
-        throw new NoMatch();
-      }
-      break;
-    case "SYMBOL":
-      if (compatibleType(pending[0]?.type, rule.name, language)) {
-        cb(pending.shift(), rule);
-      } else {
-        throw new NoMatch();
-      }
-      break;
-    case "ALIAS":
-      if (pending[0]?.type === rule.value) {
-        cb(pending.shift(), rule);
-      } else {
-        throw new NoMatch();
-      }
-      break;
-    case "CHOICE":
-      for (const member of rule.members) {
-        // FIXME assumes that is can commit early to a choice,
-        // instead we should be exploring all possible results
-        try {
-          const copy = [...pending];
-          matchRule(member, copy, language, cb);
-          // shrink to same size and continue
-          while (pending.length > copy.length) pending.shift();
-          break;
-        } catch (e) {
-          if (!(e instanceof NoMatch)) throw e;
-        }
-      }
-      break;
-    case "REPEAT1":
-      matchRule(rule.content, pending, language, cb);
-    // fallthrough /!\
-    case "REPEAT":
-      for (let i = 0; ; i++) {
-        try {
-          let previousLength = pending.length;
-          matchRule(rule.content, pending, language, cb);
-          if (pending.length === previousLength) break;
-          else previousLength = pending.length;
-        } catch (e) {
-          if (!(e instanceof NoMatch)) throw e;
-          break;
-        }
-      }
-      break;
-    case "TOKEN":
-    case "IMMEDIATE_TOKEN":
-      if (rule.regex.test(pending[0]?.text ?? "")) {
-        cb(pending.shift(), rule);
-      } else {
-        throw new NoMatch();
-      }
-      break;
-    case "PREC_DYNAMIC":
-    case "PREC_LEFT":
-    case "PREC_RIGHT":
-    case "PREC":
-    case "FIELD":
-      return matchRule(rule.content, pending, language, cb);
-    case "BLANK":
-      break;
-    default:
-      debugger;
-  }
-}
-
-export class GrammarNode extends Object {
+class GrammarNode extends Object {
   static buildRegex(node) {
     switch (node.type) {
       case "PREC":
@@ -297,141 +492,4 @@ function matchesStructure(a, b) {
   return true;
 }
 
-export class SBParser {
-  static _init = false;
-  static loadedLanguages = new Map();
-
-  static updateModelAndView(text, oldRoot = null, language = null) {
-    if (text.slice(-1) !== "\n") text += "\n";
-
-    const parser = new TreeSitter();
-    language ??= oldRoot._language;
-    parser.setLanguage(language.tsLanguage);
-
-    // TODO reuse currentTree (breaks indices, need to update or use new nodes)
-    const newTree = parser.parse(text);
-    if (oldRoot?._tree) oldRoot._tree.delete();
-
-    let newRoot = this.nodeFromCursor(newTree.walk(), text);
-    if (oldRoot) {
-      newRoot = new TrueDiff().applyEdits(oldRoot, newRoot);
-      if (oldRoot !== newRoot) {
-        delete oldRoot._tree;
-        delete oldRoot._language;
-      }
-    }
-
-    newRoot._tree = newTree;
-    newRoot._language = language;
-    console.assert(newRoot.range[1] === text.length, "root range is wrong");
-
-    return newRoot;
-  }
-
-  static async initModelAndView(text, languageName) {
-    const language = config.languages.find(
-      (l) => l.languageName === languageName
-    );
-    if (!language) throw new Error("No registered language " + languageName);
-
-    await language.ready();
-
-    return this.updateModelAndView(text, null, language);
-  }
-
-  static destroyModel(root) {
-    root._tree.delete();
-    delete root._tree;
-  }
-
-  static async _loadLanguage(languageName) {
-    if (!this._init) await TreeSitter.init();
-    this._init = true;
-    if (this.loadedLanguages.has(languageName)) {
-      return await this.loadedLanguages.get(languageName);
-    }
-    const languagePromise = TreeSitter.Language.load(
-      config.baseURL + `external/tree-sitter-${languageName}.wasm`
-    );
-    this.loadedLanguages.set(languageName, languagePromise);
-    return await languagePromise;
-  }
-
-  static async parseText(text, languageName) {
-    if (!this._init) await TreeSitter.init();
-    this._init = true;
-
-    if (!languageName) throw new Error("languageName is required");
-
-    if (!this.loadedLanguages.has(languageName)) {
-      this.loadedLanguages.set(
-        languageName,
-        await TreeSitter.Language.load(
-          config.baseURL + `tree-sitter-${languageName}.wasm`
-        )
-      );
-    }
-
-    return this.updateModelAndView(
-      text,
-      this.loadedLanguages.get(languageName)
-    );
-  }
-
-  static addTextFromCursor(cursor, node, isLeaf, text) {
-    const gap = text.slice(this.lastLeafIndex, cursor.startIndex);
-    if (gap) {
-      node.addChild(new SBText(gap, this.lastLeafIndex, cursor.startIndex));
-      this.lastLeafIndex = cursor.startIndex;
-    }
-
-    if (isLeaf && cursor.nodeText.length > 0) {
-      node.addChild(
-        new SBText(cursor.nodeText, cursor.startIndex, cursor.endIndex)
-      );
-      this.lastLeafIndex = cursor.endIndex;
-    }
-  }
-
-  static lastLeafIndex;
-  static nodeFromCursor(cursor, text) {
-    this.lastLeafIndex = 0;
-    let node = this._nodeFromCursor(cursor, text);
-    return node;
-  }
-
-  static _nodeFromCursor(cursor, text) {
-    const node = new SBBlock(
-      cursor.nodeType,
-      cursor.currentFieldName(),
-      cursor.startIndex,
-      cursor.endIndex,
-      cursor.nodeIsNamed
-    );
-
-    if (cursor.gotoFirstChild()) {
-      do {
-        this.addTextFromCursor(cursor, node, false, text);
-        node.addChild(this._nodeFromCursor(cursor, text));
-      } while (cursor.gotoNextSibling());
-      this.addTextFromCursor(cursor, node, false, text);
-      cursor.gotoParent();
-    } else {
-      this.addTextFromCursor(cursor, node, true, text);
-    }
-
-    // see if there is some trailing whitespace we are supposed to include
-    if (this.lastLeafIndex < node.range[1]) {
-      node.addChild(
-        new SBText(
-          text.slice(this.lastLeafIndex, node.range[1]),
-          this.lastLeafIndex,
-          node.range[1]
-        )
-      );
-      this.lastLeafIndex = node.range[1];
-    }
-
-    return node;
-  }
-}
+export class SBParser {}

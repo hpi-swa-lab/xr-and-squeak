@@ -5,6 +5,7 @@ import { render, h } from "../widgets.js";
 import { useState } from "../external/preact-hooks.mjs";
 import { Window } from "./base.js";
 import { Workspace } from "./workspace.js";
+import { languageForExtension } from "../core/languages.js";
 
 Editor.init();
 
@@ -40,7 +41,7 @@ function Sandblocks() {
         repo: prompt("Repo?"),
         branch: prompt("Branch?"),
         path: prompt("Path?"),
-      })
+      }).then(() => alert("Installed!"))
     ),
     h(Workspace),
     root &&
@@ -103,7 +104,7 @@ function FileEditor({ path, onClose }) {
   }, [path]);
 
   const ext = path.split(".").slice(-1)[0].toLowerCase();
-  const language = config.languages.find((l) => l.extensions.includes(ext));
+  const language = languageForExtension(ext);
 
   return h(
     Window,
@@ -115,7 +116,7 @@ function FileEditor({ path, onClose }) {
         editor({
           extensions: ["base:base", ...language.defaultExtensions],
           sourceString,
-          language: language.languageName,
+          language: language.name,
           onSave: async (data) => {
             await request("writeFile", { path, data });
             setUnsavedChanges(false);
