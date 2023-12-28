@@ -1,4 +1,18 @@
 import { Extension } from "../extension.js";
+import { Widget } from "../widgets.js";
+
+class DetachedShard extends Widget {
+  noteProcessed(trigger, node) {
+    if (trigger === "replacement") this.shard.update(this.shard.source);
+  }
+  get shard() {
+    return this.childNodes[0];
+  }
+  set shard(value) {
+    this.appendChild(value);
+  }
+}
+customElements.define("sb-detached-shard", DetachedShard);
 
 export const base = new Extension()
   .registerShortcut("undo", (x, view) => view.editor.undo())
@@ -14,10 +28,10 @@ export const base = new Extension()
   })
   .registerShortcut("popNodeOut", (x, view, e) => {
     const window = document.createElement("sb-window");
-    const node = x.editor.createShardFor(x);
-
-    window.appendChild(node);
-    view.after(window);
+    const detached = e.createWidget("sb-detached-shard");
+    detached.shard = x.editor.createShardFor(x);
+    window.appendChild(detached);
+    x.editor.after(window);
   })
   .registerSelection((e) => [
     (x) => {

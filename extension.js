@@ -146,21 +146,35 @@ class ExtensionInstance {
   ensureReplacement(node, tag) {
     console.assert(this.processingTrigger === "replacement");
     node.viewsDo((view) => {
+      // FIXME does this make sense? it prevents creation of replacements
+      // for nodes whose weakrefs have not been collected yet
+      if (!view.isConnected) return;
+
       if (view.tagName.toLowerCase() === tag) {
+        // already exists, update
         view.source = node;
         view.update(node);
         this.newReplacements.add(view);
       } else {
-        // FIXME not intended, should work without
-        if (!view.shard) return;
-
-        const replacement = document.createElement(tag);
-        replacement.source = node;
-        replacement.init(node);
-        replacement.update(node);
-        view.replaceWith(replacement);
-        node.allNodesDo((node) => node.views.remove(view));
-        node.views.push(replacement);
+        let replacement = [...this.currentReplacements].find(
+          (r) => r.source === node && !r.isConnected
+        );
+        if (replacement) {
+          // existed just now but got unmounted, remount
+          view.replaceWith(replacement);
+          replacement.update(node);
+          node.views.remove(view);
+          console.assert(node.views.includes(replacement));
+        } else {
+          // does not exist yet, create
+          replacement = document.createElement(tag);
+          replacement.source = node;
+          replacement.init(node);
+          replacement.update(node);
+          view.replaceWith(replacement);
+          node.views.remove(view);
+          node.views.push(replacement);
+        }
         this.newReplacements.add(replacement);
       }
     });

@@ -334,7 +334,7 @@ export class Shard extends HTMLElement {
         if (
           !candidate ||
           ((child.node.named || !candidate.node.named) &&
-            candidate.getRange()[1] - candidate.getRange()[0] > end - start)
+            candidate.getRange()[1] - candidate.getRange()[0] >= end - start)
         )
           candidate = child;
       }
@@ -484,6 +484,26 @@ export class Block extends _EditableElement {
       }
     };
     return recurse(this);
+  }
+
+  // insert a node at the given index, skipping over any
+  // elements that do not correspond to nodes
+  // FIXME may want to consider mapping via .node instead
+  insertNode(node, index) {
+    for (const child of this.childNodes) {
+      if (index === 0) {
+        this.insertBefore(node, child);
+        return;
+      }
+      if (
+        child instanceof Replacement ||
+        child instanceof Block ||
+        child instanceof Text
+      ) {
+        index--;
+      }
+    }
+    this.appendChild(node);
   }
 }
 

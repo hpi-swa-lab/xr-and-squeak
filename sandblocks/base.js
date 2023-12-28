@@ -110,6 +110,7 @@ function MoveHandle({ onMove, children, ...props }) {
   useEffect(() => {
     if (moving) {
       const moveHandler = (e) => {
+        e.preventDefault();
         onMove({
           x: e.clientX - lastPosRef.current.x,
           y: +e.clientY - lastPosRef.current.y,

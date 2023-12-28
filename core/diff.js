@@ -100,6 +100,9 @@ class SubtreeRegistry {
 
 export class TrueDiff {
   applyEdits(a, b) {
+    if (false) {
+      console.log(a.print(0, true), b.print(0, true));
+    }
     const registry = new SubtreeRegistry();
 
     this.assignShares(a, b, registry);
@@ -158,7 +161,7 @@ export class TrueDiff {
       const bList = [...b.children];
       this.assignSharesList(aList, bList, registry);
       this.assignSharesList(aList.reverse(), bList.reverse(), registry);
-      zipOrNullDo(aList, bList, (a, b) => {
+      zipOrNullDo(aList.reverse(), bList.reverse(), (a, b) => {
         if (a) {
           if (b) {
             registry.assignShareAndRegisterTree(a);
@@ -241,13 +244,7 @@ export class TrueDiff {
     }
 
     if (!a.assigned && !b.assigned) {
-      const newTree = this.computeEditScriptRecurse(
-        a,
-        b,
-        parent,
-        link,
-        editBuffer
-      );
+      const newTree = this.computeEditScriptRecurse(a, b, editBuffer);
       if (newTree) return newTree;
     }
 
@@ -272,16 +269,44 @@ export class TrueDiff {
     editBuffer.attach(newTree, parent, link);
     return newTree;
   }
-  computeEditScriptRecurse(a, b, parent, link, editBuffer) {
-    // TODO do not require lists to have the same length for reuse
-    if (a.type === b.type && a.children.length === b.children.length) {
+  computeEditScriptRecurse(a, b, editBuffer) {
+    if (a.type === b.type) {
       a._range = b.range;
-      for (let i = 0; i < a.children.length; i++) {
-        this.computeEditScript(a.children[i], b.children[i], a, i, editBuffer);
-      }
+      const aList = [...a.children];
+      const bList = [...b.children];
+      this.computeEditScriptList(aList, bList, a, editBuffer);
+      this.computeEditScriptList(
+        aList.reverse(),
+        bList.reverse(),
+        a,
+        editBuffer
+      );
+      zipOrNullDo(aList.reverse(), bList.reverse(), (aChild, bChild) => {
+        if (aChild) {
+          editBuffer.detach(aChild);
+          this.unloadUnassigned(aChild, editBuffer);
+        }
+        if (bChild) {
+          const newTree = this.loadUnassigned(bChild, editBuffer);
+          editBuffer.attach(newTree, a, bChild.siblingIndex);
+        }
+      });
       return a;
     } else {
       return null;
+    }
+  }
+  computeEditScriptList(aList, bList, parent, editBuffer) {
+    while (aList.length > 0 && bList.length > 0) {
+      const a = aList[0];
+      const b = bList[0];
+      if (a.assigned === b) {
+        aList.shift();
+        bList.shift();
+        this.computeEditScript(a, b, parent, b.siblingIndex, editBuffer);
+      } else {
+        break;
+      }
     }
   }
   updateLiterals(a, b, editBuffer) {
@@ -325,6 +350,12 @@ class DiffOp {
       else cb(view, null);
     });
   }
+  updateViewsRecurse(node, cb) {
+    this.updateViews(node, cb);
+    node.children.forEach((child) => {
+      this.updateViewsRecurse(child, cb);
+    });
+  }
 }
 
 class DetachOp extends DiffOp {
@@ -344,7 +375,9 @@ class DetachOp extends DiffOp {
       });
     } else {
       this.node.parent.removeChild(this.node);
-      this.updateViews(this.node, (view, shard) => {
+      // recurse so that, if any parents are replaced but
+      // children are in shards, we still catch the children
+      this.updateViewsRecurse(this.node, (view, shard) => {
         // view may have already been removed
         if (view.parentElement) {
           buffer.rememberDetached(view, shard);
@@ -375,9 +408,11 @@ class AttachOp extends DiffOp {
       });
     } else {
       this.updateViews(this.parent, (parentView, shard) => {
-        parentView.insertBefore(
+        // insertNode is a no-op for replacements --> they will insert
+        // nodes as needed when their shards update
+        parentView.insertNode(
           buffer.getDetachedOrConstruct(this.node, shard),
-          parentView.childNodes[this.index]
+          this.index
         );
       });
     }
@@ -418,26 +453,28 @@ class EditBuffer {
     assert(link >= 0);
     assert(node);
 
-    this.log(
-      "attach",
-      node.type ?? `"${node.text}"`,
-      parent?.type ?? "root",
-      link
-    );
+    this.log("attach", this.printLabel(node), parent?.type ?? "root", link);
     this.posBuf.push(new AttachOp(node, parent, link));
   }
   detach(node) {
-    this.log("detach", node.type ?? node.text);
+    this.log("detach", this.printLabel(node));
     this.negBuf.push(new DetachOp(node));
   }
   remove(node) {
-    this.log("remove", node.type ?? node.text);
+    this.log("remove", this.printLabel(node));
     this.negBuf.push(new RemoveOp(node));
   }
   update(node, text) {
     // assert(node.views.length > 0);
-    this.log("update", node.type ?? `"${node.text}"`, `"${text}"`);
+    this.log(
+      "update",
+      this.printLabel(node),
+      `"${text.replace(/\n/g, "\\n")}"`
+    );
     this.posBuf.push(new UpdateOp(node, text));
+  }
+  printLabel(node) {
+    return node.type ?? `"${node.text.replace(/\n/g, "\\n")}"`;
   }
   apply() {
     this.negBuf.forEach((f) => f.apply(this));

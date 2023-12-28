@@ -111,14 +111,14 @@ class SBNode {
     return this.children.find((child) => child.field === field);
   }
 
-  print(level = 0) {
+  print(level = 0, namedOnly = false) {
     let out = "";
     for (let i = 0; i < level; i++) out += "  ";
-    out += this.type ?? `"${this.text}"`;
+    out += this.type ?? `"${this.text.replace(/\n/g, "\\n")}"`;
     out += ` (${this.range[0]}, ${this.range[1]})`;
     out += "\n";
     for (const child of this.children) {
-      out += child.print(level + 1);
+      if (!namedOnly || child.named) out += child.print(level + 1, namedOnly);
     }
     return out;
   }
@@ -192,12 +192,16 @@ class SBNode {
     return null;
   }
 
+  get siblingIndex() {
+    return this.parent.children.indexOf(this);
+  }
+
   get previousSiblingChild() {
-    return this.parent.children[this.parent.children.indexOf(this) - 1];
+    return this.parent.children[this.siblingIndex - 1];
   }
 
   get nextSiblingChild() {
-    return this.parent.children[this.parent.children.indexOf(this) + 1];
+    return this.parent.children[this.siblingIndex + 1];
   }
 
   get childBlocks() {

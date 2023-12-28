@@ -15,20 +15,26 @@ export class WeakArray {
   }
   forEach(callback) {
     let anyRemoved = false;
-    for (let i = 0; i < this._array.length; i++) {
-      const item = this._array[i].deref();
+    // work on a copy to allow removing while iterating
+    const copy = [...this._array];
+    for (let i = 0; i < copy.length; i++) {
+      const item = copy[i].deref();
       if (item) {
         callback(item);
       } else {
         anyRemoved = true;
       }
     }
+    // work on the original
     if (anyRemoved) this._array = this._array.filter((item) => item.deref());
   }
   getAll() {
     const list = [];
     this.forEach((e) => list.push(e));
     return list;
+  }
+  includes(item) {
+    return this._array.some((ref) => ref.deref() === item);
   }
 }
 
@@ -154,10 +160,14 @@ export function getSelection() {
   let selection = document.getSelection();
   while (
     selection.type !== "None" &&
-    selection.anchorNode.firstChild?.shadowRoot &&
-    selection.anchorNode.firstChild.shadowRoot.getSelection
+    selection.anchorNode.childNodes[selection.anchorOffset]?.shadowRoot &&
+    selection.anchorNode.childNodes[selection.anchorOffset].shadowRoot
+      .getSelection
   ) {
-    selection = selection.anchorNode.firstChild.shadowRoot.getSelection();
+    selection =
+      selection.anchorNode.childNodes[
+        selection.anchorOffset
+      ].shadowRoot.getSelection();
   }
 
   return selection;
@@ -268,7 +278,7 @@ export function registerPreactElement(name, preactComponent) {
       }
 
       connectedCallback() {
-        render(h(preactComponent), this.shadowRoot);
+        render(h(preactComponent, this.props), this.shadowRoot);
       }
 
       disconnectedCallback() {

@@ -137,6 +137,9 @@ export class Replacement extends Widget {
       this.source.range[1]
     );
   }
+
+  // see AttachOp>>apply()
+  insertNode(node, index) {}
 }
 
 customElements.define("sb-hidden", class extends Replacement {});
