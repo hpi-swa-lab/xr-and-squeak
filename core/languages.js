@@ -1,4 +1,7 @@
-import { TreeSitterLanguage } from "./tree-sitter.js";
+import {
+  TreeSitterComposedLanguage,
+  TreeSitterLanguage,
+} from "./tree-sitter.js";
 
 const languages = [];
 
@@ -45,11 +48,22 @@ registerLanguage(
   })
 );
 registerLanguage(
-  new TreeSitterLanguage({
-    repo: "MDeiml/tree-sitter-markdown",
-    branch: "f9820b2db958228f9be339b67d2de874d065866e",
-    path: "/tree-sitter-markdown/",
+  new TreeSitterComposedLanguage({
+    name: "markdown",
     extensions: ["md"],
-    defaultExtensions: ["markdown:base"],
+    defaultExtensions: ["markdown:base", "markdown:inline"],
+    baseLanguage: new TreeSitterLanguage({
+      repo: "MDeiml/tree-sitter-markdown",
+      branch: "f9820b2db958228f9be339b67d2de874d065866e",
+      path: "/tree-sitter-markdown/",
+      name: "markdown",
+    }),
+    nestedLanguage: new TreeSitterLanguage({
+      repo: "MDeiml/tree-sitter-markdown",
+      branch: "f9820b2db958228f9be339b67d2de874d065866e",
+      path: "/tree-sitter-markdown-inline/",
+      name: "markdown_inline",
+    }),
+    matcher: (node) => node.type === "inline",
   })
 );

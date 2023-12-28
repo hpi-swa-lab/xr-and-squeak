@@ -6,6 +6,7 @@ import { useState } from "../external/preact-hooks.mjs";
 import { Window } from "./base.js";
 import { Workspace } from "./workspace.js";
 import { languageForExtension } from "../core/languages.js";
+import { registerPreactElement } from "../utils.js";
 
 Editor.init();
 
@@ -27,7 +28,6 @@ function request(name, data) {
 function Sandblocks() {
   const [project, setProject] = useState(localStorage.lastProject);
   const [root, setRoot] = useState(null);
-  const [openFiles, setOpenFiles] = useState([]);
 
   useAsyncEffect(async () => {
     setRoot(project ? await request("openProject", { path: project }) : null);
@@ -51,19 +51,13 @@ function Sandblocks() {
           file: root,
           path: project,
           isRoot: true,
-          onOpen: (path) => setOpenFiles((f) => [...f, path]),
+          onOpen: (path) => {
+            const editor = document.createElement("sb-file-editor");
+            editor.props = { path };
+            document.body.appendChild(editor);
+          },
         })
       ),
-    el(
-      "sb-open-files",
-      openFiles.map((path) =>
-        h(FileEditor, {
-          key: path,
-          path,
-          onClose: () => setOpenFiles((f) => f.filter((p) => p !== path)),
-        })
-      )
-    ),
   ];
 }
 
@@ -93,6 +87,8 @@ function File({ file, onOpen, path, isRoot }) {
       ),
   ]);
 }
+
+registerPreactElement("sb-file-editor", FileEditor);
 
 function FileEditor({ path, onClose }) {
   const [sourceString, setSourceString] = useState("");

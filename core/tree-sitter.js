@@ -1,4 +1,3 @@
-import { TrueDiff } from "./diff.js";
 import { config } from "./config.js";
 import { SBBlock, SBText, SBLanguage } from "./model.js";
 
@@ -15,13 +14,15 @@ export class TreeSitterLanguage extends SBLanguage {
   tsLanguage = null;
 
   constructor({ repo, branch, path, extensions, name, defaultExtensions }) {
-    super(name ?? repo.match(/.+\/tree-sitter-(.+)/)[1]);
+    super({
+      name: name ?? repo.match(/.+\/tree-sitter-(.+)/)[1],
+      extensions,
+      defaultExtensions,
+    });
 
     this.repo = repo;
     this.branch = branch ?? "master";
     this.path = path ?? "/";
-    this.extensions = extensions;
-    this.defaultExtensions = defaultExtensions;
   }
 
   // init API
@@ -89,28 +90,13 @@ export class TreeSitterLanguage extends SBLanguage {
     return grammar;
   }
 
-  updateModelAndView(text, oldRoot = null) {
-    if (text.slice(-1) !== "\n") text += "\n";
-
+  parse(text, oldRoot = null) {
     const parser = new TreeSitter();
     parser.setLanguage(this.tsLanguage);
 
-    // TODO reuse currentTree (breaks indices, need to update or use new nodes)
-    const newTree = parser.parse(text);
-    if (oldRoot?._tree) oldRoot._tree.delete();
-
-    let newRoot = this.nodeFromCursor(newTree.walk(), text);
-    if (oldRoot) {
-      newRoot = new TrueDiff().applyEdits(oldRoot, newRoot);
-      if (oldRoot !== newRoot) {
-        delete oldRoot._tree;
-        delete oldRoot._language;
-      }
-    }
-
-    newRoot._tree = newTree;
-    newRoot._language = this;
-    console.assert(newRoot.range[1] === text.length, "root range is wrong");
+    // TODO reuse oldRoot._tree (breaks indices, need to update or use new nodes)
+    const newRoot = this._nodeFromTree(parser.parse(text), text);
+    oldRoot?._tree?.delete();
 
     return newRoot;
   }
@@ -122,9 +108,13 @@ export class TreeSitterLanguage extends SBLanguage {
 
   // node construction
   lastLeafIndex;
-  nodeFromCursor(cursor, text) {
+  _nodeFromTree(tree, text) {
     this.lastLeafIndex = 0;
-    let node = this._nodeFromCursor(cursor, text);
+    let node = this._nodeFromCursor(tree.walk(), text);
+    node._tree = tree;
+    // need to set the source string early for nested parsers
+    node._sourceString = text;
+    console.assert(node.range[1] === text.length, "root range is wrong");
     return node;
   }
 
@@ -492,4 +482,55 @@ function matchesStructure(a, b) {
   return true;
 }
 
-export class SBParser {}
+export class TreeSitterComposedLanguage extends SBLanguage {
+  constructor({
+    name,
+    extensions,
+    defaultExtensions,
+    baseLanguage,
+    nestedLanguage,
+    matcher,
+  }) {
+    super({
+      name,
+      extensions,
+      defaultExtensions,
+    });
+
+    this.baseLanguage = baseLanguage;
+    this.nestedLanguage = nestedLanguage;
+    this.matcher = matcher;
+  }
+
+  async ready() {
+    await this.baseLanguage.ready();
+    await this.nestedLanguage.ready();
+  }
+
+  destroyRoot(root) {
+    this.baseLanguage.destroyRoot(root);
+    // TODO nestedLanguage
+  }
+
+  // TODO compatibleType and separatorContext
+
+  parse(text, oldRoot = null) {
+    // TODO use includedRanges instead
+    const newRoot = this.baseLanguage.parse(text, oldRoot);
+    const update = [];
+    newRoot.allNodesDo((n) => {
+      if (this.matcher(n)) {
+        // TODO oldRoot?
+        const nestedRoot = this.nestedLanguage.parse(n.sourceString);
+        update.push([n, nestedRoot]);
+      }
+    });
+
+    for (const [base, nested] of update) {
+      base.replaceNode(nested);
+      nested.allNodesDo((n) => n.shiftRange(base.range[0]));
+    }
+
+    return newRoot;
+  }
+}

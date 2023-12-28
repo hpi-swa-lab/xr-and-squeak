@@ -1,28 +1,40 @@
 import { WeakArray } from "../utils.js";
+import { TrueDiff } from "./diff.js";
 
 export class SBLanguage {
-  constructor(name) {
+  constructor({ name, extensions, defaultExtensions }) {
     this.name = name;
+    this.extensions = extensions;
+    this.defaultExtensions = defaultExtensions;
   }
 
   async ready() {}
+  separatorContextFor(node) {
+    return null;
+  }
+  compatibleType(type, other) {
+    return type === other;
+  }
+  parse(text, oldRoot = null) {}
+
+  destroyRoot(root) {}
 
   async initModelAndView(text) {
     await this.ready();
     return this.updateModelAndView(text);
   }
 
-  separatorContextFor(node) {
-    return null;
+  updateModelAndView(text, oldRoot = null) {
+    if (text.slice(-1) !== "\n") text += "\n";
+
+    let newRoot = this.parse(text, oldRoot);
+    if (oldRoot) {
+      newRoot = new TrueDiff().applyEdits(oldRoot, newRoot);
+    }
+    newRoot._language = this;
+    newRoot._sourceString = text;
+    return newRoot;
   }
-
-  compatibleType(type, other) {
-    return type === other;
-  }
-
-  updateModelAndView(text, oldRoot = null) {}
-
-  destroyRoot(root) {}
 }
 
 class SBNode {
@@ -64,7 +76,7 @@ class SBNode {
   }
 
   get sourceString() {
-    return this.editor.sourceString.slice(...this.range);
+    return this.root._sourceString.slice(...this.range);
   }
 
   updateModelAndView(text) {
@@ -76,9 +88,7 @@ class SBNode {
   }
 
   createShard() {
-    const shard = document.createElement("sb-shard");
-    shard.update(this);
-    return shard;
+    return this.editor.createShardFor(this);
   }
 
   viewsDo(cb) {
@@ -105,11 +115,23 @@ class SBNode {
     let out = "";
     for (let i = 0; i < level; i++) out += "  ";
     out += this.type ?? `"${this.text}"`;
+    out += ` (${this.range[0]}, ${this.range[1]})`;
     out += "\n";
     for (const child of this.children) {
       out += child.print(level + 1);
     }
     return out;
+  }
+
+  shiftRange(offset) {
+    this._range = [this.range[0] + offset, this.range[1] + offset];
+  }
+
+  replaceNode(node) {
+    const parent = this.parent;
+    const index = parent.children.indexOf(this);
+    parent.removeChild(this);
+    parent.insertChild(node, index);
   }
 
   childNode(index) {
@@ -188,8 +210,13 @@ class SBNode {
 
   insert(string, type, index) {
     const list = this.childBlocks.filter((child) => child.compatibleWith(type));
-    const sep = this.language.separatorContextFor(list[index]);
-    this.editor.insertTextFromCommand(list[index].range[0], string + sep);
+    // TODO handle empty list by finding any slot that takes the type
+
+    const ref = list[Math.min(index, list.length - 1)];
+    const sep = this.language.separatorContextFor(ref);
+    if (index < list.length)
+      this.editor.insertTextFromCommand(ref.range[0], string + sep);
+    else this.editor.insertTextFromCommand(ref.range[1], sep + string);
   }
 
   insertBefore(string, type) {

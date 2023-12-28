@@ -12,6 +12,13 @@ export const base = new Extension()
     const target = e.data("selectionDownList")?.pop();
     (target ?? x.childBlock(0) ?? x.childNode(0))?.select(view);
   })
+  .registerShortcut("popNodeOut", (x, view, e) => {
+    const window = document.createElement("sb-window");
+    const node = x.editor.createShardFor(x);
+
+    window.appendChild(node);
+    view.after(window);
+  })
   .registerSelection((e) => [
     (x) => {
       if (!x.children.some((c) => e.data("selectionDownList")?.includes(c)))

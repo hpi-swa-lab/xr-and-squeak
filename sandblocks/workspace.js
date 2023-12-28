@@ -1,7 +1,6 @@
 import { Window } from "./base.js";
 import { Replacement, div, editor, h, shard } from "../widgets.js";
 import { Extension } from "../extension.js";
-import { config } from "../core/config.js";
 import { languageFor } from "../core/languages.js";
 
 const extraExtensions = {
@@ -30,6 +29,7 @@ customElements.define(
           "div",
           { style: "padding: 0.5rem" },
           editor({
+            key: node.id,
             extensions: [
               "base:base",
               ...language.defaultExtensions,
@@ -101,11 +101,8 @@ export function Workspace() {
       sourceString: JSON.stringify(
         [
           { text: "text", language: "javascript" },
-          { text: '{"language": 2}', language: "json" },
-          {
-            text: `# hi\n\n2+2\n`,
-            language: "markdown",
-          },
+          // { text: '{"language": 2}', language: "json" },
+          // { text: `# hi\n\n**2**+2\n32`, language: "markdown" },
         ],
         null,
         2

@@ -273,6 +273,7 @@ export class TrueDiff {
     return newTree;
   }
   computeEditScriptRecurse(a, b, parent, link, editBuffer) {
+    // TODO do not require lists to have the same length for reuse
     if (a.type === b.type && a.children.length === b.children.length) {
       a._range = b.range;
       for (let i = 0; i < a.children.length; i++) {

@@ -2,9 +2,11 @@ import { Extension } from "./extension.js";
 import { config } from "./core/config.js";
 import {
   ToggleableMutationObserver,
+  WeakArray,
   findChange,
   getSelection,
   parentWithTag,
+  rangeContains,
 } from "./utils.js";
 import { Block, Shard, Text } from "./view.js";
 import { languageFor } from "./core/languages.js";
@@ -32,6 +34,7 @@ export class Editor extends HTMLElement {
 
       selectNodeUp: "Ctrl-ArrowUp",
       selectNodeDown: "Ctrl-ArrowDown",
+      popNodeOut: "Ctrl-o",
 
       insertFirstArg: "Alt-1",
       insertSecondArg: "Alt-2",
@@ -260,7 +263,7 @@ export class Editor extends HTMLElement {
       ...extensionNames.map((e) => Extension.get(e)),
     ]);
 
-    this.shadowRoot.appendChild(root.createShard());
+    this.shadowRoot.appendChild(this.createShardFor(root));
 
     this.extensionInstances = extensions.map((e) => e.instance());
     this.extensionsDo((e) =>
@@ -318,7 +321,9 @@ export class Editor extends HTMLElement {
   }
 
   selectRange(start, end, preferredShard = null) {
-    const shard = this.shardForRange(start, end, preferredShard);
+    const shard =
+      this.shardForRange(start, end, preferredShard) ??
+      this.closestShardForRange(start, end);
     shard?.selectRange(start, end);
     return shard;
   }
@@ -340,6 +345,29 @@ export class Editor extends HTMLElement {
     return null;
   }
 
+  closestShardForRange(start, end) {
+    // first shard that is just after start
+    // FIXME may want to take the best one of all possible
+    for (const shard of this.allShards) {
+      if (
+        shard.isConnected &&
+        shard.visibleRanges.some((r) => rangeContains(r, [start, start]))
+      ) {
+        return shard;
+      }
+    }
+    return null;
+  }
+
+  shards = [];
+
+  createShardFor(node) {
+    const shard = document.createElement("sb-shard");
+    shard._editor = this;
+    shard.update(node);
+    return shard;
+  }
+
   get editor() {
     return this;
   }
@@ -353,7 +381,7 @@ export class Editor extends HTMLElement {
   }
 
   get allShards() {
-    return this.shadowRoot.querySelectorAll("sb-shard");
+    return this.shards;
   }
 
   get selectedShard() {

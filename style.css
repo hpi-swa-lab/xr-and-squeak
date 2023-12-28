@@ -18,13 +18,29 @@ sb-shard {
   word-wrap: normal;
   tab-size: 2;
 }
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  padding: 0;
+}
+td {
+  padding: 0.1rem 0.5rem;
+  margin: 0;
+  border: 0;
+  border: 1px solid #ccc;
+}
+.removal-range {
+  border-bottom: 3px solid red !important;
+}
+
+/**************
+  * Syntax highlighting
+  **************/
 .keyword,
 .type {
   color: rgb(38, 127, 153);
-}
-
-.removal-range {
-  border-bottom: 3px solid red !important;
 }
 
 .function,
@@ -70,16 +86,6 @@ sb-shard {
   font-weight: bold;
   color: rgb(0, 0, 0);
 }
-
-table {
-  border-collapse: collapse;
-  border-spacing: 0;
-  margin: 0;
-  padding: 0;
-}
-td {
-  padding: 0.1rem 0.5rem;
-  margin: 0;
-  border: 0;
-  border: 1px solid #ccc;
+.strong {
+  font-weight: bold;
 }

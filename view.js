@@ -122,6 +122,8 @@ export class Shard extends HTMLElement {
     }))
       this.setAttribute(key, value);
 
+    this.editor.shards.push(this);
+
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
       if (mutations.some((m) => m.type === "attributes")) return;
@@ -151,10 +153,14 @@ export class Shard extends HTMLElement {
     this.observer.destroy();
     this.observer = null;
 
+    this.editor.shards.splice(this.editor.shards.indexOf(this), 1);
+
     this.addEventListener("blur", (e) => this.editor.clearSuggestions());
   }
 
   get editor() {
+    if (this._editor) return this._editor;
+
     const host = this.getRootNode().host;
     if (!host) return undefined;
     const editor = host.editor;
@@ -340,6 +346,10 @@ export class Shard extends HTMLElement {
     const range = document.createRange();
     const startNode = this.root.findTextForCursor(start);
     const endNode = this.root.findTextForCursor(end);
+    if (!startNode || !endNode) {
+      console.log("could not find text node for cursor", start, end);
+      return this.root.anyTextForCursor();
+    }
     range.setStart(...startNode.rangeParams(start));
     range.setEnd(...endNode.rangeParams(end));
     return range;
@@ -462,6 +472,18 @@ export class Block extends _EditableElement {
       }
     }
     return null;
+  }
+  anyTextForCursor() {
+    const recurse = (n) => {
+      for (const child of n.shadowRoot?.children ?? n.children) {
+        if (child.tagName === "SB-TEXT") return child;
+        else {
+          const ret = recurse(child);
+          if (ret) return ret;
+        }
+      }
+    };
+    return recurse(this);
   }
 }
 

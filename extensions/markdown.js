@@ -141,3 +141,49 @@ export const base = new Extension()
     (x) => x.type === "backslash_escape",
     (x) => e.applySyntaxHighlighting(x, "string", "escape"),
   ]);
+
+export const inline = new Extension()
+  // [ (code_span) (link_title) ] @text.literal
+  .registerAlways((e) => [
+    (x) => ["code_span", "link_title"].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "text", "literal"),
+  ])
+  // [ (emphasis_delimiter) (code_span_delimiter) ] @punctuation.delimiter
+  .registerAlways((e) => [
+    (x) => ["emphasis_delimiter", "code_span_delimiter"].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "punctuation", "delimiter"),
+  ])
+  // (emphasis) @text.emphasis
+  .registerAlways((e) => [
+    (x) => x.type === "emphasis",
+    (x) => e.applySyntaxHighlighting(x, "text", "emphasis"),
+  ])
+  // (strong_emphasis) @text.strong
+  .registerAlways((e) => [
+    (x) => x.type === "strong_emphasis",
+    (x) => e.applySyntaxHighlighting(x, "text", "strong"),
+  ])
+  // [ (link_destination) (uri_autolink) ] @text.uri
+  .registerAlways((e) => [
+    (x) => ["link_destination", "uri_autolink"].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "text", "uri"),
+  ])
+  // [ (link_label) (link_text) (image_description) ] @text.reference
+  .registerAlways((e) => [
+    (x) => ["link_label", "link_text", "image_description"].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "text", "reference"),
+  ])
+  // [ (backslash_escape) (hard_line_break) ] @string.escape
+  .registerAlways((e) => [
+    (x) => ["backslash_escape", "hard_line_break"].includes(x.type),
+    (x) => e.applySyntaxHighlighting(x, "string", "escape"),
+  ])
+  // (image ["!" "[" "]" "("] @punctuation.delimiter)
+  .registerAlways((e) => [
+    (x) => x.text.includes(["!", "[", "]", "("]),
+    (x) =>
+      ["image", "inline_link", "shortcut_link", "wiki_link"].includes(
+        x.parent?.type
+      ),
+    (x) => e.applySyntaxHighlighting(x, "punctuation", "delimiter"),
+  ]);

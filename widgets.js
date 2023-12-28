@@ -13,8 +13,7 @@ export const table = (...children) => h("table", {}, ...children);
 export const button = (label, onclick) => h("button", { onclick }, label);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
-export const shard = (node) =>
-  h(Extension.SHARD_TAG, { initNode: [node], key: node });
+export const shard = (node) => h("sb-shard", { initNode: [node], key: node });
 
 function _Editor({ inlineExtensions, ...args }) {
   const i = useMemo(
@@ -25,6 +24,7 @@ function _Editor({ inlineExtensions, ...args }) {
   return h("sb-editor", { ...args, inlineExtensions: i });
 }
 export const editor = ({
+  key,
   extensions,
   inlineExtensions,
   sourceString,
@@ -33,6 +33,7 @@ export const editor = ({
   language,
 }) =>
   h(_Editor, {
+    key,
     inlineExtensions,
     extensions: extensions.join(" "),
     text: sourceString ?? "",
@@ -80,6 +81,19 @@ export class Widget extends HTMLElement {
       if (result) return result;
     }
     return null;
+  }
+
+  anyTextForCursor() {
+    const recurse = (n) => {
+      for (const child of n.shadowRoot?.children ?? n.children) {
+        if (child.tagName === "SB-TEXT") return child;
+        else {
+          const ret = recurse(child);
+          if (ret) return ret;
+        }
+      }
+    };
+    return recurse(this);
   }
 }
 
