@@ -1,5 +1,6 @@
 import { config } from "./config.js";
 import { SBBlock, SBText, SBLanguage } from "./model.js";
+import { TreeSitter } from "../external/tree-sitter.js";
 
 export class TreeSitterLanguage extends SBLanguage {
   static _initPromise = null;
@@ -7,7 +8,7 @@ export class TreeSitterLanguage extends SBLanguage {
     await (this._initPromise ??= this._initTS());
   }
   static async _initTS() {
-    await TreeSitter.init();
+    await TreeSitter.init({ scriptDirectory: config.url("external/") });
   }
 
   _readyPromise = null;
@@ -26,18 +27,19 @@ export class TreeSitterLanguage extends SBLanguage {
   }
 
   // init API
-  async ready() {
-    await (this._readyPromise ??= this._load());
+  async ready(options) {
+    await (this._readyPromise ??= this._load(options));
   }
 
-  async _load() {
+  async _load(options) {
     await this.constructor.initTS();
 
     this.tsLanguage = await TreeSitter.Language.load(
       config.url(`external/tree-sitter-${this.name}.wasm`)
     );
 
-    this.grammar = this._prepareGrammar(await this._loadGrammar());
+    if (!options?.parserOnly)
+      this.grammar = this._prepareGrammar(await this._loadGrammar());
   }
 
   async _loadGrammar() {

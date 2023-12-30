@@ -6,6 +6,8 @@ import http from "http";
 import express from "express";
 import { Server } from "socket.io";
 import { exec } from "child_process";
+import Gitignore from "gitignore-fs";
+import crypto from "crypto";
 
 const app = express();
 const server = http.createServer(app);
@@ -36,28 +38,55 @@ io.on("connection", (socket) => {
     return {};
   });
 
-  handler(socket, "readFile", async ({ path, data }) =>
-    (await promisify(fs.readFile)(path, "utf-8")).toString()
+  // TODO handle file deleted --> skip
+  handler(
+    socket,
+    "readFiles",
+    async ({ paths }) =>
+      await Promise.all(
+        paths.map((path) =>
+          promisify(fs.readFile)(path, "utf-8").then((b) => ({
+            path,
+            hash: crypto.createHash("sha1").update(b).digest("hex"),
+            data: b.toString(),
+          }))
+        )
+      )
   );
 
+  // TODO handle path does not exist
   handler(socket, "openProject", async ({ path }) => {
-    const recurse = async (path) => {
+    const recurse = async (path, relPath, ignore) => {
       const files = await promisify(fs.readdir)(path, { withFileTypes: true });
       const output = [];
       for (const file of files) {
-        const out = { name: file.name };
+        const myAbsPath = fsPath.join(path, file.name);
+        const myRelPath =
+          fsPath.join(relPath, file.name) + (file.isDirectory() ? "/" : "");
+        if (await ignore.ignores(myRelPath)) continue;
+
+        const out = {
+          name: file.name,
+        };
         if (file.isDirectory()) {
-          out.children = await recurse(fsPath.join(path, file.name));
+          out.children = await recurse(myAbsPath, myRelPath, ignore);
+        } else {
+          const data = await promisify(fs.readFile)(myAbsPath, "utf-8");
+          out.hash = crypto.createHash("sha1").update(data).digest("hex");
         }
         output.push(out);
       }
       return output;
     };
-    return { name: fsPath.basename(path), children: await recurse(path) };
+
+    const ignore = new Gitignore();
+    return {
+      name: fsPath.basename(path),
+      children: await recurse(path, "", ignore),
+    };
   });
 
   handler(socket, "installLanguage", async ({ repo, branch, path }) => {
-    console.log("INSTALL");
     const repoName = repo.split("/")[1];
     const upToRoot = path
       .split("/")

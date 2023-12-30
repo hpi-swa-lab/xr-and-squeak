@@ -1,4 +1,4 @@
-import { Window } from "./base.js";
+import { Window } from "./window.js";
 import { Replacement, div, editor, h, shard } from "../widgets.js";
 import { Extension } from "../extension.js";
 import { languageFor } from "../core/languages.js";
@@ -94,20 +94,18 @@ const nestedWorkspaceShortcuts = new Extension().registerShortcut(
 );
 
 export function Workspace() {
-  return h(Window, {}, [
-    editor({
-      inlineExtensions: [jsonWorkspace, workspaceShortcuts],
-      extensions: [],
-      sourceString: JSON.stringify(
-        [
-          { text: "text", language: "javascript" },
-          // { text: '{"language": 2}', language: "json" },
-          // { text: `# hi\n\n**2**+2\n32`, language: "markdown" },
-        ],
-        null,
-        2
-      ),
-      language: "json",
-    }),
-  ]);
+  return editor({
+    inlineExtensions: [jsonWorkspace, workspaceShortcuts],
+    extensions: [],
+    sourceString: JSON.stringify(
+      [
+        { text: "text", language: "javascript" },
+        // { text: '{"language": 2}', language: "json" },
+        // { text: `# hi\n\n**2**+2\n32`, language: "markdown" },
+      ],
+      null,
+      2
+    ),
+    language: "json",
+  });
 }

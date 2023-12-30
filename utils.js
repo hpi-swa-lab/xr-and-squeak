@@ -1,5 +1,3 @@
-import { h, render } from "./widgets.js";
-
 export class WeakArray {
   constructor() {
     this._array = [];
@@ -261,29 +259,4 @@ export function rangeEqual(a, b) {
 
 export function rangeContains(a, b) {
   return a[0] <= b[0] && a[1] >= b[1];
-}
-
-// An alternative to https://github.com/preactjs/preact-custom-element
-// PreactCustomElement works by copying slotted nodes into the VDOM.
-// I think we want to preserve node identity, so the below approach seems
-// more promising. (Sidenote: if we want to use PreactCustomElement, we
-// will need to patch its VDOM-ization to also copy the node's ownProperties).
-export function registerPreactElement(name, preactComponent) {
-  customElements.define(
-    name,
-    class extends HTMLElement {
-      constructor() {
-        super();
-        this.attachShadow({ mode: "open" });
-      }
-
-      connectedCallback() {
-        render(h(preactComponent, this.props), this.shadowRoot);
-      }
-
-      disconnectedCallback() {
-        render(null, this.shadowRoot);
-      }
-    }
-  );
 }

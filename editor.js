@@ -45,6 +45,8 @@ export class Editor extends HTMLElement {
       wrapWithWatch: "Ctrl-q",
       printIt: "Ctrl-p",
       browseIt: "Ctrl-b",
+      browseSenders: "Alt-n",
+      browseImplementors: "Alt-m",
       resetContents: "Ctrl-l",
       addNewBlock: "Ctrl-Enter",
     });

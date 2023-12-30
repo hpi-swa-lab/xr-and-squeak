@@ -1,5 +1,5 @@
 export let config = {
-  baseURL: "",
+  baseURL: "/",
   url(path) {
     return `${config.baseURL}${path}`;
   },

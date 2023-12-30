@@ -1,5 +1,6 @@
-import { WeakArray } from "../utils.js";
+import { WeakArray, exec } from "../utils.js";
 import { TrueDiff } from "./diff.js";
+import md5 from "../external/md5.min.js";
 
 export class SBLanguage {
   constructor({ name, extensions, defaultExtensions }) {
@@ -47,6 +48,10 @@ class SBNode {
 
   constructor() {
     this._id = this.constructor.next().toString();
+  }
+
+  exec(...script) {
+    return exec(this, ...script);
   }
 
   get language() {

@@ -1,18 +1,66 @@
 import { Editor } from "../editor.js";
 import { config } from "../core/config.js";
-import { button, el, editor, useAsyncEffect } from "../widgets.js";
+import { button, el, useAsyncEffect } from "../widgets.js";
 import { render, h } from "../widgets.js";
-import { useState } from "../external/preact-hooks.mjs";
-import { Window } from "./base.js";
+import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
-import { languageForExtension } from "../core/languages.js";
-import { registerPreactElement } from "../utils.js";
+import { Project } from "../core/project.js";
+import { openComponentInWindow } from "./window.js";
+import { FileEditor } from "./file-editor.js";
 
 Editor.init();
 
 config.baseURL = "/";
 
 const socket = io();
+
+class SBProject extends Project {
+  static deserialize(str) {
+    if (!str) return null;
+    try {
+      const res = JSON.parse(str);
+      if (typeof res.path !== "string") return null;
+      return new SBProject(res.path);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  constructor(path) {
+    super();
+    this.path = path;
+  }
+
+  async open() {
+    this.root = await request("openProject", { path: this.path });
+  }
+
+  async readFiles(paths) {
+    return await request("readFiles", { paths });
+  }
+
+  get allSources() {
+    const out = [];
+    const recurse = (file, path) => {
+      if (file.children) {
+        file.children.forEach((child) =>
+          recurse(child, path + "/" + file.name)
+        );
+      } else {
+        out.push({
+          path: path + "/" + file.name,
+          hash: file.hash,
+        });
+      }
+    };
+    for (const child of this.root.children) recurse(child, this.path);
+    return out;
+  }
+
+  serialize() {
+    return JSON.stringify({ path: this.path });
+  }
+}
 
 render(h(Sandblocks), document.body);
 
@@ -25,17 +73,31 @@ function request(name, data) {
   });
 }
 
+function useRebuild() {
+  const [_, setNum] = useState(0);
+  return () => setNum((n) => n + 1);
+}
+
 function Sandblocks() {
-  const [project, setProject] = useState(localStorage.lastProject);
-  const [root, setRoot] = useState(null);
+  const [project, setProject] = useState(() =>
+    SBProject.deserialize(localStorage.lastProject)
+  );
+  const rebuild = useRebuild();
 
   useAsyncEffect(async () => {
-    setRoot(project ? await request("openProject", { path: project }) : null);
-    if (project) localStorage.lastProject = project;
+    if (project) {
+      await project.open();
+      rebuild();
+      localStorage.lastProject = project.serialize();
+    }
   }, [project]);
 
+  useEffect(() => {
+    // openComponentInWindow(Workspace, {});
+  }, []);
+
   return [
-    button("Open Project", () => setProject(prompt())),
+    button("Open Project", () => setProject(new SBProject(prompt()))),
     button("Install Language", () =>
       request("installLanguage", {
         repo: prompt("Repo?"),
@@ -43,19 +105,15 @@ function Sandblocks() {
         path: prompt("Path?"),
       }).then(() => alert("Installed!"))
     ),
-    h(Workspace),
-    root &&
+    project?.root &&
       el(
         "sb-project-file-list",
         h(File, {
-          file: root,
-          path: project,
+          file: project.root,
+          path: project.path,
           isRoot: true,
-          onOpen: (path) => {
-            const editor = document.createElement("sb-file-editor");
-            editor.props = { path };
-            document.body.appendChild(editor);
-          },
+          onOpen: (path) =>
+            openComponentInWindow(FileEditor, { project, path }),
         })
       ),
   ];
@@ -86,40 +144,4 @@ function File({ file, onOpen, path, isRoot }) {
         )
       ),
   ]);
-}
-
-registerPreactElement("sb-file-editor", FileEditor);
-
-function FileEditor({ path, onClose }) {
-  const [sourceString, setSourceString] = useState("");
-  const [unsavedChanges, setUnsavedChanges] = useState(false);
-
-  useAsyncEffect(async () => {
-    setSourceString(await request("readFile", { path }));
-    setUnsavedChanges(false);
-  }, [path]);
-
-  const ext = path.split(".").slice(-1)[0].toLowerCase();
-  const language = languageForExtension(ext);
-
-  return h(
-    Window,
-    { onClose, barChildren: [unsavedChanges ? "Unsaved." : "Saved."] },
-    [
-      h(
-        "div",
-        { style: { padding: "12px" } },
-        editor({
-          extensions: ["base:base", ...language.defaultExtensions],
-          sourceString,
-          language: language.name,
-          onSave: async (data) => {
-            await request("writeFile", { path, data });
-            setUnsavedChanges(false);
-          },
-          onChange: () => setUnsavedChanges(true),
-        })
-      ),
-    ]
-  );
 }

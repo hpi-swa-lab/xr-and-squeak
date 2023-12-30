@@ -17,6 +17,11 @@ export function languageForExtension(extension) {
   return languages.find((language) => language.extensions.includes(extension));
 }
 
+export function languageForPath(path) {
+  const extension = path.split(".").pop();
+  return languageForExtension(extension);
+}
+
 registerLanguage(
   new TreeSitterLanguage({
     repo: "tree-sitter/tree-sitter-javascript",
