@@ -127,8 +127,8 @@ export function findChange(prev, current) {
   }
 }
 
-// assume the only change from prev to current is that a string was inserted into current.
-// find that string.
+// assume the only change from prev to current is that a string was inserted
+// into current. find that string.
 function findInsertedString(prev, current) {
   if (prev.length >= current.length) throw new Error("prev must be shorter");
 
@@ -171,14 +171,20 @@ export function getSelection() {
   return selection;
 }
 
-export function parentWithTag(node, tag) {
-  while (
-    node &&
-    (Array.isArray(tag) ? !tag.includes(node.tagName) : node.tagName !== tag)
-  ) {
-    node = node.parentNode;
+export function orParentThat(node, predicate) {
+  if (node instanceof Text) node = node.parentNode;
+
+  while (node instanceof HTMLElement) {
+    if (predicate(node)) return node;
+    node = node.parentNode ?? node.getRootNode()?.host;
   }
-  return node;
+  return null;
+}
+
+export function parentWithTag(node, tag) {
+  return orParentThat(node, (n) =>
+    Array.isArray(tag) ? tag.includes(n.tagName) : n.tagName === tag
+  );
 }
 
 export function parentsWithTagDo(node, tag, cb) {

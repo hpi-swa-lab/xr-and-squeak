@@ -1,0 +1,42 @@
+.sb-window {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 1px solid #ccc;
+  position: absolute;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-window-bar {
+  background-color: #ccc;
+  cursor: move;
+  padding: 2px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.sb-window-resize {
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  background-color: #ccc;
+  cursor: nwse-resize;
+}
+
+.sb-window-resize-initial {
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  left: calc(50% - 8px);
+  top: calc(50% - 8px);
+  cursor: nwse-resize;
+}
+
+.sb-window-content {
+  /* overflow: auto; */
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}

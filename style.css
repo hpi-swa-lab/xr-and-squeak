@@ -13,10 +13,10 @@ sb-block[type="ERROR"] {
   border: 1px solid red;
 }
 sb-shard {
-  outline: none;
   white-space: pre;
   word-wrap: normal;
   tab-size: 2;
+  display: block;
 }
 
 table {
@@ -33,6 +33,14 @@ td {
 }
 .removal-range {
   border-bottom: 3px solid red !important;
+}
+.search-result {
+  background-color: #ffe17d;
+  outline: 1px solid #ffcc00;
+}
+.search-result.active {
+  background-color: #ebbc00;
+  outline: 1px solid #ffcc00;
 }
 
 /**************

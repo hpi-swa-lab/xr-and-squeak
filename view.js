@@ -7,6 +7,7 @@ import {
   allViewsDo,
   clamp,
   rangeContains,
+  orParentThat,
 } from "./utils.js";
 
 // A Shard is a self-contained editable element.
@@ -119,10 +120,11 @@ export class Shard extends HTMLElement {
       contenteditable: "true",
       role: "textbox",
       "aria-multiline": "true",
+      focusable: "true",
     }))
       this.setAttribute(key, value);
 
-    this.editor.shards.push(this);
+    this.editor.registerShard(this);
 
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
@@ -153,7 +155,7 @@ export class Shard extends HTMLElement {
     this.observer.destroy();
     this.observer = null;
 
-    this.editor.shards.splice(this.editor.shards.indexOf(this), 1);
+    this.editor.deregisterShard(this);
 
     this.addEventListener("blur", (e) => this.editor.clearSuggestions());
   }
@@ -161,11 +163,13 @@ export class Shard extends HTMLElement {
   get editor() {
     if (this._editor) return this._editor;
 
-    const host = this.getRootNode().host;
-    if (!host) return undefined;
-    const editor = host.editor;
-    console.assert(editor.tagName === "SB-EDITOR");
-    return editor;
+    const editor = this.getRootNode()?.host?.editor;
+    if (editor) return editor;
+
+    return orParentThat(
+      this.parentNode,
+      (x) => x.tagName === "SB-SHARD" && x.editor
+    )?.editor;
   }
 
   get range() {
@@ -226,7 +230,7 @@ export class Shard extends HTMLElement {
   // after the user typed something, which changes both, and the
   // way to find them is the same.
   _extractSourceStringAndCursorRange() {
-    const selection = getSelection(this.getRootNode());
+    const selection = getSelection();
     const hasSelection = selection.anchorNode && selection.focusNode;
     const cursorElements = hasSelection
       ? [selection.focusNode, selection.anchorNode]

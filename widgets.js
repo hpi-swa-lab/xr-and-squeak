@@ -15,32 +15,29 @@ export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) => h("sb-shard", { initNode: [node], key: node });
 
-function _Editor({ inlineExtensions, ...args }) {
+function _Editor({ inlineExtensions, editorRef, ...props }) {
   const i = useMemo(
     () => inlineExtensions?.map((e) => e.instance()) ?? [],
     // use array directly for content-compare
     inlineExtensions ?? []
   );
-  return h("sb-editor", { ...args, inlineExtensions: i });
+  return h("sb-editor", { ...props, inlineExtensions: i, ref: editorRef });
 }
 export const editor = ({
-  key,
   extensions,
-  inlineExtensions,
   sourceString,
   onSave,
   onChange,
-  language,
+  ...props
 }) =>
   h(_Editor, {
-    key,
-    inlineExtensions,
     extensions: extensions.join(" "),
     text: sourceString ?? "",
-    language,
     onsave: (e) => onSave(e.detail),
     onchange: (e) => onChange?.(e.detail),
+    ...props,
   });
+
 export const useAsyncEffect = (fn, deps) => {
   useEffect(() => {
     fn();

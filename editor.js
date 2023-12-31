@@ -31,6 +31,7 @@ export class Editor extends HTMLElement {
       cut: "Ctrl-x",
       copy: "Ctrl-c",
       dismiss: "Escape",
+      search: "Ctrl-f",
 
       selectNodeUp: "Ctrl-ArrowUp",
       selectNodeDown: "Ctrl-ArrowDown",
@@ -57,8 +58,18 @@ export class Editor extends HTMLElement {
     customElements.define("sb-editor", Editor);
   }
 
+  // may be set by external parties to provide e.g. a file path or similar to
+  // extensions that are coded specifically against that external party
+  context = null;
+
+  // remembers the last focused leaf to track when to apply a history snapshot
   lastEditInView = null;
+
   extensionInstances = [];
+
+  focus() {
+    (this.lastEditInView?.shard ?? this.shard).focus();
+  }
 
   _sourceString = null;
   get sourceString() {
@@ -185,6 +196,18 @@ export class Editor extends HTMLElement {
     });
   }
 
+  updateExtension(stringOrExtension, trigger, cb) {
+    const ext =
+      this.extensionInstances.find((e) => e.name === stringOrExtension) ??
+      this.extensionInstances.find((e) => e.extension === stringOrExtension) ??
+      this.inlineExtensions.find((e) => e.name === stringOrExtension) ??
+      this.inlineExtensions.find((e) => e.extension === stringOrExtension);
+    cb(ext);
+    ToggleableMutationObserver.ignoreMutation(() => {
+      ext.process([trigger], this.selected?.node ?? this.source);
+    });
+  }
+
   undo() {
     if (!this.editHistory.canUndo()) return;
     const { sourceString, cursorRange } = this.editHistory.undo();
@@ -213,35 +236,22 @@ export class Editor extends HTMLElement {
     document.removeEventListener("selectionchange", this.selectionHandler);
   }
 
-  static observedAttributes = ["text", "language"];
-  initializing = false;
-  lastText = null;
-  lastLanguage = null;
-  lastExtensions = null;
-
-  attributeChangedCallback(name) {
-    const text = this.getAttribute("text");
-    const language = this.getAttribute("language");
-    const extensions = this.getAttribute("extensions");
-
-    // make sure all are set
-    if (
-      text !== undefined &&
-      text !== null &&
-      language !== undefined &&
-      language !== null &&
-      extensions !== undefined &&
-      extensions !== null &&
-      (text !== this.lastText ||
-        language !== this.lastLanguage ||
-        extensions !== this.lastExtensions)
-    ) {
-      this.lastText = text;
-      this.lastLanguage = language;
-      this.lastExtensions = extensions;
-      this.initEditor(text, language, extensions.split(" ").filter(Boolean));
-    }
+  static observedAttributes = ["text", "language", "extensions"];
+  attributeChangedCallback() {
+    queueMicrotask(async () => {
+      await this.updateEditor();
+    });
   }
+
+  async updateEditor() {
+    await this.initEditor(
+      this.getAttribute("text"),
+      this.getAttribute("language"),
+      this.getAttribute("extensions").split(" ").filter(Boolean)
+    );
+  }
+
+  initializing = false;
 
   async initEditor(text, language, extensionNames) {
     if (this.initializing) {
@@ -274,8 +284,9 @@ export class Editor extends HTMLElement {
     this.initializing = false;
 
     if (this.queuedUpdate) {
-      this.initEditor(...this.queuedUpdate);
+      let update = this.queuedUpdate;
       this.queuedUpdate = null;
+      await this.initEditor(...update);
     }
   }
 
@@ -361,13 +372,23 @@ export class Editor extends HTMLElement {
     return null;
   }
 
-  shards = [];
+  _shards = [];
 
   createShardFor(node) {
     const shard = document.createElement("sb-shard");
     shard._editor = this;
     shard.update(node);
     return shard;
+  }
+
+  registerShard(shard) {
+    this._shards.push(shard);
+  }
+
+  deregisterShard(shard) {
+    const index = this._shards.indexOf(shard);
+    if (index === -1) throw new Error("shard not registered");
+    this._shards.splice(index, 1);
   }
 
   get editor() {
@@ -383,7 +404,7 @@ export class Editor extends HTMLElement {
   }
 
   get allShards() {
-    return this.shards;
+    return this._shards;
   }
 
   get selectedShard() {

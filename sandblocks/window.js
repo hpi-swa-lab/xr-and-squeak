@@ -1,9 +1,29 @@
 import { useState, useEffect, useRef } from "../external/preact-hooks.mjs";
+import { orParentThat } from "../utils.js";
 import { h, button, registerPreactElement, render } from "../widgets.js";
 
-let globalMousePos;
+function wantsMouseOverFocus(e) {
+  return (
+    e.getAttribute("focusable") ||
+    e.tagName === "INPUT" ||
+    e.tagName === "TEXTAREA"
+  );
+}
+
+let globalMousePos = { x: 0, y: 0 };
 document.addEventListener("mousemove", (e) => {
   globalMousePos = { x: e.clientX, y: e.clientY };
+
+  let target = e.target;
+  while (target?.shadowRoot) {
+    target = target.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+  }
+  if (!target) return;
+
+  const f = orParentThat(target, wantsMouseOverFocus);
+  if (f && !orParentThat(document.activeElement, (p) => p === f)) {
+    f?.focus();
+  }
 });
 
 export function openComponentInWindow(component, props) {
@@ -32,52 +52,10 @@ export function Window({
   const windowRef = useRef(null);
 
   return [
-    h(
-      "style",
-      {},
-      `
-.sb-window {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  border: 1px solid #ccc;
-  position: absolute;
-  background-color: #fff;
-  display: flex;
-  flex-direction: column;
-}
-
-.sb-window-bar {
-  background-color: #ccc;
-  cursor: move;
-  padding: 2px;
-  display: flex;
-  justify-content: space-between;
-}
-
-.sb-window-resize {
-  width: 16px;
-  height: 16px;
-  position: absolute;
-  bottom: -8px;
-  right: -8px;
-  background-color: #ccc;
-  cursor: nwse-resize;
-}
-
-.sb-window-resize-initial {
-  width: 16px;
-  height: 16px;
-  position: absolute;
-  left: calc(50% - 8px);
-  top: calc(50% - 8px);
-  cursor: nwse-resize;
-}
-
-.sb-window-content {
-  overflow: auto;
-  flex-grow: 1;
-}
-  `
-    ),
+    h("link", {
+      rel: "stylesheet",
+      href: "widgets.css",
+    }),
     h(
       "div",
       {

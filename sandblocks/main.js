@@ -93,7 +93,7 @@ function Sandblocks() {
   }, [project]);
 
   useEffect(() => {
-    // openComponentInWindow(Workspace, {});
+    openComponentInWindow(Workspace, {});
   }, []);
 
   return [
