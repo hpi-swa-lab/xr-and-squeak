@@ -16,9 +16,10 @@ document.addEventListener("mousemove", (e) => {
 
   let target = e.target;
   while (target?.shadowRoot) {
-    target = target.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+    const inner = target.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+    if (!inner || inner === target) break;
+    target = inner;
   }
-  if (!target) return;
 
   const f = orParentThat(target, wantsMouseOverFocus);
   if (f && !orParentThat(document.activeElement, (p) => p === f)) {

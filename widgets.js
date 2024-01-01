@@ -33,7 +33,7 @@ export const editor = ({
   h(_Editor, {
     extensions: extensions.join(" "),
     text: sourceString ?? "",
-    onsave: (e) => onSave(e.detail),
+    onsave: (e) => onSave?.(e.detail),
     onchange: (e) => onChange?.(e.detail),
     ...props,
   });

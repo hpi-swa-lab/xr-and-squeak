@@ -174,6 +174,12 @@ customElements.define(
   }
 );
 
+async function asyncEval(str) {
+  // TODO need to analyze the resulting tree an insert a return stmt for the last expression
+  // return await eval("(async () => {" + str + "})()");
+  return eval(str);
+}
+
 const jsWatch = [
   (x) => x.type === "call_expression",
   (x) => x.atField("function").text === "sbWatch",
@@ -186,7 +192,7 @@ export const workspace = new Extension()
     (x) => x.type === "program",
     (x) => {
       try {
-        eval(x.editor.sourceString);
+        asyncEval(x.sourceString);
       } catch (e) {
         console.log(e);
       }
@@ -204,9 +210,9 @@ export const workspace = new Extension()
       x.wrapWith("sbWatch(", `, ${randomId()})`);
     }
   })
-  .registerShortcut("printIt", (x, view, e) => {
+  .registerShortcut("printIt", async (x, view, e) => {
     const widget = e.createWidget("sb-js-print-result");
-    widget.result = eval(x.sourceString);
+    widget.result = await asyncEval(x.sourceString);
     view.after(widget);
     widget.focus();
   });

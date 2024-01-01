@@ -38,6 +38,7 @@ export class Shard extends HTMLElement {
 
     this.addEventListener("paste", function (event) {
       event.preventDefault();
+      event.stopPropagation();
       document.execCommand(
         "inserttext",
         false,
@@ -437,17 +438,25 @@ export class Block extends _EditableElement {
     let start;
     this.addEventListener("mousedown", (e) => {
       start = [e.clientX, e.clientY];
-      if (e.target === this) this.select();
-    });
-    this.addEventListener("click", (e) => {
-      if (e.target === this && e.clientX === start[0] && e.clientY === start[1])
+      if (e.target === this && this.editor.interactionMode === "block")
         this.select();
     });
-    this.addEventListener("dragstart", (e) => {});
+    this.addEventListener("click", (e) => {
+      if (
+        e.target === this &&
+        e.clientX === start[0] &&
+        e.clientY === start[1] &&
+        this.editor.interactionMode === "block"
+      )
+        this.select();
+    });
+    // this.addEventListener("dragstart", (e) => {});
   }
   connectedCallback() {
     super.connectedCallback();
-    this.setAttribute("draggable", true);
+    // TODO update on change
+    if (this.isConnected && this.editor.interactionMode === "block")
+      this.setAttribute("draggable", true);
   }
   set node(v) {
     super.node = v;

@@ -1,10 +1,10 @@
-import { Window } from "./window.js";
 import { Replacement, div, editor, h, shard } from "../widgets.js";
 import { Extension } from "../extension.js";
 import { languageFor } from "../core/languages.js";
 
 const extraExtensions = {
   markdown: ["markdown:calc"],
+  javascript: ["javascript:workspace", "copilot:base"],
 };
 
 customElements.define(

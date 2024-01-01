@@ -1,3 +1,7 @@
+:host {
+  display: flex;
+  justify-content: stretch;
+}
 sb-block {
   display: inline;
   margin: 0;
@@ -16,7 +20,7 @@ sb-shard {
   white-space: pre;
   word-wrap: normal;
   tab-size: 2;
-  display: block;
+  display: flex;
 }
 
 table {

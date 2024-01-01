@@ -1,4 +1,4 @@
-import { deleteDB, openDB } from "../external/idb.js";
+import { openDB } from "../external/idb.js";
 import { languageForPath } from "./languages.js";
 
 addEventListener("message", async (event) => {

@@ -108,6 +108,10 @@ class SBNode {
     return editor;
   }
 
+  get context() {
+    return this.editor.context;
+  }
+
   get field() {
     return this._field;
   }

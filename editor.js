@@ -2,7 +2,6 @@ import { Extension } from "./extension.js";
 import { config } from "./core/config.js";
 import {
   ToggleableMutationObserver,
-  WeakArray,
   findChange,
   getSelection,
   parentWithTag,
@@ -16,7 +15,7 @@ import { languageFor } from "./core/languages.js";
 // The mapping between editor and model is 1-1 but within the
 // editor, the model may be split into multiple editable shards.
 // Consequently, the Editor manages any state that is global to
-// the model, such as its undo/redo history.
+// the model, such as its undo/redo history and tracks selection.
 export class Editor extends HTMLElement {
   static keyMap = {};
   static registerKeyMap(map) {
@@ -50,6 +49,7 @@ export class Editor extends HTMLElement {
       browseImplementors: "Alt-m",
       resetContents: "Ctrl-l",
       addNewBlock: "Ctrl-Enter",
+      autocompleteAI: "Ctrl-.",
     });
 
     customElements.define("sb-shard", Shard);
@@ -62,13 +62,10 @@ export class Editor extends HTMLElement {
   // extensions that are coded specifically against that external party
   context = null;
 
-  // remembers the last focused leaf to track when to apply a history snapshot
-  lastEditInView = null;
-
   extensionInstances = [];
 
   focus() {
-    (this.lastEditInView?.shard ?? this.shard).focus();
+    (this.editHistory?.lastView?.shard ?? this.shard).focus();
   }
 
   _sourceString = null;
@@ -81,24 +78,30 @@ export class Editor extends HTMLElement {
     this._sourceString = text;
   }
 
+  set interactionMode(mode) {
+    this._interactionMode = mode;
+    this.hideSelection.textContent =
+      mode === "block" ? `*::selection { background: transparent; }` : "";
+  }
+  get interactionMode() {
+    return this._interactionMode;
+  }
+
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    const blockStyle = false;
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="${
-      config.baseURL
-    }style.css">${
-      blockStyle
-        ? `<link rel="stylesheet" href="${config.baseURL}style-blocks.css">`
-        : ""
-    }<slot></slot>`;
+    this.shadowRoot.innerHTML =
+      `<link rel="stylesheet" href="${config.baseURL}style.css">` +
+      `${
+        this.interactionMode === "block"
+          ? `<link rel="stylesheet" href="${config.baseURL}style-blocks.css">`
+          : ""
+      }<slot></slot>`;
     this.editHistory = new EditHistory();
     this.suggestions = document.createElement("sb-suggestions");
-
     this.hideSelection = document.createElement("style");
-    this.hideSelection.textContent = blockStyle
-      ? `*::selection { background: transparent; }`
-      : "";
+
+    this.interactionMode = "text";
   }
 
   replaceSelection(text) {
@@ -112,46 +115,8 @@ export class Editor extends HTMLElement {
   }
 
   replaceTextFromTyping({ range, text, shard, selectionRange }) {
-    this._replaceText(range, text, shard, selectionRange);
-    if (this.selected !== this.lastEditInView) {
-      this.noteChangeFromUser(this.selected, selectionRange);
-    }
-  }
-
-  insertTextFromCommand(position, text) {
-    this.replaceTextFromCommand([position, position], text);
-  }
-
-  replaceTextFromCommand(range, text) {
-    this.noteChangeFromUser(null, range);
-    this._replaceText(
-      range,
-      text,
-      this.selectedShard ?? this.shardForRange(range),
-      range
-    );
-  }
-
-  noteChangeFromUser(view, range) {
-    this.editHistory.push(this.sourceString, range);
-    this.lastEditInView = null;
-    this.dispatchEvent(
-      new CustomEvent("change", { detail: this.sourceString })
-    );
-  }
-
-  _replaceText(range, text, shard, selectionRange) {
-    this.setText(
-      this.sourceString.slice(0, range[0]) +
-        text +
-        this.sourceString.slice(range[1]),
-      shard,
-      selectionRange
-    );
-  }
-
-  setText(text, shard, selectionRange) {
-    // FIXME does not support change as replace yet
+    // FIXME we will only want to do this when inserting, for this we
+    // first need a reliable way to extract the exact change from the DOM
     if (this.sourceString.length !== text.length)
       this.extensionsDo(
         (e) =>
@@ -159,6 +124,45 @@ export class Editor extends HTMLElement {
             text && e.filterChange(findChange(this.sourceString, text), text))
       );
 
+    this._replaceTextFromChange(range, text, shard, selectionRange);
+  }
+
+  insertTextFromCommand(position, text) {
+    this.replaceTextFromCommand([position, position], text);
+  }
+
+  replaceTextFromCommand(range, text) {
+    this._replaceTextFromChange(
+      range,
+      text,
+      this.selectedShard ?? this.shardForRange(range),
+      range
+    );
+  }
+
+  _replaceTextFromChange(range, text, shard, selectionRange) {
+    const oldSelected = this.editHistory.lastView;
+    const oldRange = this.selectionRange ?? [0, 0];
+    const oldSource = this.sourceString;
+
+    this.setText(
+      this.sourceString.slice(0, range[0]) +
+        text +
+        this.sourceString.slice(range[1]),
+      shard,
+      selectionRange
+    );
+
+    if (oldSelected !== this.selected) {
+      this.editHistory.push(oldSource, oldRange, this.selected);
+    }
+
+    this.dispatchEvent(
+      new CustomEvent("change", { detail: this.sourceString })
+    );
+  }
+
+  setText(text, shard, selectionRange) {
     if (text) {
       this.sourceString = text;
       this.source.updateModelAndView(this.sourceString);
@@ -212,17 +216,14 @@ export class Editor extends HTMLElement {
     if (!this.editHistory.canUndo()) return;
     const { sourceString, cursorRange } = this.editHistory.undo();
     this.sourceString = sourceString;
-    this.lastEditInView = null;
-    this.setText(sourceString);
-    this.selectRange(...cursorRange);
+    this.setText(sourceString, null, cursorRange);
   }
 
   redo() {
     // TODO need to push newest item
     if (!this.editHistory.canRedo()) return;
     const { sourceString, cursorRange } = this.editHistory.redo();
-    this.setText(sourceString);
-    this.selectRange(...cursorRange);
+    this.setText(sourceString, null, cursorRange);
   }
 
   connectedCallback() {
@@ -244,7 +245,7 @@ export class Editor extends HTMLElement {
   }
 
   async updateEditor() {
-    await this.initEditor(
+    await this._initEditor(
       this.getAttribute("text"),
       this.getAttribute("language"),
       this.getAttribute("extensions").split(" ").filter(Boolean)
@@ -253,7 +254,7 @@ export class Editor extends HTMLElement {
 
   initializing = false;
 
-  async initEditor(text, language, extensionNames) {
+  async _initEditor(text, language, extensionNames) {
     if (this.initializing) {
       this.queuedUpdate = arguments;
       return;
@@ -286,7 +287,7 @@ export class Editor extends HTMLElement {
     if (this.queuedUpdate) {
       let update = this.queuedUpdate;
       this.queuedUpdate = null;
-      await this.initEditor(...update);
+      await this._initEditor(...update);
     }
   }
 
@@ -555,9 +556,13 @@ class EditHistory {
   undoStack = [];
   redoStack = [];
 
-  push(sourceString, cursorRange) {
+  get lastView() {
+    return this.undoStack[this.undoStack.length - 1]?.view.deref();
+  }
+
+  push(sourceString, cursorRange, view) {
     this.redoStack = [];
-    this.undoStack.push({ sourceString, cursorRange });
+    this.undoStack.push({ sourceString, cursorRange, view: new WeakRef(view) });
   }
 
   undo() {

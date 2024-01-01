@@ -62,7 +62,7 @@ export function FileEditor({
     },
     h(
       "div",
-      { style: { overflowY: "scroll", padding: "2px" } },
+      { style: { overflowY: "scroll", padding: "2px", width: "100%" } },
       sourceString !== null &&
         editor({
           extensions: ["base:base", ...language.defaultExtensions],
