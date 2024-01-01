@@ -266,3 +266,12 @@ export function rangeEqual(a, b) {
 export function rangeContains(a, b) {
   return a[0] <= b[0] && a[1] >= b[1];
 }
+
+export function matchesKey(e, key) {
+  const modifiers = key.split("-");
+  const baseKey = modifiers.pop();
+
+  if (modifiers.includes("Ctrl") && !e.ctrlKey && !e.metaKey) return false;
+  if (modifiers.includes("Alt") && !e.altKey) return false;
+  return e.key === baseKey;
+}

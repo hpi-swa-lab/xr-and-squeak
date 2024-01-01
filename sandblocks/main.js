@@ -35,6 +35,10 @@ class SBProject extends Project {
     this.root = await request("openProject", { path: this.path });
   }
 
+  async writeFile(path, data) {
+    await request("writeFile", { path, data });
+  }
+
   async readFiles(paths) {
     return await request("readFiles", { paths });
   }
@@ -93,7 +97,7 @@ function Sandblocks() {
   }, [project]);
 
   useEffect(() => {
-    openComponentInWindow(Workspace, {});
+    // openComponentInWindow(Workspace, {});
   }, []);
 
   return [

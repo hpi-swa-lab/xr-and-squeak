@@ -6,6 +6,8 @@ export class Project {
   // array of { path: string, hash: string }
   get allSources() {}
 
+  async writeFile(path, source) {}
+
   async readFile(path) {
     return (await this.readFiles([path]))[0].data;
   }

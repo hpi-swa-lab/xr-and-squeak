@@ -65,14 +65,18 @@ export function FileEditor({
       { style: { overflowY: "scroll", padding: "2px", width: "100%" } },
       sourceString !== null &&
         editor({
-          extensions: ["base:base", ...language.defaultExtensions],
+          extensions: [
+            "base:base",
+            "copilot:base",
+            ...language.defaultExtensions,
+          ],
           inlineExtensions: [references, search],
           sourceString,
           editorRef,
           context: fileEditorRef.current,
           language: language.name,
           onSave: async (data) => {
-            await request("writeFile", { path, data });
+            await project.writeFile(path, data);
             setUnsavedChanges(false);
           },
           onChange: () => setUnsavedChanges(true),

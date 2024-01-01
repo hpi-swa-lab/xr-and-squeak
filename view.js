@@ -8,6 +8,7 @@ import {
   clamp,
   rangeContains,
   orParentThat,
+  matchesKey,
 } from "./utils.js";
 
 // A Shard is a self-contained editable element.
@@ -71,7 +72,7 @@ export class Shard extends HTMLElement {
       }
 
       for (const [action, key] of Object.entries(Editor.keyMap)) {
-        if (this.matchesKey(e, key)) {
+        if (matchesKey(e, key)) {
           let preventDefault = true;
           let selected = this.editor.selected;
 
@@ -178,15 +179,6 @@ export class Shard extends HTMLElement {
     // this conflicts with our updating routines
     if (this.source.isRoot) return [0, this.editor.sourceString.length];
     return this.source.range;
-  }
-
-  matchesKey(e, key) {
-    const modifiers = key.split("-");
-    const baseKey = modifiers.pop();
-
-    if (modifiers.includes("Ctrl") && !e.ctrlKey && !e.metaKey) return false;
-    if (modifiers.includes("Alt") && !e.altKey) return false;
-    return e.key === baseKey;
   }
 
   destroy() {

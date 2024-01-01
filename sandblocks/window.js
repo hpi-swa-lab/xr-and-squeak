@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "../external/preact-hooks.mjs";
-import { orParentThat } from "../utils.js";
+import { matchesKey, orParentThat } from "../utils.js";
 import { h, button, registerPreactElement, render } from "../widgets.js";
 
 function wantsMouseOverFocus(e) {
@@ -52,6 +52,16 @@ export function Window({
   const [initialPlacement, setInitialPlacement] = useState(true);
   const windowRef = useRef(null);
 
+  const close =
+    onClose ??
+    (() => {
+      const root = windowRef.current.getRootNode().host;
+      // should only use DOM mutation if we are not inside of
+      // a preact component
+      // FIXME console.assert(root.tagName === "SB-WINDOW");
+      root?.remove();
+    });
+
   return [
     h("link", {
       rel: "stylesheet",
@@ -68,6 +78,13 @@ export function Window({
           width: size.x,
           height: size.y,
         },
+        onKeyDown: (e) => {
+          if (matchesKey(e, "Ctrl-e")) {
+            close();
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        },
       },
       [
         h(
@@ -78,21 +95,7 @@ export function Window({
             onMove: (delta) =>
               setPosition((p) => ({ x: p.x + delta.x, y: p.y + delta.y })),
           },
-          [
-            title,
-            button(
-              "x",
-              onClose ??
-                (() => {
-                  const root = windowRef.current.getRootNode().host;
-                  // should only use DOM mutation if we are not inside of
-                  // a preact component
-                  // FIXME console.assert(root.tagName === "SB-WINDOW");
-                  root?.remove();
-                })
-            ),
-            barChildren,
-          ]
+          [title, button("x", close), barChildren]
         ),
         h("div", { class: "sb-window-content" }, children, h("slot")),
         initialPlacement &&

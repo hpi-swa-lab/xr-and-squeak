@@ -20,7 +20,6 @@ sb-shard {
   white-space: pre;
   word-wrap: normal;
   tab-size: 2;
-  display: flex;
 }
 
 table {

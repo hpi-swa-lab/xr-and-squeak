@@ -111,20 +111,9 @@ export class TrueDiff {
     const buffer = new EditBuffer();
     const root = this.computeEditScript(a, b, null, 0, buffer);
     buffer.apply();
-    this.cleanData(root);
+    root.cleanDiffData();
 
     return root;
-  }
-
-  cleanData(node) {
-    node._structureHash = null;
-    node._literalHash = null;
-    node.share = null;
-    node.assigned = null;
-    node.literalMatch = null;
-    for (const child of node.children) {
-      this.cleanData(child);
-    }
   }
 
   // SHARES

@@ -2,6 +2,31 @@ import { WeakArray, exec } from "../utils.js";
 import { TrueDiff } from "./diff.js";
 import md5 from "../external/md5.min.js";
 
+/*
+    https://github.com/bryc/code/blob/master/jshash/experimental/cyrb53.js
+    cyrb53 (c) 2018 bryc (github.com/bryc)
+    License: Public domain. Attribution appreciated.
+    A fast and simple 53-bit string hash function with decent collision resistance.
+    Largely inspired by MurmurHash2/3, but with a focus on speed/simplicity.
+*/
+const cyrb53 = (str, seed = 0) => {
+  let h1 = 0xdeadbeef ^ seed,
+    h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+};
+const hash = (str) => cyrb53(str);
+const hashCombine = (a, b) => a ^ (b + 0x9e3779b9 + (a << 6) + (a >> 2));
+
 export class SBLanguage {
   constructor({ name, extensions, defaultExtensions }) {
     this.name = name;
@@ -351,9 +376,20 @@ class SBNode {
   get isSelected() {
     return this.editor.selected?.node === this;
   }
+
+  cleanDiffData() {
+    this._structureHash = null;
+    this._literalHash = null;
+    this.share = null;
+    this.assigned = null;
+    this.literalMatch = null;
+    for (const child of this.children) {
+      child.cleanDiffData();
+    }
+  }
 }
 
-const structureHashText = md5("text");
+const structureHashText = hash("text");
 
 export class SBText extends SBNode {
   constructor(text, start, end) {
@@ -372,7 +408,7 @@ export class SBText extends SBNode {
   }
 
   get literalHash() {
-    return (this._literalHash ??= md5(this.text));
+    return (this._literalHash ??= hash(this.text));
   }
 
   get text() {
@@ -453,13 +489,14 @@ export class SBBlock extends SBNode {
   }
 
   get structureHash() {
-    return (this._structureHash ??= md5(
-      this.type + this.children.map((c) => c.structureHash).join("")
+    return (this._structureHash ??= hashCombine(
+      hash(this.type),
+      this.children.reduce((a, node) => hashCombine(a, node.structureHash), 0)
     ));
   }
   get literalHash() {
-    return (this._literalHash ??= md5(
-      this.children.map((c) => c.literalHash).join("")
+    return (this._literalHash ??= hashCombine(
+      this.children.reduce((a, node) => hashCombine(a, node.literalHash), 0)
     ));
   }
 
