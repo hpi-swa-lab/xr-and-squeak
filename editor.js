@@ -585,7 +585,11 @@ class EditHistory {
 
   push(sourceString, cursorRange, view) {
     this.redoStack = [];
-    this.undoStack.push({ sourceString, cursorRange, view: new WeakRef(view) });
+    this.undoStack.push({
+      sourceString,
+      cursorRange,
+      view: view ? new WeakRef(view) : null,
+    });
   }
 
   undo() {

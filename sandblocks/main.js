@@ -5,6 +5,7 @@ import { render, h } from "../widgets.js";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
 import { Project } from "../core/project.js";
+import { matchesKey } from "../utils.js";
 import { openComponentInWindow } from "./window.js";
 import { FileEditor } from "./file-editor.js";
 
@@ -87,6 +88,18 @@ function Sandblocks() {
     SBProject.deserialize(localStorage.lastProject)
   );
   const rebuild = useRebuild();
+  
+  useEffect(() => {
+  	const handler = (e) => {
+  		if (matchesKey(e, "Ctrl-g")) {
+  			openComponentInWindow(Workspace, {});
+  			e.preventDefault();
+  			e.stopPropagation();
+  		}
+  	}
+  	document.body.addEventListener("keydown", handler)
+  	return () => document.body.removeEventListener("keydown", handler)
+  }, [])
 
   useAsyncEffect(async () => {
     if (project) {
@@ -95,11 +108,7 @@ function Sandblocks() {
       localStorage.lastProject = project.serialize();
     }
   }, [project]);
-
-  useEffect(() => {
-    // openComponentInWindow(Workspace, {});
-  }, []);
-
+	
   return [
     button("Open Project", () => setProject(new SBProject(prompt()))),
     button("Install Language", () =>
@@ -133,19 +142,25 @@ function File({ file, onOpen, path, isRoot }) {
         onclick: () => (isFolder ? setOpen((o) => !o) : onOpen(path)),
         class: "sb-file-name",
       },
-      file.name
+      `${isFolder ? (open ? "▼ " : "▶ ") : ""}${file.name}`
     ),
     open &&
       isFolder &&
       el(
         "sb-file-list",
-        file.children.map((child) =>
-          h(File, {
-            file: child,
-            onOpen,
-            path: path + "/" + child.name,
-          })
-        )
+        file.children
+          .sort((a, b) =>
+            !!a.children === !!b.children
+              ? a.name.localeCompare(b.name)
+              : !!b.children - !!a.children
+          )
+          .map((child) =>
+            h(File, {
+              file: child,
+              onOpen,
+              path: path + "/" + child.name,
+            })
+          )
       ),
   ]);
 }
