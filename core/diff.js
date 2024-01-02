@@ -110,6 +110,9 @@ export class TrueDiff {
 
     const buffer = new EditBuffer();
     const root = this.computeEditScript(a, b, null, 0, buffer);
+
+    a.editor.extensionsDo((e) => e.filterDiff(buffer));
+
     buffer.apply();
     root.cleanDiffData();
 
@@ -322,6 +325,7 @@ export class TrueDiff {
       return this.updateLiterals(b.assigned, b, editBuffer);
     } else {
       const newTree = b.shallowClone();
+      editBuffer.load(newTree);
       b.children.forEach((child, index) => {
         const newChild = this.loadUnassigned(child, editBuffer);
         editBuffer.attach(newChild, newTree, index);
@@ -347,7 +351,7 @@ class DiffOp {
   }
 }
 
-class DetachOp extends DiffOp {
+export class DetachOp extends DiffOp {
   constructor(node) {
     super();
     this.node = node;
@@ -377,7 +381,7 @@ class DetachOp extends DiffOp {
   }
 }
 
-class AttachOp extends DiffOp {
+export class AttachOp extends DiffOp {
   constructor(node, parent, index) {
     super();
     this.node = node;
@@ -408,7 +412,7 @@ class AttachOp extends DiffOp {
   }
 }
 
-class UpdateOp extends DiffOp {
+export class UpdateOp extends DiffOp {
   constructor(node, text) {
     super();
     this.node = node;
@@ -422,7 +426,15 @@ class UpdateOp extends DiffOp {
   }
 }
 
-class RemoveOp extends DiffOp {
+export class RemoveOp extends DiffOp {
+  constructor(node) {
+    super();
+    this.node = node;
+  }
+  apply() {}
+}
+
+export class LoadOp extends DiffOp {
   constructor(node) {
     super();
     this.node = node;
@@ -453,6 +465,10 @@ class EditBuffer {
     this.log("remove", this.printLabel(node));
     this.negBuf.push(new RemoveOp(node));
   }
+  load(node) {
+    this.log("load", this.printLabel(node));
+    this.posBuf.push(new LoadOp(node));
+  }
   update(node, text) {
     // assert(node.views.length > 0);
     this.log(
@@ -482,6 +498,10 @@ class EditBuffer {
   }
   rememberDetachedRootShard(shard) {
     this.detachedRootShards.add(shard);
+  }
+  opsDo(cb) {
+    this.negBuf.forEach(cb);
+    this.posBuf.forEach(cb);
   }
   log(...op) {
     if (false) console.log(...op);

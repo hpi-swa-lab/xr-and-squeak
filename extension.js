@@ -51,6 +51,7 @@ export class Extension {
   constructor() {
     this.queries = new Map();
     this.changeFilters = [];
+    this.diffFilters = [];
   }
 
   registerQuery(trigger, query) {
@@ -61,6 +62,11 @@ export class Extension {
 
   registerChangeFilter(filter) {
     this.changeFilters.push(filter);
+    return this;
+  }
+
+  registerDiffFilter(filter) {
+    this.diffFilters.push(filter);
     return this;
   }
 
@@ -128,6 +134,10 @@ class ExtensionInstance {
     this.extension.changeFilters.forEach((filter) =>
       filter(change, sourceString)
     );
+  }
+
+  filterDiff(diffs) {
+    this.extension.diffFilters.forEach((filter) => filter(diffs));
   }
 
   createWidget(tag) {

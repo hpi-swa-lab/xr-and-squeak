@@ -1,3 +1,4 @@
+import { LoadOp, RemoveOp, UpdateOp } from "../core/diff.js";
 import { Extension } from "../extension.js";
 import { Widget } from "../widgets.js";
 
@@ -154,12 +155,21 @@ function sequenceMatch(query, word) {
   return false;
 }
 
-const words = new Set();
+const words = new Map();
+function noteWord(word) {
+  if (word.match(/[A-Za-z].+/)) words.set(word, (words.get(word) ?? 0) + 1);
+}
+function forgetWord(word) {
+  const count = words.get(word);
+  if (count === undefined) return;
+  if (count <= 1) words.delete(word);
+  else words.set(word, count - 1);
+}
 export const identifierSuggestions = new Extension()
   .registerType((e) => [
     (x) => x.isText,
     (x) => {
-      const candidates = [...words];
+      const candidates = [...words.keys()];
       const query = x.text.toLowerCase();
       const exactMatches = candidates
         .filter((w) => w.toLowerCase().startsWith(query))
@@ -170,14 +180,25 @@ export const identifierSuggestions = new Extension()
       return e.addSuggestions(
         [...exactMatches, ...fuzzyMatches]
           .slice(0, 10)
-          .filter((w) => w !== query)
+          .filter((w) => w.toLowerCase() !== query)
       );
     },
   ])
-  .registerExtensionConnected((e) => [
-    (x) => x.isText,
-    (x) => x.text.match(/[A-Za-z].+/) && words.add(x.text.trim()),
-  ]);
+  .registerExtensionConnected((e) => [(x) => x.isText, (x) => noteWord(x.text)])
+  .registerDiffFilter((diff) => {
+    diff.opsDo((op) => {
+      if (op instanceof UpdateOp && op.node.isText) {
+        forgetWord(op.node.text);
+        noteWord(op.text);
+      }
+      if (op instanceof RemoveOp && op.node.isText) {
+        forgetWord(op.node.text);
+      }
+      if (op instanceof LoadOp && op.node.isText) {
+        noteWord(op.node.text);
+      }
+    });
+  });
 
 function insert(string, index, extra) {
   return string.substring(0, index) + extra + string.substring(index);
