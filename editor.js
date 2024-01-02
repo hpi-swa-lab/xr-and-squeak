@@ -4,6 +4,7 @@ import {
   ToggleableMutationObserver,
   findChange,
   getSelection,
+  orParentThat,
   parentWithTag,
   rangeContains,
 } from "./utils.js";
@@ -115,16 +116,25 @@ export class Editor extends HTMLElement {
   }
 
   replaceTextFromTyping({ range, text, shard, selectionRange }) {
-    // FIXME we will only want to do this when inserting, for this we
-    // first need a reliable way to extract the exact change from the DOM
-    if (this.sourceString.length !== text.length)
-      this.extensionsDo(
-        (e) =>
-          (text =
-            text && e.filterChange(findChange(this.sourceString, text), text))
-      );
+    const change = findChange(
+      this.sourceString.slice(...range),
+      text,
+      this.selectionRange[1] - range[0]
+    );
+    change.from += range[0];
+    change.to += range[0];
+    change.selectionRange = selectionRange;
 
-    this._replaceTextFromChange(range, text, shard, selectionRange);
+    if (change) {
+      this.extensionsDo((e) => e.filterChange(change, this.sourceString));
+    }
+
+    this._replaceTextFromChange(
+      [change.from, change.to],
+      change.insert ?? "",
+      shard,
+      change.selectionRange
+    );
   }
 
   insertTextFromCommand(position, text) {
@@ -291,7 +301,16 @@ export class Editor extends HTMLElement {
     }
   }
 
+  changeSelection(cb) {
+    const selection = getSelection();
+    selection.removeAllRanges();
+    cb(selection);
+  }
+
   onSelectionChange() {
+    const target = getSelection().anchorNode;
+    if (!orParentThat(target, (p) => p === this)) return;
+
     const { selectionRange, selected } =
       this.selectedShard?._extractSourceStringAndCursorRange() ?? {};
     this._updateSelected(selected, selectionRange);

@@ -14,6 +14,12 @@ class DetachedShard extends Widget {
 }
 customElements.define("sb-detached-shard", DetachedShard);
 
+const BRACE_PAIRS = {
+  "{": "}",
+  "[": "]",
+  "(": ")",
+};
+
 export const base = new Extension()
   .registerShortcut("undo", (x, view) => view.editor.undo())
 
@@ -40,11 +46,37 @@ export const base = new Extension()
     },
   ])
 
-  .registerChangeFilter((change, text) => {
-    // FIXME disabled until we can reliably type-over closing braces
-    if (false && change.op === "insert" && change.string === "(")
-      return insert(text, change.index + 1, ")");
-    return text;
+  .registerChangeFilter((change, sourceString) => {
+    if (BRACE_PAIRS[change.insert]) {
+      const match = BRACE_PAIRS[change.insert];
+      if (change.from === change.to) change.insert += match;
+      else {
+        change.insert = `${change.insert}${sourceString.slice(
+          change.from,
+          change.to
+        )}${match}`;
+        change.selectionRange = [change.from + 1, change.to + 1];
+      }
+    }
+  })
+
+  .registerChangeFilter((change, sourceString) => {
+    if (change.insert === "\n") {
+      function findLastIndent(string, index) {
+        let i = index;
+        while (i >= 0 && string[i] !== "\n") i--;
+        i++;
+        const start = i;
+        while (i <= index && string[i].match(/[ \t]/)) i++;
+        return string.slice(start, i);
+      }
+
+      let indent = findLastIndent(sourceString, change.from - 1);
+      if (BRACE_PAIRS[sourceString[change.from - 1]]) indent += "\t";
+      change.insert += indent;
+      change.selectionRange[0] += indent.length;
+      change.selectionRange[1] += indent.length;
+    }
   })
 
   .registerSelection((e) => [

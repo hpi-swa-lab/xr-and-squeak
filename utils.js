@@ -119,12 +119,48 @@ export class ToggleableMutationObserver {
   }
 }
 
-export function findChange(prev, current) {
-  if (prev.length > current.length) {
-    return { op: "delete", ...findInsertedString(current, prev) };
-  } else {
-    return { op: "insert", ...findInsertedString(prev, current) };
+export function findChange(a, b, preferredPos, preferredSide) {
+  const diff = findDiff(a, b, preferredPos, preferredSide);
+  if (!diff) return null;
+
+  const change =
+    diff.from === diff.toB
+      ? { delete: a.slice(diff.from, diff.toA), from: diff.from, to: diff.toA }
+      : { insert: b.slice(diff.from, diff.toB), from: diff.from, to: diff.toA };
+  return change;
+}
+// copied from codemirror: detect the change between to strings at the cursor position.
+// `preferredSide` should be "end" if backspace was pressed
+function findDiff(a, b, preferredPos, preferredSide) {
+  let minLen = Math.min(a.length, b.length);
+  let from = 0;
+  while (from < minLen && a.charCodeAt(from) == b.charCodeAt(from)) from++;
+  if (from == minLen && a.length == b.length) return null;
+  let toA = a.length,
+    toB = b.length;
+  while (toA > 0 && toB > 0 && a.charCodeAt(toA - 1) == b.charCodeAt(toB - 1)) {
+    toA--;
+    toB--;
   }
+
+  if (preferredSide === "end") {
+    let adjust = Math.max(0, from - Math.min(toA, toB));
+    preferredPos -= toA + adjust - from;
+  }
+  if (toA < from && a.length < b.length) {
+    let move =
+      preferredPos <= from && preferredPos >= toA ? from - preferredPos : 0;
+    from -= move;
+    toB = from + (toB - toA);
+    toA = from;
+  } else if (toB < from) {
+    let move =
+      preferredPos <= from && preferredPos >= toB ? from - preferredPos : 0;
+    from -= move;
+    toA = from + (toA - toB);
+    toB = from;
+  }
+  return { from, toA, toB };
 }
 
 // assume the only change from prev to current is that a string was inserted
@@ -177,6 +213,7 @@ export function orParentThat(node, predicate) {
   while (node instanceof HTMLElement) {
     if (predicate(node)) return node;
     node = node.parentNode ?? node.getRootNode()?.host;
+    if (node instanceof ShadowRoot) node = node.host;
   }
   return null;
 }

@@ -119,11 +119,10 @@ class ExtensionInstance {
     this.extension = extension;
   }
 
-  filterChange(change, text) {
-    this.extension.changeFilters.forEach(
-      (filter) => (text = filter(change, text))
+  filterChange(change, sourceString) {
+    this.extension.changeFilters.forEach((filter) =>
+      filter(change, sourceString)
     );
-    return text;
   }
 
   createWidget(tag) {

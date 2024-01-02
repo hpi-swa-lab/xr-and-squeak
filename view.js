@@ -339,7 +339,7 @@ export class Shard extends HTMLElement {
     return candidate;
   }
 
-  _rangeToCursor(start, end) {
+  _cursorToRange(start, end) {
     const range = document.createRange();
     const startNode = this.root.findTextForCursor(start);
     const endNode = this.root.findTextForCursor(end);
@@ -359,10 +359,11 @@ export class Shard extends HTMLElement {
 
   selectRange(start, end) {
     if (end === undefined) end = start;
-    const range = this._rangeToCursor(...this._clampRange(start, end));
-    const selection = getSelection(this.getRootNode());
-    selection.removeAllRanges();
-    selection.addRange(range);
+
+    this.editor.changeSelection((selection) => {
+      const range = this._cursorToRange(...this._clampRange(start, end));
+      selection.addRange(range);
+    });
   }
 
   get root() {
@@ -402,11 +403,9 @@ class _EditableElement extends HTMLElement {
   }
 
   select() {
-    const range = document.createRange();
-    range.selectNode(this);
-    const selection = getSelection(this.getRootNode());
-    selection.removeAllRanges();
-    selection.addRange(range);
+    this.editor.changeSelection((selection) =>
+      selection.selectAllChildren(this)
+    );
   }
 
   connectedCallback() {
