@@ -50,6 +50,19 @@ export const base = new Extension()
         e.setData("selectionDownList", []);
     },
   ])
+  
+  .registerShortcut('indentLess', (x, view, e) => {
+  	debugger
+  })
+  
+  .registerShortcut('indentMore', (x, view, e) => {
+  	if (x.editor.suggestions.active) {
+  		x.editor.suggestions.use();
+  	} else {
+  		// TODO if we have a selection, shift whole selection
+  		document.execCommand("insertText", false, "\t");
+  	}
+  })
 
   // insert matching parentheses
   .registerChangeFilter((change, sourceString) => {

@@ -47,16 +47,8 @@ export class Shard extends HTMLElement {
       );
     });
 
-    this.addEventListener("keydown", (e) => {
+    this.addEventListener("keydown", async (e) => {
       switch (e.key) {
-        case "Tab":
-          e.preventDefault();
-          if (this.editor.suggestions.active) {
-            this.editor.suggestions.use();
-          } else {
-            document.execCommand("insertText", false, "\t");
-          }
-          break;
         case "ArrowUp":
           if (this.editor.suggestions.canMove(-1)) {
             e.preventDefault();
@@ -87,6 +79,11 @@ export class Shard extends HTMLElement {
               this.editor.clearSuggestions();
               break;
             case "save":
+              e.preventDefault();
+              e.stopPropagation();
+              await this.editor.asyncExtensionsDo((e) =>
+                e.processAsync("preSave", this.source)
+              );
               this.editor.extensionsDo((e) => e.process(["save"], this.source));
               this.editor.dispatchEvent(
                 new CustomEvent("save", { detail: this.editor.sourceString })

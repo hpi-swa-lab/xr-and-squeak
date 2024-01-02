@@ -1,7 +1,7 @@
-"enable sandblocks"
+"enable sandblocks";
 
-let a = 1
+let a = 1;
 
 function hello() {
-  1
+  const a = { a: 2, c: "asdasdasdasdasd" };
 }

@@ -1,6 +1,7 @@
+import { semantics } from "../sandblocks/semantics.js";
 import { config } from "./config.js";
 
-export class Project {
+export class Project extends EventTarget {
   async open() {}
 
   // array of { path: string, hash: string }
@@ -10,6 +11,24 @@ export class Project {
 
   async readFile(path) {
     return (await this.readFiles([path]))[0].data;
+  }
+
+  activeSemantics = [];
+  semanticsForPath(path) {
+    for (const semantics of this.activeSemantics) {
+      if (semantics.handles(path)) return semantics;
+    }
+
+    for (const { handles, create } of semantics) {
+      if (handles(path)) {
+        const instance = create(this, handles);
+        instance.start();
+        this.activeSemantics.push(instance);
+        return instance;
+      }
+    }
+
+    return null;
   }
 
   // return an array of { path: string, data: string }

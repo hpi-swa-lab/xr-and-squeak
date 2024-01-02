@@ -37,6 +37,7 @@ export class Extension {
 
     const extensions = await import(`./extensions/${pkg}.js`);
     for (const [name, ext] of Object.entries(extensions)) {
+      if (!(ext instanceof Extension)) continue;
       ext.name = `${pkg}:${name}`;
       this.extensionRegistry.set(ext.name, ext);
     }
@@ -89,6 +90,10 @@ export class Extension {
 
   registerSave(query) {
     return this.registerQuery("save", query);
+  }
+
+  registerPreSave(query) {
+    return this.registerQuery("preSave", query);
   }
 
   registerSelection(query) {
@@ -247,6 +252,13 @@ class ExtensionInstance {
   process(triggers, node) {
     for (const trigger of triggers) {
       this._processTrigger(trigger, node);
+    }
+  }
+
+  async processAsync(trigger, node) {
+    for (const query of this.extension.queries.get(trigger) ?? []) {
+      const res = exec(node, ...query(this));
+      if (res.then) await res;
     }
   }
 

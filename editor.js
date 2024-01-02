@@ -32,6 +32,8 @@ export class Editor extends HTMLElement {
       copy: "Ctrl-c",
       dismiss: "Escape",
       search: "Ctrl-f",
+      indentLess: "Shift-Tab",
+      indentMore: "Tab",
 
       selectNodeUp: "Ctrl-ArrowUp",
       selectNodeDown: "Ctrl-ArrowDown",
@@ -133,9 +135,10 @@ export class Editor extends HTMLElement {
       this.extensionsDo((e) => e.filterChange(change, this.sourceString));
     }
 
-    this._replaceTextFromChange(
-      [change.from, change.to],
-      change.insert ?? "",
+    this.setTextTracked(
+      this.sourceString.slice(0, change.from) +
+        (change.insert ?? "") +
+        this.sourceString.slice(change.to),
       shard,
       change.selectionRange
     );
@@ -146,31 +149,26 @@ export class Editor extends HTMLElement {
   }
 
   replaceTextFromCommand(range, text) {
-    this._replaceTextFromChange(
-      range,
-      text,
+    this.setTextTracked(
+      this.sourceString.slice(0, range[0]) +
+        text +
+        this.sourceString.slice(range[1]),
+      null,
       this.selectedShard ?? this.shardForRange(range),
       range
     );
   }
 
-  _replaceTextFromChange(range, text, shard, selectionRange) {
+  setTextTracked(text, shard, selectionRange) {
     const oldSelected = this.editHistory.lastView;
     const oldRange = this.selectionRange ?? [0, 0];
     const oldSource = this.sourceString;
 
-    this.setText(
-      this.sourceString.slice(0, range[0]) +
-        text +
-        this.sourceString.slice(range[1]),
-      shard,
-      selectionRange
-    );
+    this.setText(text, shard, selectionRange);
 
     if (oldSelected !== this.selected) {
       this.editHistory.push(oldSource, oldRange, this.selected);
     }
-
     this.dispatchEvent(
       new CustomEvent("change", { detail: this.sourceString })
     );
@@ -214,6 +212,14 @@ export class Editor extends HTMLElement {
     });
   }
 
+  async asyncExtensionsDo(cb) {
+    for (const e of [
+      ...this.extensionInstances,
+      ...(this.inlineExtensions ?? []),
+    ])
+      await cb(e);
+  }
+
   updateExtension(stringOrExtension, trigger, cb) {
     const ext =
       this.extensionInstances.find((e) => e.name === stringOrExtension) ??
@@ -249,6 +255,8 @@ export class Editor extends HTMLElement {
 
   disconnectedCallback() {
     document.removeEventListener("selectionchange", this.selectionHandler);
+
+    this.extensionsDo((e) => e.process(["extensionDisconnected"], this.source));
   }
 
   static observedAttributes = ["text", "language", "extensions"];

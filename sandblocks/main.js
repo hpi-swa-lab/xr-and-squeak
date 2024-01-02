@@ -13,7 +13,7 @@ Editor.init();
 
 config.baseURL = "/";
 
-const socket = io();
+export const socket = io();
 
 class SBProject extends Project {
   static deserialize(str) {
@@ -69,7 +69,7 @@ class SBProject extends Project {
 
 render(h(Sandblocks), document.body);
 
-function request(name, data) {
+export function request(name, data) {
   return new Promise((resolve, reject) => {
     socket.emit(name, data, (ret) => {
       if (ret.error) reject(ret.error);
@@ -88,18 +88,18 @@ function Sandblocks() {
     SBProject.deserialize(localStorage.lastProject)
   );
   const rebuild = useRebuild();
-  
+
   useEffect(() => {
-  	const handler = (e) => {
-  		if (matchesKey(e, "Ctrl-g")) {
-  			openComponentInWindow(Workspace, {});
-  			e.preventDefault();
-  			e.stopPropagation();
-  		}
-  	}
-  	document.body.addEventListener("keydown", handler)
-  	return () => document.body.removeEventListener("keydown", handler)
-  }, [])
+    const handler = (e) => {
+      if (matchesKey(e, "Ctrl-g")) {
+        openComponentInWindow(Workspace, {});
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.body.addEventListener("keydown", handler);
+    return () => document.body.removeEventListener("keydown", handler);
+  }, []);
 
   useAsyncEffect(async () => {
     if (project) {
@@ -108,7 +108,7 @@ function Sandblocks() {
       localStorage.lastProject = project.serialize();
     }
   }, [project]);
-	
+
   return [
     button("Open Project", () => setProject(new SBProject(prompt()))),
     button("Install Language", () =>
@@ -117,6 +117,9 @@ function Sandblocks() {
         branch: prompt("Branch?"),
         path: prompt("Path?"),
       }).then(() => alert("Installed!"))
+    ),
+    button("Open Workspace (Ctrl-g)", () =>
+      openComponentInWindow(Workspace, {})
     ),
     project?.root &&
       el(

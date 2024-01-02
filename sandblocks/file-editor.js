@@ -9,7 +9,7 @@ const search = new Extension()
   .registerShortcut("search", (x) => {
     x.editor.context.startSearch();
   })
-  .registerQuery("always", (e) => [
+  .registerAlways((e) => [
     (_) => !!e.searchString,
     (x) => x.isText,
     (x) =>

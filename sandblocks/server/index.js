@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import http from "http";
 import express from "express";
 import { Server } from "socket.io";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import Gitignore from "gitignore-fs";
 import crypto from "crypto";
 
@@ -33,6 +33,12 @@ function handler(socket, name, cb) {
 }
 
 io.on("connection", (socket) => {
+  const cleanup = [];
+
+  socket.on("disconnect", () => {
+    cleanup.forEach((cb) => cb());
+  });
+
   handler(socket, "writeFile", async ({ path, data }) => {
     await promisify(fs.writeFile)(path, data);
     return {};
@@ -102,6 +108,37 @@ npm install
 npx tree-sitter generate
 npx tree-sitter build-wasm
 cp ${repoName}.wasm ${upToRoot}../../../../external/${repoName}.wasm"`);
+  });
+
+  handler(socket, "startProcess", async ({ command, args, cwd }) => {
+    const proc = spawn(command, args, { cwd, shell: true });
+    const pid = proc.pid;
+
+    const weakProc = new WeakRef(proc);
+    cleanup.push(() => weakProc.deref()?.kill());
+
+    const writeCallback = (req) => {
+      if (req.pid === pid) proc.stdin.write(req.data);
+    };
+    const closeCallback = (req) => {
+      if (req.pid === pid) proc.stdin.end();
+    };
+
+    socket.on("writeProcess", writeCallback);
+    socket.on("closeProcess", closeCallback);
+    proc.stdout.on("data", (data) => {
+      socket.emit("process", { type: "stdout", data: data.toString(), pid });
+    });
+    proc.stderr.on("data", (data) => {
+      console.log(data.toString());
+      socket.emit("process", { type: "stderr", data: data.toString(), pid });
+    });
+    proc.on("close", (code) => {
+      socket.emit("process", { type: "close", code, pid });
+      socket.off("writeProcess", writeCallback);
+      socket.off("closeProcess", closeCallback);
+    });
+    return { pid };
   });
 });
 

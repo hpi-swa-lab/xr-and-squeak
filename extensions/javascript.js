@@ -187,6 +187,32 @@ const jsWatch = [
   (x) => x.atField("arguments")?.childBlock(0)?.type === "number",
 ];
 
+export const prettier = new Extension().registerPreSave((e) => [
+  (x) => x.isRoot,
+  async (x) => {
+    const prettier = await import("https://esm.sh/prettier@3.1.1/standalone");
+    const babel = await import("https://esm.sh/prettier@3.1.1/plugins/babel");
+    const estree = await import("https://esm.sh/prettier@3.1.1/plugins/estree");
+    const { formatted, cursorOffset } = await prettier.formatWithCursor(
+      x.sourceString,
+      {
+        cursorOffset: x.editor.selectionRange[0],
+        filepath: x.context.path,
+        parser: "babel",
+        plugins: [babel.default, estree.default],
+      }
+    );
+    const delta = cursorOffset - x.editor.selectionRange[0];
+    if (formatted !== x.sourceString)
+      ToggleableMutationObserver.ignoreMutation(() =>
+        x.editor.setTextTracked(formatted, null, [
+          x.editor.selectionRange[0] + delta,
+          x.editor.selectionRange[1] + delta,
+        ])
+      );
+  },
+]);
+
 export const workspace = new Extension()
   .registerSave((e) => [
     (x) => x.type === "program",

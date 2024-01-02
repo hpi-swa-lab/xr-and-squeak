@@ -310,5 +310,6 @@ export function matchesKey(e, key) {
 
   if (modifiers.includes("Ctrl") && !e.ctrlKey && !e.metaKey) return false;
   if (modifiers.includes("Alt") && !e.altKey) return false;
+  if (modifiers.includes("Shift") && !e.shiftKey) return false;
   return e.key === baseKey;
 }
