@@ -186,6 +186,10 @@ export class Shard extends HTMLElement {
     this.parentElement?.removeChild(this);
   }
 
+  focus() {
+    this.editor.focusShard(this);
+  }
+
   isMyMutation(mutation) {
     let current = mutation.target;
     while (current) {

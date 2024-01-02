@@ -31,7 +31,6 @@ export class Project {
         fileHashes: this.allSources.filter((file) => filterScript(file.path)),
       });
       worker.addEventListener("message", async (event) => {
-        console.log(event);
         switch (event.data.type) {
           case "request_files":
             worker.postMessage({

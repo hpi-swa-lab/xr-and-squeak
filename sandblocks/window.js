@@ -21,8 +21,15 @@ document.addEventListener("mousemove", (e) => {
     target = inner;
   }
 
+  let active = document.activeElement;
+  while (active?.shadowRoot) {
+    const inner = active.shadowRoot.activeElement;
+    if (inner) active = inner;
+    else break;
+  }
+
   const f = orParentThat(target, wantsMouseOverFocus);
-  if (f && !orParentThat(document.activeElement, (p) => p === f)) {
+  if (f && !orParentThat(active, (p) => p === f)) {
     f?.focus();
   }
 });
@@ -52,6 +59,11 @@ export function Window({
   const [initialPlacement, setInitialPlacement] = useState(true);
   const windowRef = useRef(null);
 
+  const findTopWindow = () =>
+    [...document.querySelectorAll("sb-window")].reduce((window, best) =>
+      parseInt(window.zIndex) > parseInt(best.zIndex) ? window : best
+    );
+
   const close =
     onClose ??
     (() => {
@@ -61,6 +73,16 @@ export function Window({
       // FIXME console.assert(root.tagName === "SB-WINDOW");
       root?.remove();
     });
+
+  const raise = () => {
+    const top = findTopWindow();
+    if (top) top.style.zIndex = 0;
+    windowRef.current.getRootNode().host.style.zIndex = 1;
+  };
+
+  useEffect(() => {
+    raise();
+  }, []);
 
   return [
     h("link", {
@@ -85,6 +107,7 @@ export function Window({
             e.stopPropagation();
           }
         },
+        onMouseDown: raise,
       },
       [
         h(

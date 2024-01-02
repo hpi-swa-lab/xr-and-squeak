@@ -66,7 +66,11 @@ export class Editor extends HTMLElement {
   extensionInstances = [];
 
   focus() {
-    (this.editHistory?.lastView?.shard ?? this.shard).focus();
+    this.focusShard(this.editHistory?.lastView?.shard);
+  }
+
+  focusShard(shard) {
+    this.selectRange(...(this.selectionRange ?? [0, 0]), shard);
   }
 
   _sourceString = null;

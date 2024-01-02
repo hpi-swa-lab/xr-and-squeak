@@ -34,3 +34,10 @@ body {
 hr {
   margin: 0;
 }
+
+/* the actual styles are in widgets.css:.sb-window */
+sb-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
