@@ -18,7 +18,12 @@ const BRACE_PAIRS = {
   "{": "}",
   "[": "]",
   "(": ")",
+  '"': '"',
+  "'": "'",
 };
+const REVERSED_BRACE_PAIRS = Object.fromEntries(
+  Object.entries(BRACE_PAIRS).map(([a, b]) => [b, a])
+);
 
 export const base = new Extension()
   .registerShortcut("undo", (x, view) => view.editor.undo())
@@ -46,6 +51,7 @@ export const base = new Extension()
     },
   ])
 
+  // insert matching parentheses
   .registerChangeFilter((change, sourceString) => {
     if (BRACE_PAIRS[change.insert]) {
       const match = BRACE_PAIRS[change.insert];
@@ -60,6 +66,27 @@ export const base = new Extension()
     }
   })
 
+  // skip over closing parentheses
+  // FIXME may want to do this only for auto-inserted parentheses
+  .registerChangeFilter((change, sourceString) => {
+    if (
+      REVERSED_BRACE_PAIRS[change.insert] &&
+      sourceString[change.from] === change.insert
+    ) {
+      change.insert = "";
+    }
+  })
+
+  // delete matching parentheses together
+  .registerChangeFilter((change, sourceString) => {
+    const match = BRACE_PAIRS[change.delete];
+    if (match && sourceString[change.from + 1] === match) {
+      change.delete += match;
+      change.to++;
+    }
+  })
+
+  // indent on newline
   .registerChangeFilter((change, sourceString) => {
     if (change.insert === "\n") {
       function findLastIndent(string, index) {
