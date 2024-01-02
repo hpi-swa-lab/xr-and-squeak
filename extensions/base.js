@@ -117,6 +117,14 @@ export const base = new Extension()
   .registerSelection((e) => [
     (x) => x.isSelected,
     (x) => e.ensureClass(x, "selected"),
+  ])
+
+  .registerSelection((e) => [
+    (x) => x.isText,
+    (x) =>
+      x.root.allNodesDo(
+        (n) => n.isText && n.text === x.text && e.ensureClass(n, "highlight")
+      ),
   ]);
 
 function sequenceMatch(query, word) {

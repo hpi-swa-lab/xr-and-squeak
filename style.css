@@ -101,3 +101,7 @@ td {
 .strong {
   font-weight: bold;
 }
+
+.highlight {
+  background-color: #ccc;
+}
