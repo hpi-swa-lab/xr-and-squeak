@@ -67,6 +67,7 @@ export function FileEditor({
         editor({
           extensions: [
             "base:base",
+            "base:identifierSuggestions",
             "copilot:base",
             ...language.defaultExtensions,
           ],

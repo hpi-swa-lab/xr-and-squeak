@@ -50,18 +50,18 @@ export const base = new Extension()
         e.setData("selectionDownList", []);
     },
   ])
-  
-  .registerShortcut('indentLess', (x, view, e) => {
-  	debugger
+
+  .registerShortcut("indentLess", (x, view, e) => {
+    debugger;
   })
-  
-  .registerShortcut('indentMore', (x, view, e) => {
-  	if (x.editor.suggestions.active) {
-  		x.editor.suggestions.use();
-  	} else {
-  		// TODO if we have a selection, shift whole selection
-  		document.execCommand("insertText", false, "\t");
-  	}
+
+  .registerShortcut("indentMore", (x, view, e) => {
+    if (x.editor.suggestions.active) {
+      x.editor.suggestions.use();
+    } else {
+      // TODO if we have a selection, shift whole selection
+      document.execCommand("insertText", false, "\t");
+    }
   })
 
   // insert matching parentheses
@@ -162,14 +162,16 @@ export const identifierSuggestions = new Extension()
       const candidates = [...words];
       const query = x.text.toLowerCase();
       const exactMatches = candidates
-        .filter((word) => word.toLowerCase().startsWith(query))
+        .filter((w) => w.toLowerCase().startsWith(query))
         .sort((a, b) => a.length - b.length);
       const fuzzyMatches = candidates
-        .filter(
-          (word) => !exactMatches.includes(word) && sequenceMatch(query, word)
-        )
+        .filter((w) => !exactMatches.includes(w) && sequenceMatch(query, w))
         .sort((a, b) => a.length - b.length);
-      return e.addSuggestions([...exactMatches, ...fuzzyMatches].slice(0, 10));
+      return e.addSuggestions(
+        [...exactMatches, ...fuzzyMatches]
+          .slice(0, 10)
+          .filter((w) => w !== query)
+      );
     },
   ])
   .registerExtensionConnected((e) => [

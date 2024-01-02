@@ -16,22 +16,3 @@ export class Semantics {
   didClose(path) {}
   didChange(path) {}
 }
-
-export const semantics = [
-  {
-    handles(path) {
-      return path.endsWith(".ts") || path.endsWith(".js");
-    },
-    create(project, handles) {
-      return new LanguageClient(
-        project,
-        handles,
-        new StdioTransport(
-          "typescript-language-server",
-          ["--stdio"],
-          project.root.path
-        )
-      );
-    },
-  },
-];

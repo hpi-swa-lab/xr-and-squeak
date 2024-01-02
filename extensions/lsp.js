@@ -2,8 +2,27 @@ import { Extension } from "../extension.js";
 import { Process } from "../sandblocks/process.js";
 import { Semantics } from "../sandblocks/semantics.js";
 
+const configuration = [
+  {
+    handles(path) {
+      return path.endsWith(".ts") || path.endsWith(".js");
+    },
+    create(project, handles) {
+      return new LanguageClient(
+        project,
+        handles,
+        new StdioTransport(
+          "typescript-language-server",
+          ["--stdio"],
+          project.root.path
+        )
+      );
+    },
+  },
+];
+
 function sem(x) {
-  return x.context.project.semanticsForPath(x.context.path);
+  return x.context.project.semanticsForPath(x.context.path, configuration);
 }
 
 export const base = new Extension()
@@ -18,7 +37,7 @@ export const base = new Extension()
   .registerQuery("save", (e) => [(x) => x.isRoot, (x) => sem(x)?.didSave(x)])
   .registerQuery("type", (e) => [(x) => sem(x)?.didChange(x)]);
 
-export const formatting = new Extension().registerQuery("presave", (e) => [
+export const formatting = new Extension().registerPreSave((e) => [
   (x) => x.isRoot,
   (x) => sem(x)?.formatting(x),
 ]);

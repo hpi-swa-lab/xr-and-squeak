@@ -1,4 +1,3 @@
-import { semantics } from "../sandblocks/semantics.js";
 import { config } from "./config.js";
 
 export class Project extends EventTarget {
@@ -14,12 +13,12 @@ export class Project extends EventTarget {
   }
 
   activeSemantics = [];
-  semanticsForPath(path) {
+  semanticsForPath(path, configuration) {
     for (const semantics of this.activeSemantics) {
       if (semantics.handles(path)) return semantics;
     }
 
-    for (const { handles, create } of semantics) {
+    for (const { handles, create } of configuration) {
       if (handles(path)) {
         const instance = create(this, handles);
         instance.start();
