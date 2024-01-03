@@ -48,7 +48,20 @@ export const calc = new Extension().registerReplacement((e) => [
   },
 ]);
 
-customElements.define("sb-markdown-task", class extends Replacement {});
+customElements.define(
+  "sb-markdown-task",
+  class extends Replacement {
+    init(source) {
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.addEventListener("input", (e) => {
+        this.source.replaceWith(`[${e.target.checked ? "x" : " "}]`);
+      });
+      checkbox.checked = source.type === "task_list_marker_checked";
+      this.appendChild(checkbox);
+    }
+  }
+);
 
 export const taskList = new Extension().registerReplacement((e) => [
   (x) =>

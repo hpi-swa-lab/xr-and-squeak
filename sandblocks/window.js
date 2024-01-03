@@ -5,7 +5,7 @@ import { h, button, registerPreactElement, render } from "../widgets.js";
 function wantsMouseOverFocus(e) {
   return (
     e.getAttribute("focusable") ||
-    e.tagName === "INPUT" ||
+    (e.tagName === "INPUT" && e.type === "text") ||
     e.tagName === "TEXTAREA"
   );
 }

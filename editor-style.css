@@ -15,7 +15,7 @@ sb-block {
   white-space: pre;
 }
 sb-block[type] {
-  background: rgba(0.4, 0.4, 0.4, 0.006);
+  /*background: rgba(0.4, 0.4, 0.4, 0.006);*/
   /*border: 1px solid #efefef;*/
 }
 sb-text {
@@ -30,7 +30,11 @@ sb-shard {
   word-wrap: normal;
   tab-size: 2;
   outline: none;
-  display: inline-block;
+  
+}
+sb-editor > sb-shard {
+	display: inline-block;
+	width: 100%;
 }
 
 table {

@@ -69,7 +69,11 @@ registerLanguage(
   new TreeSitterComposedLanguage({
     name: "markdown",
     extensions: ["md"],
-    defaultExtensions: ["markdown:base", "markdown:inline"],
+    defaultExtensions: [
+      "markdown:base",
+      "markdown:inline",
+      "markdown:taskList",
+    ],
     baseLanguage: new TreeSitterLanguage({
       repo: "MDeiml/tree-sitter-markdown",
       branch: "f9820b2db958228f9be339b67d2de874d065866e",

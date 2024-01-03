@@ -162,7 +162,7 @@ export class Shard extends HTMLElement {
   get editor() {
     if (this._editor) return this._editor;
 
-    const editor = this.getRootNode()?.host?.editor;
+    const editor = orParentThat(this, (x) => x.tagName === "SB-EDITOR");
     if (editor) return editor;
 
     return orParentThat(

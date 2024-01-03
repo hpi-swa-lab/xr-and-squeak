@@ -1,6 +1,6 @@
 import { Extension } from "./extension.js";
 import { h, render } from "./external/preact.mjs";
-import { nextHash, parentWithTag } from "./utils.js";
+import { nextHash, orParentThat, parentWithTag } from "./utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "./external/preact-hooks.mjs";
 
@@ -62,9 +62,7 @@ export class Widget extends HTMLElement {
   }
 
   get editor() {
-    const editor = this.getRootNode().host.editor;
-    console.assert(editor.tagName === "SB-EDITOR");
-    return editor;
+    return orParentThat(this, (p) => p.tagName === "SB-EDITOR");
   }
 
   get shard() {
