@@ -1,5 +1,5 @@
 import { Extension } from "../extension.js";
-import { Widget } from "../widgets.js";
+import { Widget, Replacement } from "../widgets.js";
 
 customElements.define(
   "sb-markdown-math-result",
@@ -46,6 +46,15 @@ export const calc = new Extension().registerReplacement((e) => [
       (v, node, widget) => widget.update(node)
     );
   },
+]);
+
+customElements.define("sb-markdown-task", class extends Replacement {});
+
+export const taskList = new Extension().registerReplacement((e) => [
+  (x) =>
+    x.type === "task_list_marker_unchecked" ||
+    x.type === "task_list_marker_checked",
+  (x) => e.ensureReplacement(x, "sb-markdown-task"),
 ]);
 
 export const base = new Extension()

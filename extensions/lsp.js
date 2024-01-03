@@ -1,6 +1,8 @@
 import { Extension } from "../extension.js";
 import { Process } from "../sandblocks/process.js";
 import { Semantics } from "../sandblocks/semantics.js";
+import { openComponentInWindow } from "../sandblocks/window.js";
+import { FileEditor } from "../sandblocks/file-editor.js";
 
 const configuration = [
   {
@@ -41,6 +43,70 @@ export const formatting = new Extension().registerPreSave((e) => [
   (x) => x.isRoot,
   (x) => sem(x)?.formatting(x),
 ]);
+
+function positionToIndex(sourceString, { line, character }) {
+  let index = 0;
+  for (let i = 0; i < line; i++) {
+    index = sourceString.indexOf("\n", index) + 1;
+  }
+  return index + character;
+}
+
+async function browseLocation(project, { uri, range: { start, end } }) {
+  const path = uri.slice("file://".length);
+  // FIXME loading the file twice this way...
+  const source = await project.readFile(path);
+
+  openComponentInWindow(FileEditor, {
+    initialSelection: [
+      positionToIndex(source, start),
+      positionToIndex(source, end),
+    ],
+    project,
+    path,
+  });
+}
+
+const symbolKind = {
+  file: 1,
+  module: 2,
+  namespace: 3,
+  package: 4,
+  class: 5,
+  method: 6,
+  property: 7,
+  field: 8,
+  constructor: 9,
+  enum: 10,
+  interface: 11,
+  function: 12,
+  variable: 13,
+  constant: 14,
+  string: 15,
+  number: 16,
+  boolean: 17,
+  array: 18,
+  object: 19,
+  key: 20,
+  null: 21,
+  enumMember: 22,
+  struct: 23,
+  event: 24,
+  operator: 25,
+  typeParameter: 26,
+};
+
+export const browse = new Extension().registerShortcut(
+  "browseIt",
+  async (node, view, e) => {
+    const symbols = await sem(node)?.workspaceSymbols(node.text);
+    const top = symbols
+      .filter((sym) => sym.name === node.text)
+      .sort((a, b) => a.kind - b.kind)[0];
+
+    if (top) browseLocation(node.context.project, top.location);
+  }
+);
 
 class Transport {
   constructor(request) {
@@ -212,6 +278,10 @@ export class LanguageClient extends Semantics {
     );
   }
 
+  async workspaceSymbols(query = "") {
+    return await this._request("workspace/symbol", { query });
+  }
+
   async start() {
     await this.transport.start();
     await this.initialize();
@@ -223,8 +293,8 @@ export class LanguageClient extends Semantics {
       newText,
       range: { start, end },
     } of edits) {
-      const startIndex = this.positionToIndex(sourceString, start);
-      const endIndex = this.positionToIndex(sourceString, end);
+      const startIndex = positionToIndex(sourceString, start);
+      const endIndex = positionToIndex(sourceString, end);
       sourceString =
         sourceString.slice(0, startIndex + offset) +
         newText +
@@ -232,14 +302,6 @@ export class LanguageClient extends Semantics {
       offset += newText.length - (endIndex - startIndex);
     }
     return sourceString;
-  }
-
-  positionToIndex(sourceString, { line, character }) {
-    let index = 0;
-    for (let i = 0; i < line; i++) {
-      index = sourceString.indexOf("\n", index) + 1;
-    }
-    return index + character;
   }
 
   async _handleServerMessage(message) {

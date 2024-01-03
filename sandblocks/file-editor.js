@@ -25,6 +25,7 @@ export function FileEditor({
   style,
   initialSearchString,
   initialSearchExact,
+  initialSelection,
 }) {
   const [sourceString, setSourceString] = useState(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
@@ -38,6 +39,12 @@ export function FileEditor({
     setSourceString(await project.readFile(path));
     setUnsavedChanges(false);
   }, [path]);
+
+  useAsyncEffect(async () => {
+    if (sourceString && initialSelection) {
+      editorRef.current.addEventListener("loaded", () => {}, { once: true });
+    }
+  }, [sourceString]);
 
   const ext = path.split(".").slice(-1)[0].toLowerCase();
   const language = languageForExtension(ext);
@@ -78,6 +85,12 @@ export function FileEditor({
           editorRef,
           context: fileEditorRef.current,
           language: language.name,
+          onloaded: () => {
+            if (!initialSelection) return;
+            debugger;
+            editorRef.current.selectRange(...initialSelection);
+            editorRef.current.selected?.scrollIntoView();
+          },
           onSave: async (data) => {
             await project.writeFile(path, data);
             setUnsavedChanges(false);

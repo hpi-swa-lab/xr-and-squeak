@@ -35,7 +35,7 @@ function Search({ project, onClose }) {
     ),
     h(List, {
       items,
-      labelFunc: (a) => a.path.slice(project.path.length),
+      labelFunc: (a) => a.path.slice(project.path.length + 1),
       selected,
       setSelected,
       height: "400px",

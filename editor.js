@@ -313,6 +313,8 @@ export class Editor extends HTMLElement {
       this.queuedUpdate = null;
       await this._initEditor(...update);
     }
+
+    queueMicrotask(() => this.dispatchEvent(new CustomEvent("loaded")));
   }
 
   changeSelection(cb) {

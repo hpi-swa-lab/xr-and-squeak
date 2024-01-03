@@ -21,6 +21,12 @@ function highlightSubstring(string, search) {
   ];
 }
 
+function wrapIndex(index, dir, max) {
+  if (dir === -1 && index === 0) return max - 1;
+  if (dir === 1 && index === max - 1) return 0;
+  return index + dir;
+}
+
 export function List({
   items,
   labelFunc,
@@ -34,9 +40,9 @@ export function List({
   const [filterString, setFilterString] = useState("");
 
   const visibleItems = useMemo(() => {
-    return items.filter((item) =>
-      labelFunc(item).toLowerCase().includes(filterString)
-    );
+    return items
+      .filter((item) => labelFunc(item).toLowerCase().includes(filterString))
+      .sort((a, b) => labelFunc(a).length - labelFunc(b).length);
   }, [items, filterString]);
 
   useEffect(() => {
@@ -61,14 +67,10 @@ export function List({
       onkeydown: (e) => {
         if (e.key === "ArrowDown") {
           const index = visibleItems.indexOf(selected);
-          if (index < visibleItems.length - 1) {
-            setSelected(visibleItems[index + 1]);
-          }
+          setSelected(visibleItems[wrapIndex(index, 1, visibleItems.length)]);
         } else if (e.key === "ArrowUp") {
           const index = visibleItems.indexOf(selected);
-          if (index > 0) {
-            setSelected(visibleItems[index - 1]);
-          }
+          setSelected(visibleItems[wrapIndex(index, -1, visibleItems.length)]);
         } else if (e.key === "Enter") {
           selected && onConfirm?.(selected);
         } else if (e.key === "Backspace") {

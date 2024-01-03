@@ -27,7 +27,12 @@ registerLanguage(
     repo: "tree-sitter/tree-sitter-javascript",
     branch: "0c0b18de798a90cd22819cec4802a27b914e395c",
     extensions: ["js"],
-    defaultExtensions: ["javascript:base", "lsp:base", "javascript:prettier"],
+    defaultExtensions: [
+      "javascript:base",
+      "lsp:base",
+      "lsp:browse",
+      "javascript:prettier",
+    ],
   })
 );
 registerLanguage(
