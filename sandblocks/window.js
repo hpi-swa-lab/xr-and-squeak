@@ -13,10 +13,16 @@ function wantsMouseOverFocus(e) {
 let globalMousePos = { x: 0, y: 0 };
 document.addEventListener("mousemove", (e) => {
   globalMousePos = { x: e.clientX, y: e.clientY };
+  updateFocus(e.target);
+});
 
-  let target = e.target;
+function updateFocus(target) {
+  target ??= document.elementFromPoint(globalMousePos.x, globalMousePos.y);
   while (target?.shadowRoot) {
-    const inner = target.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+    const inner = target.shadowRoot.elementFromPoint(
+      globalMousePos.x,
+      globalMousePos.y
+    );
     if (!inner || inner === target) break;
     target = inner;
   }
@@ -32,7 +38,7 @@ document.addEventListener("mousemove", (e) => {
   if (f && !orParentThat(active, (p) => p === f)) {
     f?.focus();
   }
-});
+}
 
 export function openComponentInWindow(component, props) {
   const window = document.createElement("sb-window");
@@ -72,6 +78,7 @@ export function Window({
       // a preact component
       // FIXME console.assert(root.tagName === "SB-WINDOW");
       root?.remove();
+      updateFocus();
     });
 
   const raise = () => {

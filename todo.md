@@ -2,7 +2,6 @@
 
 - [ ] shift-tab
 - [ ] show diags
-- [ ] on window close, focus window at cursor
 - [ ] confirm to close when unsaved changes
 - [ ] do not indent after newline when {
 - [ ] window titles
