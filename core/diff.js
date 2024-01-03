@@ -274,13 +274,17 @@ export class TrueDiff {
         editBuffer
       );
       zipOrNullDo(aList.reverse(), bList.reverse(), (aChild, bChild) => {
-        if (aChild) {
-          editBuffer.detach(aChild);
-          this.unloadUnassigned(aChild, editBuffer);
-        }
-        if (bChild) {
-          const newTree = this.loadUnassigned(bChild, editBuffer);
-          editBuffer.attach(newTree, a, bChild.siblingIndex);
+        if (aChild.assigned && aChild.assigned === bChild) {
+          this.updateLiterals(aChild, bChild, editBuffer);
+        } else {
+          if (aChild) {
+            editBuffer.detach(aChild);
+            this.unloadUnassigned(aChild, editBuffer);
+          }
+          if (bChild) {
+            const newTree = this.loadUnassigned(bChild, editBuffer);
+            editBuffer.attach(newTree, a, bChild.siblingIndex);
+          }
         }
       });
       return a;
@@ -315,14 +319,16 @@ export class TrueDiff {
       a.assigned = null;
     } else {
       editBuffer.remove(a);
-      for (const child of a.children) {
-        this.unloadUnassigned(child, editBuffer);
-      }
+      // FIXME do we need this?
+      // for (const child of a.children) {
+      //   this.unloadUnassigned(child, editBuffer);
+      // }
     }
   }
   loadUnassigned(b, editBuffer) {
     if (b.assigned) {
-      return this.updateLiterals(b.assigned, b, editBuffer);
+      const tree = this.updateLiterals(b.assigned, b, editBuffer);
+      return tree;
     } else {
       const newTree = b.shallowClone();
       editBuffer.load(newTree);
@@ -360,6 +366,8 @@ export class DetachOp extends DiffOp {
     return !this.node.parent;
   }
   apply(buffer) {
+    buffer.notePendingDetached(this.node);
+
     if (this.detachingFromRoot) {
       this.node.viewsDo((view) => {
         buffer.rememberDetached(view, view.shard);
@@ -392,6 +400,8 @@ export class AttachOp extends DiffOp {
     return !this.parent;
   }
   apply(buffer) {
+    buffer.forgetPendingDetached(this.node);
+
     this.parent?.insertChild(this.node, this.index);
 
     if (this.attachingToRoot) {
@@ -431,7 +441,9 @@ export class RemoveOp extends DiffOp {
     super();
     this.node = node;
   }
-  apply() {}
+  apply(buffer) {
+    buffer.forgetPendingDetached(this.node);
+  }
 }
 
 export class LoadOp extends DiffOp {
@@ -439,7 +451,9 @@ export class LoadOp extends DiffOp {
     super();
     this.node = node;
   }
-  apply() {}
+  apply(buffer) {
+    buffer.notePendingLoaded(this.node);
+  }
 }
 
 class EditBuffer {
@@ -448,25 +462,52 @@ class EditBuffer {
     this.negBuf = [];
     this.shardBuffer = new Map();
     this.detachedRootShards = new Set();
+
+    this.pendingDetached = [];
+    this.pendingLoaded = [];
+  }
+  notePendingDetached(node) {
+    this.pendingDetached.push(node);
+  }
+  notePendingLoaded(node) {
+    this.pendingLoaded.push(node);
+  }
+  forgetPendingDetached(node) {
+    let index = this.pendingDetached.indexOf(node);
+    if (index !== -1) this.pendingDetached.splice(index, 1);
+    else {
+      index = this.pendingLoaded.indexOf(node);
+      if (index !== -1) this.pendingLoaded.splice(index, 1);
+      // else console.log("forgetPendingDetached: node not detached", node);
+    }
+  }
+  assertNoPendingDetached() {
+    if (this.pendingDetached.length > 0) throw new Error("detached nodes left");
   }
   attach(node, parent, link) {
     assert(node !== parent);
     assert(link >= 0);
     assert(node);
 
-    this.log("attach", this.printLabel(node), parent?.type ?? "root", link);
+    this.log(
+      "attach",
+      this.printLabel(node),
+      parent?.type ?? "root",
+      link,
+      node.id
+    );
     this.posBuf.push(new AttachOp(node, parent, link));
   }
   detach(node) {
-    this.log("detach", this.printLabel(node));
+    this.log("detach", this.printLabel(node), node.id);
     this.negBuf.push(new DetachOp(node));
   }
   remove(node) {
-    this.log("remove", this.printLabel(node));
+    this.log("remove", this.printLabel(node), node.id);
     this.negBuf.push(new RemoveOp(node));
   }
   load(node) {
-    this.log("load", this.printLabel(node));
+    this.log("load", this.printLabel(node), node.id);
     this.posBuf.push(new LoadOp(node));
   }
   update(node, text) {
@@ -484,6 +525,7 @@ class EditBuffer {
   apply() {
     this.negBuf.forEach((f) => f.apply(this));
     this.posBuf.forEach((f) => f.apply(this));
+    this.assertNoPendingDetached();
   }
   getDetachedOrConstruct(node, shard) {
     return (

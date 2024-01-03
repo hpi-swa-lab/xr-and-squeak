@@ -26,6 +26,18 @@ const REVERSED_BRACE_PAIRS = Object.fromEntries(
   Object.entries(BRACE_PAIRS).map(([a, b]) => [b, a])
 );
 
+function indexOfLastNewLine(string, index) {
+  let i = index;
+  while (i >= 0 && string[i] !== "\n") i--;
+  return i;
+}
+
+function indexOfIndentEnd(string, index) {
+  let i = indexOfLastNewLine(string, index) + 1;
+  while (i <= index && string[i].match(/[ \t]/)) i++;
+  return i;
+}
+
 export const base = new Extension()
   .registerShortcut("undo", (x, view) => view.editor.undo())
 
@@ -104,12 +116,10 @@ export const base = new Extension()
   .registerChangeFilter((change, sourceString) => {
     if (change.insert === "\n") {
       function findLastIndent(string, index) {
-        let i = index;
-        while (i >= 0 && string[i] !== "\n") i--;
-        i++;
-        const start = i;
-        while (i <= index && string[i].match(/[ \t]/)) i++;
-        return string.slice(start, i);
+        return string.slice(
+          indexOfLastNewLine(string, index) + 1,
+          indexOfIndentEnd(string, index)
+        );
       }
 
       let indent = findLastIndent(sourceString, change.from - 1);
@@ -118,6 +128,15 @@ export const base = new Extension()
       change.selectionRange[0] += indent.length;
       change.selectionRange[1] += indent.length;
     }
+  })
+
+  .registerShortcut("home", (node, view, e) => {
+    const current = node.editor.selectionRange[0];
+    let index = indexOfIndentEnd(node.root.sourceString, current - 1);
+    if (index === current)
+      index = indexOfLastNewLine(node.root.sourceString, current - 1) + 1;
+
+    node.editor.selectRange(index, index, view.shard);
   })
 
   .registerSelection((e) => [

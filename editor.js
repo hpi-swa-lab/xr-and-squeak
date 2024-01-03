@@ -35,6 +35,7 @@ export class Editor extends HTMLElement {
       search: "Ctrl-f",
       indentLess: "Shift-Tab",
       indentMore: "Tab",
+      home: "Home",
 
       selectNodeUp: "Ctrl-ArrowUp",
       selectNodeDown: "Ctrl-ArrowDown",

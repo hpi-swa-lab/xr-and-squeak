@@ -83,6 +83,7 @@ export function FileEditor({
           onChange: () => setUnsavedChanges(true),
         })
     ),
+    unsavedChanges && h("div", { class: "sb-file-editor-unsaved" }),
     sourceString !== null &&
       searchVisible &&
       h(SearchField, {

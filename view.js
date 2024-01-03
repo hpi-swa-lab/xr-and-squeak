@@ -342,11 +342,13 @@ export class Shard extends HTMLElement {
 
   _cursorToRange(start, end) {
     const range = document.createRange();
-    const startNode = this.root.findTextForCursor(start);
-    const endNode = this.root.findTextForCursor(end);
+    let startNode = this.root.findTextForCursor(start);
+    let endNode = this.root.findTextForCursor(end);
     if (!startNode || !endNode) {
       console.log("could not find text node for cursor", start, end);
-      return this.root.anyTextForCursor();
+      startNode = endNode = this.root.anyTextForCursor();
+      start = clamp(start, ...startNode.range);
+      end = clamp(end, ...endNode.range);
     }
     range.setStart(...startNode.rangeParams(start));
     range.setEnd(...endNode.rangeParams(end));
