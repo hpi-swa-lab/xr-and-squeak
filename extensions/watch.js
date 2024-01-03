@@ -1,4 +1,5 @@
 import { Extension } from "../extension.js";
+import { socket } from "../sandblocks/main.js";
 import { Replacement, h, shard } from "../widgets.js";
 
 function makeWatchExtension(config) {
@@ -58,8 +59,7 @@ export const javascript = makeWatchExtension({
         .atField("arguments")
         .childBlock(0)
         .childBlock(0)
-        .atField("value")
-        .childBlock(0),
+        .atField("value"),
   ],
   expr: [
     (x) => x.childBlock(0).childBlock(1).atField("arguments").childBlock(0),
@@ -67,7 +67,8 @@ export const javascript = makeWatchExtension({
   exprNesting: 4,
   wrap: (x, id) => {
     const url = `${window.location.origin}/sb-watch`;
-    const opts = `{method: "POST", body: JSON.stringify({"id": "${id}", "e": e})}`;
+    const headers = `headers: {"Content-Type": "application/json"}`;
+    const opts = `{method: "POST", body: JSON.stringify({"id": ${id}, "e": e}), ${headers}}`;
     x.wrapWith(`['sbWatch',((e) => (fetch("${url}", ${opts}), e))(`, `)][1]`);
   },
 });
@@ -84,6 +85,11 @@ customElements.define(
       super.init(source);
       this.watchId = parseInt(source.exec(...this.config.id).text, 10);
       window.sbWatch.registry.set(this.watchId, this);
+    }
+
+    disconnectedCallback() {
+      super.disconnectedCallback();
+      window.sbWatch.registry.delete(this.watchId);
     }
 
     update(source) {
@@ -132,6 +138,7 @@ customElements.define(
   }
 );
 
+socket.on("sb-watch", ({ id, e }) => window.sbWatch(e, id));
 window.sbWatch = function (value, id) {
   window.sbWatch.registry.get(id)?.reportValue(value);
   return value;

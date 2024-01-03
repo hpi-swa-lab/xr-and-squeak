@@ -33,6 +33,7 @@ registerLanguage(
       "lsp:browse",
       "javascript:prettier",
       "watch:javascript",
+      "javascript:print",
     ],
   })
 );

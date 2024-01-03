@@ -277,7 +277,7 @@ class ExtensionInstance {
   async processAsync(trigger, node) {
     for (const query of this.extension.queries.get(trigger) ?? []) {
       const res = exec(node, ...query(this));
-      if (res.then) await res;
+      if (res?.then) await res;
     }
   }
 

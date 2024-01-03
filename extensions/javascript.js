@@ -176,23 +176,15 @@ export const prettier = new Extension().registerPreSave((e) => [
   },
 ]);
 
-export const workspace = new Extension()
-  .registerSave((e) => [
-    (x) => x.type === "program",
-    (x) => {
-      try {
-        asyncEval(x.sourceString);
-      } catch (e) {
-        console.log(e);
-      }
-    },
-  ])
-  .registerShortcut("printIt", async (x, view, e) => {
+export const print = new Extension().registerShortcut(
+  "printIt",
+  async (x, view, e) => {
     const widget = e.createWidget("sb-js-print-result");
     widget.result = await asyncEval(x.sourceString);
     view.after(widget);
     widget.focus();
-  });
+  }
+);
 
 export const outline = new Extension().registerExtensionConnected((e) => [
   (x) => x.type === "program",
