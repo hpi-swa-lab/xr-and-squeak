@@ -245,6 +245,27 @@ class SBNode {
     return this.children.filter((child) => !!child.named);
   }
 
+  // finds a child for an exact match
+  childForRange(range) {
+    if (this.range[0] === range[0] && this.range[1] === range[1]) return this;
+    for (const child of this.children) {
+      const match = child.childForRange(range);
+      if (match) return match;
+    }
+    return null;
+  }
+
+  leafForPosition(pos) {
+    if (this.range[0] <= pos && this.range[1] >= pos) {
+      for (const child of this.children) {
+        const match = child.leafForPosition(pos);
+        if (match) return match;
+      }
+      return this;
+    }
+    return null;
+  }
+
   compatibleWith(type) {
     return this.language.compatibleType(this.type, type);
   }

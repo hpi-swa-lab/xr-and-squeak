@@ -106,6 +106,10 @@ export class Extension {
     return this.registerQuery("selection", query);
   }
 
+  registerCaret(query) {
+    return this.registerQuery("caret", query);
+  }
+
   registerShortcut(identifier, callback, filter = []) {
     this.registerQuery("shortcut", (e) => [
       ...filter,
@@ -247,6 +251,7 @@ class ExtensionInstance {
   // replacement: same as always but run earlier, such that the view is already up-to-date
   // open: run each time a new shard is opened, best place to create widgets that are not replacements
   // selection: run when the selected block changes (does not emit for caret changes within a block)
+  // caret: run when the caret has moved
   // shortcut: allows you to call registerShortcut
   // doubleClick: an element was double-clicked
   propagationType(trigger) {
@@ -258,6 +263,7 @@ class ExtensionInstance {
         open: "subtree",
         type: "selection",
         selection: "selection",
+        caret: "single",
         replacement: "all",
       }[trigger] ?? "all"
     );
@@ -311,6 +317,9 @@ class ExtensionInstance {
           break;
         case "all":
           node.root.allNodesDo((node) => this.runQueries(trigger, node));
+          break;
+        case "single":
+          this.runQueries(trigger, node);
           break;
         case "selection":
           node.root.allNodesDo((nested) => {

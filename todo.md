@@ -1,8 +1,6 @@
 ## editing essentials
 
 - [ ] shift-tab
-- [ ] highlight matching braces
-- [ ] structural selection --> back to cursor
 - [ ] show diags
 - [ ] on window close, focus window at cursor
 - [ ] confirm to close when unsaved changes
@@ -10,6 +8,7 @@
 - [ ] window titles
 - [ ] typeover detection: wrap {} with {
 - [ ] proceed with save, even if formatting fails
+- [ ] editor.selectionRange in the presence of a watch
 
 ## lower priority
 

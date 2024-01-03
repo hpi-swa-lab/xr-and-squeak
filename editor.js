@@ -325,6 +325,7 @@ export class Editor extends HTMLElement {
     const { selectionRange, selected } =
       this.selectedShard?._extractSourceStringAndCursorRange() ?? {};
     this._updateSelected(selected, selectionRange);
+    this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
   }
 
   _updateSelected(newSelected, selectionRange) {

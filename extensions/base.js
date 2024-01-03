@@ -19,9 +19,15 @@ const BRACE_PAIRS = {
   "{": "}",
   "[": "]",
   "(": ")",
+};
+const PAIRS = {
+  ...BRACE_PAIRS,
   '"': '"',
   "'": "'",
 };
+const REVERSED_PAIRS = Object.fromEntries(
+  Object.entries(PAIRS).map(([a, b]) => [b, a])
+);
 const REVERSED_BRACE_PAIRS = Object.fromEntries(
   Object.entries(BRACE_PAIRS).map(([a, b]) => [b, a])
 );
@@ -49,13 +55,34 @@ export const base = new Extension()
 
   // AST-select up-down
   .registerShortcut("selectNodeUp", (x, view, e) => {
-    (!view.isFullySelected() ? x : x.parent).select(view);
-    if (!x.isRoot) e.data("selectionDownList", () => []).push(x);
+    if (view.isFullySelected()) {
+      if (!x.isRoot) {
+        x.parent.select(view);
+        e.data("selectionDownList", () => []).push(x);
+      }
+    } else {
+      e.data("selectionDownList", () => []).push(x);
+      e.setData("selectionDownRange", x.editor.selectionRange);
+      x.select(view);
+    }
   })
   .registerShortcut("selectNodeDown", (x, view, e) => {
-    const target = e.data("selectionDownList")?.pop();
-    (target ?? x.childBlock(0) ?? x.childNode(0))?.select(view);
+    const list = e.data("selectionDownList");
+    const target = list?.pop();
+    if (list.length === 0) {
+      x.editor.selectRange(...e.data("selectionDownRange"), view.shard, false);
+    } else {
+      (target ?? x.childBlock(0) ?? x.childNode(0))?.select(view);
+    }
   })
+  .registerSelection((e) => [
+    (x) => {
+      if (!x.children.some((c) => e.data("selectionDownList")?.includes(c))) {
+        e.setData("selectionDownList", []);
+      }
+    },
+  ])
+
   .registerShortcut("popNodeOut", (x, view, e) => {
     const window = document.createElement("sb-window");
     const detached = e.createWidget("sb-detached-shard");
@@ -63,12 +90,6 @@ export const base = new Extension()
     window.appendChild(detached);
     x.editor.after(window);
   })
-  .registerSelection((e) => [
-    (x) => {
-      if (!x.children.some((c) => e.data("selectionDownList")?.includes(c)))
-        e.setData("selectionDownList", []);
-    },
-  ])
 
   .registerShortcut("indentLess", (x, view, e) => {
     debugger;
@@ -96,8 +117,8 @@ export const base = new Extension()
 
   // insert matching parentheses
   .registerChangeFilter((change, sourceString) => {
-    if (BRACE_PAIRS[change.insert]) {
-      const match = BRACE_PAIRS[change.insert];
+    if (PAIRS[change.insert]) {
+      const match = PAIRS[change.insert];
       if (change.from === change.to) change.insert += match;
       else {
         change.insert = `${change.insert}${sourceString.slice(
@@ -111,7 +132,7 @@ export const base = new Extension()
 
   // delete matching parentheses together
   .registerChangeFilter((change, sourceString) => {
-    const match = BRACE_PAIRS[change.delete];
+    const match = PAIRS[change.delete];
     if (match && sourceString[change.from + 1] === match) {
       change.delete += match;
       change.to++;
@@ -129,7 +150,7 @@ export const base = new Extension()
       }
 
       let indent = findLastIndent(sourceString, change.from - 1);
-      if (BRACE_PAIRS[sourceString[change.from - 1]]) indent += "\t";
+      if (PAIRS[sourceString[change.from - 1]]) indent += "\t";
       change.insert += indent;
       change.selectionRange[0] += indent.length;
       change.selectionRange[1] += indent.length;
@@ -170,6 +191,30 @@ export const base = new Extension()
   .registerSelection((e) => [
     (x) => x.isSelected,
     (x) => e.ensureClass(x, "selected"),
+  ])
+
+  .registerCaret((e) => [
+    (x) => [x, x.editor.selectionRange],
+    ([x, r]) => r[0] === r[1] && [x, r[0]],
+    ([x, p]) => x.root.leafForPosition(p),
+    (l) => {
+      do {
+        l = l.parent;
+      } while (
+        l &&
+        !(
+          l.children.some((c) => BRACE_PAIRS[c.text]) &&
+          l.children.some((c) => REVERSED_BRACE_PAIRS[c.text])
+        )
+      );
+      return l;
+    },
+    (l) => {
+      [
+        l.children.find((c) => BRACE_PAIRS[c.text]),
+        l.children.find((c) => REVERSED_BRACE_PAIRS[c.text]),
+      ].forEach((c) => e.ensureClass(c, "highlight"));
+    },
   ])
 
   .registerSelection((e) => [
