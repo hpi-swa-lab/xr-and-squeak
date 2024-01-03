@@ -52,13 +52,13 @@ export class Shard extends HTMLElement {
         case "ArrowUp":
           if (this.editor.suggestions.canMove(-1)) {
             e.preventDefault();
-            this.suggestions?.moveSelected(-1);
+            this.editor.suggestions?.moveSelected(-1);
           }
           break;
         case "ArrowDown":
           if (this.editor.suggestions.canMove(1)) {
             e.preventDefault();
-            this.suggestions?.moveSelected(1);
+            this.editor.suggestions?.moveSelected(1);
           }
           break;
       }

@@ -3,11 +3,10 @@
 - [ ] shift-tab
 - [ ] highlight matching braces
 - [ ] structural selection --> back to cursor
-- [ ] file open prompt
 - [ ] show diags
 - [ ] on window close, focus window at cursor
 - [ ] Home jumps to end of indent (shift)
-- [ ] jump to next search result while typing
+- [ ] confirm to close when unsaved changes
 
 ## lower priority
 

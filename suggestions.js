@@ -1,3 +1,5 @@
+import { clamp } from "./utils.js";
+
 customElements.define(
   "sb-suggestions",
   class extends HTMLElement {
@@ -46,6 +48,7 @@ customElements.define(
     }
 
     canMove(delta) {
+      if (!this.active) return false;
       const index = this.activeIndex;
       if (index === -1) return false;
       return index + delta >= 0 && index + delta < this.entries.length;

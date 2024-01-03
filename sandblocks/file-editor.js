@@ -57,7 +57,9 @@ export function FileEditor({
       path,
       onstartSearch: () => {
         setSearchVisible(true);
-        searchRef.current?.focus();
+        queueMicrotask(() => {
+          searchRef.current?.focus();
+        });
       },
     },
     h(
@@ -141,8 +143,6 @@ function SearchField({
 
   const close = () => setSearchString(null);
 
-  if (focusRef) focusRef.current = searchRef.current;
-
   useAsyncEffect(async () => {
     await wait(0);
     if (initialSearchString) {
@@ -163,18 +163,17 @@ function SearchField({
   }, [searchString, searchExact]);
 
   useEffect(() => {
-    searchRef.current.focus();
-  }, []);
-
-  useEffect(() => {
     editorRef.current?.shadowRoot
       .querySelector(".search-result.active")
       ?.classList.remove("active");
 
-    const match = matches()[selectedIndex];
+    const m = matches();
+    const match = m[selectedIndex];
     if (match) {
       match.classList.add("active");
       match.scrollIntoView({ block: "center" });
+    } else if (m[0]) {
+      m[0].scrollIntoView({ block: "center" });
     }
   }, [selectedIndex, searchString]);
 
@@ -182,7 +181,10 @@ function SearchField({
     "div",
     { style: { position: "absolute", bottom: 2, right: 2 } },
     h("input", {
-      ref: searchRef,
+      ref: (e) => {
+        searchRef.current = e;
+        if (focusRef) focusRef.current = e;
+      },
       placeholder: "Search ...",
       value: searchString,
       type: "text",

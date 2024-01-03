@@ -32,6 +32,14 @@ registerLanguage(
 );
 registerLanguage(
   new TreeSitterLanguage({
+    repo: "tree-sitter/tree-sitter-css",
+    branch: "98c7b3dceb24f1ee17f1322f3947e55638251c37",
+    extensions: ["css"],
+    defaultExtensions: ["css:base"],
+  })
+);
+registerLanguage(
+  new TreeSitterLanguage({
     repo: "tree-sitter/tree-sitter-json",
     branch: "3fef30de8aee74600f25ec2e319b62a1a870d51e",
     extensions: ["json"],

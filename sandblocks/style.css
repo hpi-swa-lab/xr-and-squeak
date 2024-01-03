@@ -20,6 +20,15 @@ body {
   background-color: #eee;
 }
 
+.sb-file-editor-unsaved {
+  background: #900;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+}
+
 .sb-list {
   max-height: 100px;
   overflow-y: scroll;
@@ -40,4 +49,9 @@ sb-window {
   position: absolute;
   top: 0;
   left: 0;
+}
+
+.search-result {
+  background-color: #ffe17d;
+  outline: 1px solid #ffcc00;
 }

@@ -8,6 +8,7 @@ import { Project } from "../core/project.js";
 import { matchesKey } from "../utils.js";
 import { openComponentInWindow } from "./window.js";
 import { FileEditor } from "./file-editor.js";
+import {} from "./search.js";
 
 Editor.init();
 
@@ -93,13 +94,19 @@ function Sandblocks() {
     const handler = (e) => {
       if (matchesKey(e, "Ctrl-g")) {
         openComponentInWindow(Workspace, {});
-        e.preventDefault();
-        e.stopPropagation();
+      } else if (matchesKey(e, "Ctrl-0")) {
+        const search = document.createElement("sb-search");
+        search.project = project;
+        document.body.appendChild(search);
+      } else {
+        return;
       }
+      e.preventDefault();
+      e.stopPropagation();
     };
     document.body.addEventListener("keydown", handler);
     return () => document.body.removeEventListener("keydown", handler);
-  }, []);
+  }, [project]);
 
   useAsyncEffect(async () => {
     if (project) {
@@ -113,9 +120,9 @@ function Sandblocks() {
     button("Open Project", () => setProject(new SBProject(prompt()))),
     button("Install Language", () =>
       request("installLanguage", {
-        repo: prompt("Repo?"),
-        branch: prompt("Branch?"),
-        path: prompt("Path?"),
+        repo: prompt("Repo? (just username/repo)"),
+        branch: prompt("Branch? (prefer commit hashes)"),
+        path: prompt("Path? (leave empty for root"),
       }).then(() => alert("Installed!"))
     ),
     button("Open Workspace (Ctrl-g)", () =>

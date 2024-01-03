@@ -274,7 +274,7 @@ export class TrueDiff {
         editBuffer
       );
       zipOrNullDo(aList.reverse(), bList.reverse(), (aChild, bChild) => {
-        if (aChild.assigned && aChild.assigned === bChild) {
+        if (aChild?.assigned && aChild.assigned === bChild) {
           this.updateLiterals(aChild, bChild, editBuffer);
         } else {
           if (aChild) {
