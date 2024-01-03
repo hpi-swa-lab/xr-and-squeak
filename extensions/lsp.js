@@ -55,13 +55,10 @@ function positionToIndex(sourceString, { line, character }) {
 async function browseLocation(project, { uri, range: { start, end } }) {
   const path = uri.slice("file://".length);
   // FIXME loading the file twice this way...
-  const source = await project.readFile(path);
+  const position = positionToIndex(await project.readFile(path), start);
 
   openComponentInWindow(FileEditor, {
-    initialSelection: [
-      positionToIndex(source, start),
-      positionToIndex(source, end),
-    ],
+    initialSelection: [position, position],
     project,
     path,
   });

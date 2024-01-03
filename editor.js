@@ -74,7 +74,7 @@ export class Editor extends HTMLElement {
   }
 
   focusShard(shard) {
-    this.selectRange(...(this.selectionRange ?? [0, 0]), shard);
+    this.selectRange(...(this.selectionRange ?? [0, 0]), shard, false);
   }
 
   _sourceString = null;
@@ -98,14 +98,6 @@ export class Editor extends HTMLElement {
 
   constructor() {
     super();
-    this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML =
-      `<link rel="stylesheet" href="${config.baseURL}style.css">` +
-      `${
-        this.interactionMode === "block"
-          ? `<link rel="stylesheet" href="${config.baseURL}style-blocks.css">`
-          : ""
-      }<slot></slot>`;
     this.editHistory = new EditHistory();
     this.suggestions = document.createElement("sb-suggestions");
     this.hideSelection = document.createElement("style");
@@ -292,7 +284,7 @@ export class Editor extends HTMLElement {
       );
       this.extensionInstances.forEach((e) => e.destroy());
       this.shard.source.destroy();
-      this.shadowRoot.removeChild(this.shard);
+      this.shard.remove();
     }
 
     const [root, ...extensions] = await Promise.all([
@@ -300,7 +292,7 @@ export class Editor extends HTMLElement {
       ...extensionNames.map((e) => Extension.get(e)),
     ]);
 
-    this.shadowRoot.appendChild(this.createShardFor(root));
+    this.appendChild(this.createShardFor(root));
 
     this.extensionInstances = extensions.map((e) => e.instance());
     this.extensionsDo((e) =>
@@ -348,9 +340,9 @@ export class Editor extends HTMLElement {
       selectionRange[0] === this.selected.range[0] &&
       selectionRange[1] === this.selected.range[1];
     if (selectionIsExact && !this.hideSelection.isConnected) {
-      this.shadowRoot.appendChild(this.hideSelection);
+      this.appendChild(this.hideSelection);
     } else if (!selectionIsExact && this.hideSelection.isConnected) {
-      this.shadowRoot.removeChild(this.hideSelection);
+      this.removeChild(this.hideSelection);
     }
   }
 
@@ -359,22 +351,19 @@ export class Editor extends HTMLElement {
     // make sure the visibleRanges have reacted to changes in replacements.
     this.allShards.forEach((s) => s._extractSourceStringAndCursorRange());
 
-    const shard = this.selectRange(start, end, preferredShard);
-    // the selection may have gone away entirely as a side-effect of a mutation
-    if (shard) {
-      const r = [start, end];
-      this._updateSelected(shard.findSelectedForRange(r), r);
-    } else {
-      this._updateSelected(null, null);
-    }
+    const selected = this.selectRange(start, end, preferredShard, false);
+    this._updateSelected(selected, [start, end]);
   }
 
-  selectRange(start, end, preferredShard = null) {
+  selectRange(start, end, preferredShard = null, scrollIntoView = true) {
     const shard =
       this.shardForRange(start, end, preferredShard) ??
       this.closestShardForRange(start, end);
     shard?.selectRange(start, end);
-    return shard;
+
+    const selected = shard?.findSelectedForRange([start, end]);
+    if (scrollIntoView) selected?.scrollIntoView();
+    return selected;
   }
 
   shardForRange(start, end, preferredShard = null) {
@@ -436,7 +425,7 @@ export class Editor extends HTMLElement {
   }
 
   get shard() {
-    return this.shadowRoot.querySelector("sb-shard");
+    return this.querySelector("sb-shard");
   }
 
   get allShards() {

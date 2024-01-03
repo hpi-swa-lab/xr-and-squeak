@@ -386,9 +386,7 @@ class _EditableElement extends HTMLElement {
     return current;
   }
   get editor() {
-    const editor = this.getRootNode().host.editor;
-    console.assert(editor.tagName === "SB-EDITOR");
-    return editor;
+    return orParentThat(this, (x) => x.tagName === "SB-EDITOR");
   }
 
   getRange() {

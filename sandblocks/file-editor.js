@@ -87,7 +87,6 @@ export function FileEditor({
           language: language.name,
           onloaded: () => {
             if (!initialSelection) return;
-            debugger;
             editorRef.current.selectRange(...initialSelection);
             editorRef.current.selected?.scrollIntoView();
           },
