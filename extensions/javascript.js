@@ -265,7 +265,7 @@ export const workspace = new Extension()
 
 export const outline = new Extension().registerExtensionConnected((e) => [
   (x) => x.type === "program",
-  (x) => x.editor.shadowRoot.appendChild(e.createWidget("sb-outline")),
+  (x) => x.editor.appendChild(e.createWidget("sb-outline")),
 ]);
 
 export const multilingual = new Extension().registerReplacement((e) => [

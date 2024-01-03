@@ -370,7 +370,7 @@ if (!init) {
   runHeadless(config.baseURL + "/external/squeak-minimal.image");
   await wait(1000);
   customElements.define("squeak-browser", SqueakBrowser);
-  // x.editor.shadowRoot.appendChild(e.createWidget("squeak-browser"));
+  // x.editor.appendChild(e.createWidget("squeak-browser"));
 }
 
 async function runHeadless(imageUrl) {

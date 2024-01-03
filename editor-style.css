@@ -1,6 +1,10 @@
 sb-editor {
-  display: flex;
+  display: block;
   justify-content: stretch;
+}
+.sb-editor-content {
+  display: block;
+  white-space: pre;
 }
 sb-block {
   display: inline;
@@ -8,10 +12,15 @@ sb-block {
   padding: 0;
   font-family: monospace;
   vertical-align: top;
+  white-space: pre;
 }
 sb-block[type] {
   background: rgba(0.4, 0.4, 0.4, 0.006);
   /*border: 1px solid #efefef;*/
+}
+sb-text {
+  white-space: pre;
+  display: inline;
 }
 sb-block[type="ERROR"] {
   border: 1px solid red;
@@ -21,6 +30,7 @@ sb-shard {
   word-wrap: normal;
   tab-size: 2;
   outline: none;
+  display: inline-block;
 }
 
 table {

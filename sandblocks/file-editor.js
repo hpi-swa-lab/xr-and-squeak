@@ -150,8 +150,7 @@ function SearchField({
   const [searchExact, setSearchExact] = useState(initialSearchExact);
   const searchRef = useRef(null);
 
-  const matches = () =>
-    editorRef.current?.shadowRoot.querySelectorAll(".search-result");
+  const matches = () => editorRef.current?.querySelectorAll(".search-result");
 
   const close = () => setSearchString(null);
 
@@ -175,8 +174,8 @@ function SearchField({
   }, [searchString, searchExact]);
 
   useEffect(() => {
-    editorRef.current?.shadowRoot
-      .querySelector(".search-result.active")
+    editorRef.current
+      ?.querySelector(".search-result.active")
       ?.classList.remove("active");
 
     const m = matches();

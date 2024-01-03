@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 
 <html>
   <head>
@@ -25,7 +25,7 @@
 
     <h3>Javascript Demo</h3>
     <sb-editor
-      extensions="javascript:base javascript:outline javascript:workspace javascript:multilingual base:base base:identifierSuggestions editorConfig:base"
+      extensions=""
       text='console.log(sbWatch(123, 12398482))
 
 function a() {
@@ -83,7 +83,13 @@ op ==
       extensions="tlaplus:base base:base"
     ></sb-editor>
 
-    <script src="external/tree-sitter.js"></script>
+    <!--<link rel="stylesheet" href="editor-style.css" />-->
+    <style>
+      sb-editor {
+        white-space: pre;
+        display: flex;
+      }
+    </style>
     <script type="module" src="main.js"></script>
   </body>
 </html>

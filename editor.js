@@ -98,7 +98,9 @@ export class Editor extends HTMLElement {
 
   constructor() {
     super();
+
     this.editHistory = new EditHistory();
+
     this.suggestions = document.createElement("sb-suggestions");
     this.hideSelection = document.createElement("style");
 
