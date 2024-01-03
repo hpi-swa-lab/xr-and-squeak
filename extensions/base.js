@@ -32,6 +32,12 @@ function indexOfLastNewLine(string, index) {
   return i;
 }
 
+function indexOfNextNewLine(string, index) {
+  let i = index;
+  while (i <= string.length && string[i] !== "\n") i++;
+  return i;
+}
+
 function indexOfIndentEnd(string, index) {
   let i = indexOfLastNewLine(string, index) + 1;
   while (i <= index && string[i].match(/[ \t]/)) i++;
@@ -130,14 +136,28 @@ export const base = new Extension()
     }
   })
 
-  .registerShortcut("home", (node, view, e) => {
-    const current = node.editor.selectionRange[0];
-    let index = indexOfIndentEnd(node.root.sourceString, current - 1);
-    if (index === current)
-      index = indexOfLastNewLine(node.root.sourceString, current - 1) + 1;
-
-    node.editor.selectRange(index, index, view.shard);
-  })
+  .registerQuery("shortcut", (e) => [
+    (x) => {
+      function callback(shift) {
+        return function (node, view) {
+          const selection = node.editor.selectionRange;
+          const src = node.root.sourceString;
+          const start = indexOfNextNewLine(src, selection[0]);
+          let index = indexOfIndentEnd(src, start - 1);
+          if (index === selection[0])
+            index = indexOfLastNewLine(src, start - 1) + 1;
+          node.editor.selectRange(
+            index,
+            shift ? selection[1] : index,
+            view.shard,
+            false
+          );
+        };
+      }
+      e.registerShortcut(x, "home", callback(false));
+      e.registerShortcut(x, "homeSelect", callback(true));
+    },
+  ])
 
   .registerSelection((e) => [
     (x) => false,
@@ -176,7 +196,8 @@ function sequenceMatch(query, word) {
 
 const words = new Map();
 function noteWord(word) {
-  if (word.match(/[A-Za-z].+/)) words.set(word, (words.get(word) ?? 0) + 1);
+  if (word.match(/[A-Za-z][A-Za-z_-]+/))
+    words.set(word, (words.get(word) ?? 0) + 1);
 }
 function forgetWord(word) {
   const count = words.get(word);

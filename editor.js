@@ -35,6 +35,7 @@ export class Editor extends HTMLElement {
       search: "Ctrl-f",
       indentLess: "Shift-Tab",
       indentMore: "Tab",
+      homeSelect: "Shift-Home",
       home: "Home",
 
       selectNodeUp: "Ctrl-ArrowUp",
@@ -364,7 +365,8 @@ export class Editor extends HTMLElement {
     shard?.selectRange(start, end);
 
     const selected = shard?.findSelectedForRange([start, end]);
-    if (scrollIntoView) selected?.scrollIntoView();
+    if (scrollIntoView)
+      selected?.scrollIntoView({ block: "nearest", inline: "nearest" });
     return selected;
   }
 

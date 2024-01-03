@@ -86,9 +86,8 @@ export function FileEditor({
           context: fileEditorRef.current,
           language: language.name,
           onloaded: () => {
-            if (!initialSelection) return;
-            editorRef.current.selectRange(...initialSelection);
-            editorRef.current.selected?.scrollIntoView();
+            if (initialSelection)
+              editorRef.current.selectRange(...initialSelection);
           },
           onSave: async (data) => {
             await project.writeFile(path, data);
@@ -109,7 +108,7 @@ export function FileEditor({
           setSearchVisible(false);
           editorRef.current?.focus();
           if (selectRange)
-            editorRef.current?.selectRange(...selectRange, shard);
+            editorRef.current?.selectRange(...selectRange, shard, false);
         },
       })
   );
