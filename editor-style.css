@@ -34,7 +34,7 @@ sb-shard {
 }
 sb-editor > sb-shard {
 	display: inline-block;
-	width: 100%;
+	min-width: 100%;
 }
 
 table {

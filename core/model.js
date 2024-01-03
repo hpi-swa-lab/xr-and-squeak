@@ -125,6 +125,11 @@ class SBNode {
     if (this.views) this.views.forEach(cb);
   }
 
+  // quick way to obtain a view to the element, should only be used for debugging
+  get debugView() {
+    return this.views?._array[0].deref();
+  }
+
   get editor() {
     let editor = null;
     this.root.viewsDo((view) => !editor && (editor = view.editor));

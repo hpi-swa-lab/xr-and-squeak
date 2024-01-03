@@ -83,6 +83,17 @@ export const base = new Extension()
     }
   })
 
+  // skip over closing parentheses
+  // FIXME may want to do this only for auto-inserted parentheses
+  .registerChangeFilter((change, sourceString) => {
+    if (
+      REVERSED_BRACE_PAIRS[change.insert] &&
+      sourceString[change.from] === change.insert
+    ) {
+      change.insert = "";
+    }
+  })
+
   // insert matching parentheses
   .registerChangeFilter((change, sourceString) => {
     if (BRACE_PAIRS[change.insert]) {
@@ -95,17 +106,6 @@ export const base = new Extension()
         )}${match}`;
         change.selectionRange = [change.from + 1, change.to + 1];
       }
-    }
-  })
-
-  // skip over closing parentheses
-  // FIXME may want to do this only for auto-inserted parentheses
-  .registerChangeFilter((change, sourceString) => {
-    if (
-      REVERSED_BRACE_PAIRS[change.insert] &&
-      sourceString[change.from] === change.insert
-    ) {
-      change.insert = "";
     }
   })
 
@@ -196,7 +196,7 @@ function sequenceMatch(query, word) {
 
 const words = new Map();
 function noteWord(word) {
-  if (word.match(/[A-Za-z][A-Za-z_-]+/))
+  if (word.match(/^[A-Za-z][A-Za-z_-]+$/))
     words.set(word, (words.get(word) ?? 0) + 1);
 }
 function forgetWord(word) {

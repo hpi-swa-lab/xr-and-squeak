@@ -84,56 +84,6 @@ customElements.define(
 );
 
 customElements.define(
-  "sb-js-watch",
-  class extends Replacement {
-    static registry = new Map();
-
-    count = 0;
-
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML =
-        `<div style="padding: 0.25rem; background: #333; display: inline-block; border-radius: 4px;">` +
-        `<div style="background: #fff; padding: 0.1rem;">` +
-        `<slot></slot>` +
-        `</div>` +
-        `<div style="color: #fff; display: flex; margin-top: 0.25rem;">` +
-        `<div id="count" style="padding: 0.1rem 0.4rem; margin-right: 0.25rem; background: #999; border-radius: 100px;">0</div>` +
-        `<div id="output"></div>` +
-        `</div>` +
-        `</div>`;
-    }
-
-    init(source) {
-      super.init(source);
-      this.watchId = parseInt(source.atField("arguments").childBlock(1).text);
-      window.sbWatch.registry.set(this.watchId, this);
-      this.appendChild(
-        this.createShard((source) => source.atField("arguments").childBlock(0))
-      );
-    }
-
-    reportValue(value) {
-      this.count++;
-      this.shadowRoot.getElementById("output").innerHTML = value.toString();
-      this.shadowRoot.getElementById("output").style.marginTop = "2px";
-      this.shadowRoot.getElementById("count").innerHTML = this.count.toString();
-    }
-  }
-);
-
-window.sbWatch = function (value, id) {
-  window.sbWatch.registry.get(id)?.reportValue(value);
-  return value;
-};
-window.sbWatch.registry = new Map();
-
-function randomId() {
-  return Math.floor(Math.random() * 1e9);
-}
-
-customElements.define(
   "sb-js-language-box",
   class extends Replacement {
     constructor() {
@@ -179,13 +129,6 @@ async function asyncEval(str) {
   // return await eval("(async () => {" + str + "})()");
   return eval(str);
 }
-
-const jsWatch = [
-  (x) => x.type === "call_expression",
-  (x) => x.atField("function").text === "sbWatch",
-  (x) => x.atField("arguments").childBlocks.length === 2,
-  (x) => x.atField("arguments")?.childBlock(0)?.type === "number",
-];
 
 export const prettier = new Extension().registerPreSave((e) => [
   (x) => x.isRoot,
@@ -244,18 +187,6 @@ export const workspace = new Extension()
       }
     },
   ])
-  .registerReplacement((e) => [
-    ...jsWatch,
-    (x) => e.ensureReplacement(x, "sb-js-watch"),
-  ])
-  .registerShortcut("wrapWithWatch", (x) => {
-    const currentWatch = exec(x.parent?.parent, ...jsWatch);
-    if (currentWatch) {
-      currentWatch.replaceWith(x.sourceString);
-    } else {
-      x.wrapWith("sbWatch(", `, ${randomId()})`);
-    }
-  })
   .registerShortcut("printIt", async (x, view, e) => {
     const widget = e.createWidget("sb-js-print-result");
     widget.result = await asyncEval(x.sourceString);

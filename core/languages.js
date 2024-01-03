@@ -32,6 +32,7 @@ registerLanguage(
       "lsp:base",
       "lsp:browse",
       "javascript:prettier",
+      "watch:javascript",
     ],
   })
 );

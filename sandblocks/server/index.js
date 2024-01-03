@@ -4,6 +4,7 @@ import * as fsPath from "path";
 import { fileURLToPath } from "url";
 import http from "http";
 import express from "express";
+import cors from "cors";
 import { Server } from "socket.io";
 import { exec, spawn } from "child_process";
 import Gitignore from "gitignore-fs";
@@ -12,6 +13,14 @@ import crypto from "crypto";
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+app.use(express.json());
+app.use(cors());
+
+app.post("/sb-watch", (req, res) => {
+  io.sockets.emit("sb-watch", req.body);
+  res.send();
+});
 
 app.use(
   express.static(

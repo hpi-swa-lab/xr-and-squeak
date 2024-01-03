@@ -8,6 +8,8 @@
 - [ ] confirm to close when unsaved changes
 - [ ] do not indent after newline when {
 - [ ] window titles
+- [ ] typeover detection: wrap {} with {
+- [ ] proceed with save, even if formatting fails
 
 ## lower priority
 

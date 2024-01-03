@@ -162,13 +162,13 @@ export class Shard extends HTMLElement {
   get editor() {
     if (this._editor) return this._editor;
 
-    const editor = orParentThat(this, (x) => x.tagName === "SB-EDITOR");
-    if (editor) return editor;
+    this._editor = orParentThat(this, (x) => x.tagName === "SB-EDITOR");
+    if (this._editor) return this._editor;
 
-    return orParentThat(
+    return (this._editor = orParentThat(
       this.parentNode,
       (x) => x.tagName === "SB-SHARD" && x.editor
-    )?.editor;
+    )?.editor);
   }
 
   get range() {

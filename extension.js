@@ -32,7 +32,7 @@ export class Extension {
   }
 
   static async _loadPackage(name) {
-    const [pkg, _] = name.split(":");
+    const [pkg, extName] = name.split(":");
     if (this.packageLoaders.has(pkg)) return this.packageLoaders.get(pkg);
 
     const extensions = await import(`./extensions/${pkg}.js`);
@@ -157,25 +157,32 @@ class ExtensionInstance {
     this.ensureReplacement(node, "sb-hidden");
   }
 
-  ensureReplacement(node, tag) {
+  ensureReplacement(node, tag, props) {
     console.assert(this.processingTrigger === "replacement");
+    const applyProps = (view) => {
+      for (const [key, value] of Object.entries(props ?? {})) view[key] = value;
+    };
+
     node.viewsDo((view) => {
       // FIXME does this make sense? it prevents creation of replacements
       // for nodes whose weakrefs have not been collected yet
       if (!view.isConnected) return;
 
+      let replacement;
       if (view.tagName.toLowerCase() === tag) {
         // already exists, update
         view.source = node;
+        replacement = view;
+        applyProps(replacement);
         view.update(node);
-        this.newReplacements.add(view);
       } else {
-        let replacement = [...this.currentReplacements].find(
+        replacement = [...this.currentReplacements].find(
           (r) => r.source === node && !r.isConnected
         );
         if (replacement) {
           // existed just now but got unmounted, remount
           view.replaceWith(replacement);
+          applyProps(replacement);
           replacement.update(node);
           node.views.remove(view);
           console.assert(node.views.includes(replacement));
@@ -183,14 +190,16 @@ class ExtensionInstance {
           // does not exist yet, create
           replacement = document.createElement(tag);
           replacement.source = node;
+          applyProps(replacement);
           replacement.init(node);
           replacement.update(node);
           view.replaceWith(replacement);
           node.views.remove(view);
           node.views.push(replacement);
         }
-        this.newReplacements.add(replacement);
       }
+
+      this.newReplacements.add(replacement);
     });
   }
 
