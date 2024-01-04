@@ -11,6 +11,7 @@ import {
   editor,
   h,
 } from "../view/widgets.js";
+import {} from "../view/widget-utils.js";
 
 customElements.define(
   "sb-outline",
@@ -44,41 +45,6 @@ customElements.define(
           )
         )
       );
-    }
-  }
-);
-
-customElements.define(
-  "sb-js-print-result",
-  class extends Widget {
-    connectedCallback() {
-      this.style.display = "inline-block";
-      this.style.padding = "0.25rem";
-      this.style.background = "#333";
-      this.style.color = "#fff";
-      this.style.marginLeft = "0.25rem";
-      this.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" || e.key === "Escape") {
-          e.stopPropagation();
-          e.preventDefault();
-          this.close();
-        }
-      });
-      this.addEventListener("click", (e) => this.close());
-      this.setAttribute("contenteditable", "false");
-      this.setAttribute("tabindex", "-1");
-    }
-
-    set result(value) {
-      let str;
-      if (value === undefined) str = "undefined";
-      else if (value === null) str = "null";
-      else str = value.toString();
-      this.innerHTML = str;
-    }
-    close() {
-      this.shard.focus();
-      ToggleableMutationObserver.ignoreMutation(() => this.remove());
     }
   }
 );
@@ -179,8 +145,15 @@ export const prettier = new Extension().registerPreSave((e) => [
 export const print = new Extension().registerShortcut(
   "printIt",
   async (x, view, e) => {
-    const widget = e.createWidget("sb-js-print-result");
-    widget.result = await asyncEval(x.sourceString);
+    const widget = e.createWidget("sb-print-result");
+    const value = await asyncEval(x.sourceString);
+
+    let str;
+    if (value === undefined) str = "undefined";
+    else if (value === null) str = "null";
+    else str = value.toString();
+
+    widget.result = str;
     view.after(widget);
     widget.focus();
   }

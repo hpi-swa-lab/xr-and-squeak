@@ -7,20 +7,34 @@ import {
 } from "../../external/preact-hooks.mjs";
 import { render } from "../../external/preact.mjs";
 import { ToggleableMutationObserver, wait } from "../../utils.js";
-import { div, editor, h } from "../../view/widgets.js";
+import { button, editor, h } from "../../view/widgets.js";
 import { config } from "../../core/config.js";
 import { Project } from "../../core/project.js";
 import { runHeadless } from "../../external/squeak_headless_with_plugins_bundle.js";
 import { List } from "../list.js";
+import { openComponentInWindow } from "../window.js";
+import {} from "../../view/widget-utils.js";
 
 export class SqueakProject extends Project {
+  static deserialize(data) {
+    return new SqueakProject();
+  }
+
   get name() {
     return "squeak-minimal";
   }
 
   async open() {
-    await runHeadless(config.baseURL + "/external/squeak-minimal.image");
+    await runHeadless(config.baseURL + "external/squeak-minimal.image");
     await wait(1000);
+  }
+
+  renderBackground() {
+    return button("Open Browser", () => {
+      openComponentInWindow(SqueakBrowserComponent, {
+        initialClass: "SequenceableCollection",
+      });
+    });
   }
 }
 
@@ -212,11 +226,18 @@ function SqueakBrowserComponent({ initialClass }) {
     [selectedCategory, selectorCategoryMap]
   );
 
-  return div(
+  const listStyles = {
+    flex: 1,
+    minHeight: 120,
+  };
+  return h(
+    "div",
+    { style: { display: "flex", flexDirection: "column", flex: 1 } },
     h(
       "div",
       { style: { display: "flex" } },
       List({
+        style: listStyles,
         items: systemCategories,
         selected: selectedSystemCategory,
         setSelected: (i) => {
@@ -228,6 +249,7 @@ function SqueakBrowserComponent({ initialClass }) {
         },
       }),
       List({
+        style: listStyles,
         items: classes,
         selected: selectedClass,
         setSelected: (i) => {
@@ -238,6 +260,7 @@ function SqueakBrowserComponent({ initialClass }) {
         },
       }),
       List({
+        style: listStyles,
         items: selectorCategories,
         selected: selectedCategory,
         setSelected: (i) => {
@@ -247,6 +270,7 @@ function SqueakBrowserComponent({ initialClass }) {
         },
       }),
       List({
+        style: listStyles,
         items: selectors,
         selected: selectedSelector,
         setSelected: setSelectedSelector,
@@ -254,9 +278,11 @@ function SqueakBrowserComponent({ initialClass }) {
     ),
     h(
       "div",
-      { style: { border: "1px solid black" } },
+      { style: { overflowY: "auto", flex: 1 } },
       editor({
-        extensions: ["smalltalk:base", "squeak:base", "base:base"],
+        style: { minHeight: "100%" },
+        extensions: ["smalltalk:base", "base:base"],
+        inlineExtensions: [base],
         sourceString,
         language: "smalltalk",
         onSave: async (source) => {
@@ -298,7 +324,7 @@ class SqueakBrowser extends HTMLElement {
   }
 }
 
-export const base = new Extension()
+const base = new Extension()
   .registerSave((e) => [
     (x) => x.type === "method",
     (x) =>
@@ -307,7 +333,7 @@ export const base = new Extension()
       ),
   ])
   .registerShortcut("printIt", async (x, view, e) => {
-    const widget = e.createWidget("sb-js-print-result");
+    const widget = e.createWidget("sb-print-result");
     console.log(x.editor.textForShortcut);
     widget.result = await sqEval(x.editor.textForShortcut);
     ToggleableMutationObserver.ignoreMutation(() => {

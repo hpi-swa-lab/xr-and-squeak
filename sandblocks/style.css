@@ -33,9 +33,11 @@ body {
 
 .sb-list {
   max-height: 100px;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 .sb-list-item {
+  white-space: nowrap;
+  user-select: none;
   padding: 0 0.25rem;
 }
 .sb-list .selected {

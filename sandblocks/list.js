@@ -33,9 +33,12 @@ export function List({
   setSelected,
   selected,
   height,
+  style,
   onConfirm,
   autofocus,
 }) {
+  labelFunc ??= (x) => x;
+
   const selectedRef = useRef(null);
 
   const [filterString, setFilterString] = useState("");
@@ -47,7 +50,8 @@ export function List({
   }, [items, filterString]);
 
   useEffect(() => {
-    setSelected(visibleItems[0]);
+    if (!selected || !visibleItems.includes(selected))
+      setSelected(visibleItems[0]);
   }, [visibleItems, filterString]);
 
   useEffect(() => {
@@ -65,7 +69,7 @@ export function List({
       tabIndex: -1,
       focusable: true,
       autofocus,
-      style: { maxHeight: height },
+      style: { maxHeight: height, ...(style ?? {}) },
       onkeydown: (e) => {
         if (e.key === "ArrowDown") {
           const index = visibleItems.indexOf(selected);
