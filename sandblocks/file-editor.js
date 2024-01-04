@@ -4,6 +4,7 @@ import { languageForExtension } from "../core/languages.js";
 import { useEffect, useState, useRef } from "../external/preact-hooks.mjs";
 import { references } from "./references.js";
 import { Extension } from "../extension.js";
+import { confirmUnsavedChanges } from "./window.js";
 
 const search = new Extension()
   .registerShortcut("search", (x) => {
@@ -20,6 +21,7 @@ const search = new Extension()
   ]);
 
 export function FileEditor({
+  window,
   project,
   path,
   style,
@@ -34,6 +36,16 @@ export function FileEditor({
   const fileEditorRef = useRef(null);
   const editorRef = useRef(null);
   const searchRef = useRef(null);
+
+  useEffect(() => {
+    window?.setTitle(path.slice(project.path.length + 1));
+  }, [project, path, window]);
+
+  useEffect(() => {
+    window?.setOkToClose(
+      async () => !unsavedChanges || (await confirmUnsavedChanges())
+    );
+  }, [window, unsavedChanges]);
 
   useAsyncEffect(async () => {
     setSourceString(await project.readFile(path));

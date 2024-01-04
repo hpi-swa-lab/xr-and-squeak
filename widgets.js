@@ -10,7 +10,8 @@ export const ul = (...children) => h("ul", {}, ...children);
 export const div = (...children) => h("div", {}, ...children);
 export const el = (cls, ...children) => h("div", { class: cls }, ...children);
 export const table = (...children) => h("table", {}, ...children);
-export const button = (label, onclick) => h("button", { onclick }, label);
+export const button = (label, onclick, autofocus) =>
+  h("button", { onclick, autofocus }, label);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) => h("sb-shard", { initNode: [node], key: node });
@@ -154,7 +155,10 @@ export function registerPreactElement(name, preactComponent) {
       }
 
       connectedCallback() {
-        render(h(preactComponent, this.props), this.shadowRoot);
+        render(
+          h(preactComponent, { ...this.props, root: this }),
+          this.shadowRoot
+        );
       }
 
       disconnectedCallback() {
