@@ -46,7 +46,7 @@ hr {
   margin: 0;
 }
 
-/* the actual styles are in widgets.css:.sb-window */
+/* the actual styles are in window.js */
 sb-window {
   position: absolute;
   top: 0;

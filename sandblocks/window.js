@@ -93,7 +93,6 @@ export function Window({
       focus.focus();
       const my = windowRef.current.getBoundingClientRect();
       const their = focus.getBoundingClientRect();
-      console.log(my, their);
       setPosition({
         x: globalMousePos.x - (their.x - my.x) - their.width / 2,
         y: globalMousePos.y - (their.y - my.y) - their.height / 2,
@@ -294,14 +293,16 @@ export function Dialog({ message, actions, cancelActionIndex, window }) {
         "div",
         {
           style: { display: "flex", gap: "1rem" },
-          onkeydown: (e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              e.stopPropagation();
-              window.close();
-              actions[cancelActionIndex][1]();
-            }
-          },
+          onkeydown:
+            cancelActionIndex !== undefined &&
+            ((e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                window.close();
+                actions[cancelActionIndex][1]();
+              }
+            }),
         },
         actions.map(([label, action, autofocus]) =>
           button(

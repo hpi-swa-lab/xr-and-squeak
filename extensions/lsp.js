@@ -105,6 +105,34 @@ export const browse = new Extension().registerShortcut(
   }
 );
 
+export const diagnostics = new Extension().registerQuery(
+  "lsp-diagnostics",
+  (e) => [
+    (x) => x.isRoot,
+    (x) => {
+      for (const diagnostic of sem(x)?.diagnosticsFor(x.context.path) ?? []) {
+        const start = positionToIndex(x.sourceString, diagnostic.range.start);
+        const end = positionToIndex(x.sourceString, diagnostic.range.end);
+        const target = x.childEncompassingRange([start, end]);
+        const severity = ["", "error", "warning", "info", "hint"][
+          diagnostic.severity
+        ];
+        e.ensureClass(target, `diagnostic-${severity}`);
+        for (const tag of diagnostic.tags ?? []) {
+          const t = ["", "unnecessary", "deprecated"][tag];
+          e.ensureClass(target, `diagnostic-${t}`);
+        }
+        e.attachData(
+          target,
+          "diagnostic",
+          (v) => (v.title = diagnostic.message),
+          (v) => (v.title = null)
+        );
+      }
+    },
+  ]
+);
+
 class Transport {
   constructor(request) {
     this.request = request;
@@ -160,6 +188,7 @@ export class LanguageClient extends Semantics {
   lastRequestId = 0;
   pending = new Map();
   textDocumentVersions = new Map();
+  diagnostics = new Map();
   queuedRequests = [];
   initialized = false;
 
@@ -255,6 +284,7 @@ export class LanguageClient extends Semantics {
 
   async didClose(node) {
     this.textDocumentVersions.delete(node.context);
+    this.diagnostics.delete(node.context.path);
 
     await this._notification("textDocument/didClose", {
       textDocument: { uri: `file://${node.context.path}` },
@@ -301,13 +331,29 @@ export class LanguageClient extends Semantics {
     return sourceString;
   }
 
+  diagnosticsFor(path) {
+    return this.diagnostics.get(path) ?? [];
+  }
+
   async _handleServerMessage(message) {
     switch (message.method) {
       case "window/logMessage":
         console.log(message.params.message);
         break;
       case "textDocument/publishDiagnostics":
-        console.log(message.params);
+        this.diagnostics.set(
+          message.params.uri.slice("file://".length),
+          message.params.diagnostics
+        );
+        for (const [context] of this.textDocumentVersions.entries()) {
+          if (context.path === message.params.uri.slice("file://".length)) {
+            context.editor.updateExtension(
+              diagnostics,
+              "lsp-diagnostics",
+              () => {}
+            );
+          }
+        }
         break;
       default:
         console.log("Unhandled server message", message);

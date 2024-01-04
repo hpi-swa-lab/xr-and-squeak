@@ -134,6 +134,10 @@ customElements.define(
     project = null;
     path = null;
 
+    get editor() {
+      return this.querySelector("sb-editor");
+    }
+
     startSearch() {
       this.dispatchEvent(new CustomEvent("startSearch"));
     }

@@ -30,11 +30,10 @@ sb-shard {
   word-wrap: normal;
   tab-size: 2;
   outline: none;
-  
 }
 sb-editor > sb-shard {
-	display: inline-block;
-	min-width: 100%;
+  display: inline-block;
+  min-width: 100%;
 }
 
 table {
@@ -118,4 +117,18 @@ td {
 
 .highlight {
   background-color: #ccc;
+}
+
+.diagnostic-unnecessary {
+  background-color: #ccc;
+}
+.diagnostic-deprecated {
+  text-decoration: line-through;
+}
+.diagnostic-error,
+.diagnostic-warning,
+.diagnostic-info,
+.diagnostic-hint {
+  text-decoration: wavy;
+  background-color: #ffcccc;
 }

@@ -1,12 +1,12 @@
 ## editing essentials
 
 - [ ] shift-tab
-- [ ] show diags
 - [ ] do not indent after newline when {
 - [ ] typeover detection: wrap {} with {
 - [ ] proceed with save, even if formatting fails
 - [ ] editor.selectionRange in the presence of a watch
 - [ ] shard focus and caret movement
+- [ ] convert replacement to text
 
 ## lower priority
 

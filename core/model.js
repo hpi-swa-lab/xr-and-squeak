@@ -255,6 +255,18 @@ class SBNode {
     return null;
   }
 
+  // finds a child that best encompasses the range
+  childEncompassingRange(range) {
+    if (this.range[0] <= range[0] && this.range[1] >= range[1]) {
+      for (const child of this.children) {
+        const match = child.childEncompassingRange(range);
+        if (match) return match;
+      }
+      return this;
+    }
+    return null;
+  }
+
   leafForPosition(pos) {
     if (this.range[0] <= pos && this.range[1] >= pos) {
       for (const child of this.children) {

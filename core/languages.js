@@ -31,6 +31,7 @@ registerLanguage(
       "javascript:base",
       "lsp:base",
       "lsp:browse",
+      "lsp:diagnostics",
       "javascript:prettier",
       "watch:javascript",
       "javascript:print",
