@@ -1,4 +1,4 @@
-import { render, h } from "../widgets.js";
+import { render, h } from "../view/widgets.js";
 import { List } from "./list.js";
 import { useState, useMemo } from "../external/preact-hooks.mjs";
 import { openComponentInWindow } from "./window.js";

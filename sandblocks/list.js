@@ -4,7 +4,7 @@ import {
   useState,
   useMemo,
 } from "../external/preact-hooks.mjs";
-import { h } from "../widgets.js";
+import { h } from "../view/widgets.js";
 
 function highlightSubstring(string, search) {
   if (!search) return string;

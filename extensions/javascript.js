@@ -1,6 +1,6 @@
-import { Extension } from "../extension.js";
+import { Extension } from "../core/extension.js";
 import { config } from "../core/config.js";
-import { ToggleableMutationObserver, exec } from "../utils.js";
+import { ToggleableMutationObserver } from "../utils.js";
 import {
   Widget,
   ul,
@@ -10,7 +10,7 @@ import {
   Replacement,
   editor,
   h,
-} from "../widgets.js";
+} from "../view/widgets.js";
 
 customElements.define(
   "sb-outline",

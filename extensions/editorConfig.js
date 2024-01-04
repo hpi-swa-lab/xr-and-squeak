@@ -1,6 +1,6 @@
 import { useState } from "../external/preact-hooks.mjs";
-import { Extension } from "../extension.js";
-import { Replacement, shard, div, table, td, tr, h } from "../widgets.js";
+import { Extension } from "../core/extension.js";
+import { Replacement, shard, div, table, td, tr, h } from "../view/widgets.js";
 
 function KeyInputPrompt({ node, onClose }) {
   const style = {

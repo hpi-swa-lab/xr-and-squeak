@@ -1,6 +1,6 @@
 import { LoadOp, RemoveOp, UpdateOp } from "../core/diff.js";
-import { Extension } from "../extension.js";
-import { Widget } from "../widgets.js";
+import { Extension } from "../core/extension.js";
+import { Widget } from "../view/widgets.js";
 
 class DetachedShard extends Widget {
   noteProcessed(trigger, node) {

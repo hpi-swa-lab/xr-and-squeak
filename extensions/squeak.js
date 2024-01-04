@@ -1,4 +1,4 @@
-import { Extension } from "../extension.js";
+import { Extension } from "../core/extension.js";
 import {
   useEffect,
   useMemo,
@@ -7,7 +7,7 @@ import {
 } from "../external/preact-hooks.mjs";
 import { render } from "../external/preact.mjs";
 import { ToggleableMutationObserver } from "../utils.js";
-import { div, editor, h } from "../widgets.js";
+import { div, editor, h } from "../view/widgets.js";
 import { config } from "../core/config.js";
 
 class ToolBuilder {

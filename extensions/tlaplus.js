@@ -1,4 +1,4 @@
-import { Extension } from "../extension.js";
+import { Extension } from "../core/extension.js";
 
 export const base = new Extension()
   // tla+ keywords

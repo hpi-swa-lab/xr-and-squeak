@@ -1,7 +1,7 @@
-import { Editor } from "../editor.js";
+import { Editor } from "../view/editor.js";
 import { config } from "../core/config.js";
-import { button, el, useAsyncEffect } from "../widgets.js";
-import { render, h } from "../widgets.js";
+import { button, el, useAsyncEffect } from "../view/widgets.js";
+import { render, h } from "../view/widgets.js";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
 import { Project } from "../core/project.js";

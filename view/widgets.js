@@ -1,14 +1,9 @@
-import { h, render } from "./external/preact.mjs";
-import {
-  ToggleableMutationObserver,
-  nextHash,
-  orParentThat,
-  parentWithTag,
-} from "./utils.js";
+import { h, render } from "../external/preact.mjs";
+import { nextHash, orParentThat, parentWithTag } from "../utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
-import { useMemo } from "./external/preact-hooks.mjs";
+import { useMemo } from "../external/preact-hooks.mjs";
 
-export { h, render } from "./external/preact.mjs";
+export { h, render } from "../external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
 export const ul = (...children) => h("ul", {}, ...children);
 export const div = (...children) => h("div", {}, ...children);

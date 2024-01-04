@@ -1,6 +1,6 @@
-import { Extension } from "../extension.js";
+import { Extension } from "../core/extension.js";
 import { exec, mapSeparated } from "../utils.js";
-import { Replacement, shard } from "../widgets.js";
+import { Replacement, shard } from "../view/widgets.js";
 
 customElements.define(
   "sb-watch",

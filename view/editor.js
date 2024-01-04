@@ -1,5 +1,4 @@
-import { Extension } from "./extension.js";
-import { config } from "./core/config.js";
+import { Extension } from "../core/extension.js";
 import {
   ToggleableMutationObserver,
   findChange,
@@ -7,9 +6,10 @@ import {
   orParentThat,
   parentWithTag,
   rangeContains,
-} from "./utils.js";
-import { Block, Shard, Text } from "./view.js";
-import { languageFor } from "./core/languages.js";
+} from "../utils.js";
+import { Block, Text } from "./elements.js";
+import { Shard } from "./shard.js";
+import { languageFor } from "../core/languages.js";
 import {} from "./suggestions.js";
 
 // An Editor manages the view for a single model.

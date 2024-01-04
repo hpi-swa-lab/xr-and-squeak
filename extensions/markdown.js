@@ -1,5 +1,5 @@
-import { Extension } from "../extension.js";
-import { Widget, Replacement } from "../widgets.js";
+import { Extension } from "../core/extension.js";
+import { Widget, Replacement } from "../view/widgets.js";
 
 customElements.define(
   "sb-markdown-math-result",

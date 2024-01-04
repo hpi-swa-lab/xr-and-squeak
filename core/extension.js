@@ -1,4 +1,4 @@
-import { exec, rangeEqual } from "./utils.js";
+import { exec, rangeEqual } from "../utils.js";
 
 // An extension groups a set of functionality, such as syntax highlighting,
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
@@ -35,7 +35,7 @@ export class Extension {
     const [pkg, extName] = name.split(":");
     if (this.packageLoaders.has(pkg)) return this.packageLoaders.get(pkg);
 
-    const extensions = await import(`./extensions/${pkg}.js`);
+    const extensions = await import(`../extensions/${pkg}.js`);
     for (const [name, ext] of Object.entries(extensions)) {
       if (!(ext instanceof Extension)) continue;
       ext.name = `${pkg}:${name}`;

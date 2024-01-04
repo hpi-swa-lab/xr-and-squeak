@@ -1,5 +1,5 @@
-import { Replacement, div, editor, h, shard } from "../widgets.js";
-import { Extension } from "../extension.js";
+import { Replacement, div, editor, h, shard } from "../view/widgets.js";
+import { Extension } from "../core/extension.js";
 import { languageFor } from "../core/languages.js";
 
 const extraExtensions = {

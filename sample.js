@@ -14,6 +14,7 @@ function hello() {
       e
     ))("asdadasdasd"),
   ][1];
+  return a;
 }
 
 hello();

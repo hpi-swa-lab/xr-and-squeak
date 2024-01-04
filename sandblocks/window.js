@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "../external/preact-hooks.mjs";
 import { matchesKey, orParentThat } from "../utils.js";
-import { h, button, registerPreactElement, render } from "../widgets.js";
+import { h, button, registerPreactElement, render } from "../view/widgets.js";
 
 function wantsMouseOverFocus(e) {
   return (

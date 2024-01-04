@@ -1,4 +1,4 @@
-@import url("../editor-style.css");
+@import url("../view/editor-style.css");
 
 *:focus {
   outline: 2px solid rgb(138, 202, 255);

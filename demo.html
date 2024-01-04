@@ -83,13 +83,11 @@ op ==
       extensions="tlaplus:base base:base"
     ></sb-editor>
 
-    <!--<link rel="stylesheet" href="editor-style.css" />-->
-    <style>
-      sb-editor {
-        white-space: pre;
-        display: flex;
-      }
-    </style>
-    <script type="module" src="main.js"></script>
+    <link rel="stylesheet" href="view/editor-style.css" />
+    <script type="module">
+      import { Editor } from "./editor.js";
+
+      Editor.init();
+    </script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-import { Extension } from "../extension.js";
+import { Extension } from "../core/extension.js";
 import { Process } from "../sandblocks/process.js";
 import { Semantics } from "../sandblocks/semantics.js";
 import { openComponentInWindow } from "../sandblocks/window.js";

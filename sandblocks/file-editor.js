@@ -1,9 +1,9 @@
-import { h } from "../widgets.js";
-import { editor, useAsyncEffect } from "../widgets.js";
+import { h } from "../view/widgets.js";
+import { editor, useAsyncEffect } from "../view/widgets.js";
 import { languageForExtension } from "../core/languages.js";
 import { useEffect, useState, useRef } from "../external/preact-hooks.mjs";
 import { references } from "./references.js";
-import { Extension } from "../extension.js";
+import { Extension } from "../core/extension.js";
 import { confirmUnsavedChanges } from "./window.js";
 
 const search = new Extension()

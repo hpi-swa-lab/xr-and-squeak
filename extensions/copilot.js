@@ -1,4 +1,4 @@
-import { Extension } from "../extension.js";
+import { Extension } from "../core/extension.js";
 
 function getKey() {
   const key = localStorage.openAIKey ?? window.prompt("Key?");
