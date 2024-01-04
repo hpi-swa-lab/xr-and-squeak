@@ -13,8 +13,6 @@ import { Project } from "../../core/project.js";
 import { runHeadless } from "../../external/squeak_headless_with_plugins_bundle.js";
 import { List } from "../list.js";
 
-customElements.define("squeak-browser", SqueakBrowser);
-
 export class SqueakProject extends Project {
   get name() {
     return "squeak-minimal";
@@ -336,53 +334,4 @@ export const base = new Extension()
     editor.shard.focus();
   });
 
-async function setupTHREEJS() {
-  console.log("SETUP");
-  window.THREE = await import(
-    "https://unpkg.com/three@0.160.0/build/three.module.js"
-  );
-  window.VRButton = (
-    await import(
-      "https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js"
-    )
-  ).VRButton;
-  window.Scene = THREE.Scene;
-  window.PerspectiveCamera = THREE.PerspectiveCamera;
-  window.WebGLRenderer = THREE.WebGLRenderer;
-  window.Mesh = THREE.Mesh;
-  window.Geometry = THREE.Geometry;
-  window.BoxGeometry = THREE.BoxGeometry;
-  window.MeshBasicMaterial = THREE.MeshBasicMaterial;
-  window.Vector3 = THREE.Vector3;
-  window.Euler = THREE.Euler;
-  window.Quaternion = THREE.Quaternion;
-  window.Matrix4 = THREE.Matrix4;
-  window.Color = THREE.Color;
-
-  console.log(
-    await sqEval(`
-    | cam scene renderer geometry material cube block |
-    cam := JS PerspectiveCamera new: 75 aspect: JS window innerWidth asFloat / JS window innerHeight near: 0.1 far: 1000.
-    scene := JS Scene new.
-    renderer := JS WebGLRenderer new.
-    renderer xr enabled: true.
-    renderer setAnimationLoop: [
-      cam position y: cam position y + 0.01.
-      renderer render: scene camera: cam].
-  
-    JS window document body appendChild: renderer domElement.
-
-    geometry := JS BoxGeometry new: 1 y: 1 z: 1.
-    material := JS MeshBasicMaterial new: ({#color -> 16r00ff00} as: Dictionary).
-    cube := JS Mesh new: geometry material: material.
-    scene add: cube.
-
-    cam position z: 5.
-
-    JS window document body appendChild: (JS VRButton createButton: renderer).
-    `)
-  );
-  console.log("SETUP");
-}
-
-// await setupTHREEJS();
+customElements.define("squeak-browser", SqueakBrowser);
