@@ -1,51 +1,29 @@
-import { Extension } from "../core/extension.js";
+import { Extension } from "../../core/extension.js";
 import {
   useEffect,
   useMemo,
   useRef,
   useState,
-} from "../external/preact-hooks.mjs";
-import { render } from "../external/preact.mjs";
-import { ToggleableMutationObserver } from "../utils.js";
-import { div, editor, h } from "../view/widgets.js";
-import { config } from "../core/config.js";
+} from "../../external/preact-hooks.mjs";
+import { render } from "../../external/preact.mjs";
+import { ToggleableMutationObserver, wait } from "../../utils.js";
+import { div, editor, h } from "../../view/widgets.js";
+import { config } from "../../core/config.js";
+import { Project } from "../../core/project.js";
+import { runHeadless } from "../../external/squeak_headless_with_plugins_bundle.js";
+import { List } from "../list.js";
 
-class ToolBuilder {
-  createElement(tag) {
-    return document.createElement(tag);
+customElements.define("squeak-browser", SqueakBrowser);
+
+export class SqueakProject extends Project {
+  get name() {
+    return "squeak-minimal";
   }
 
-  addChild(child, parent) {
-    parent.appendChild(child);
+  async open() {
+    await runHeadless(config.baseURL + "/external/squeak-minimal.image");
+    await wait(1000);
   }
-}
-
-function List({ items, onSelect, selected }) {
-  return h(
-    "div",
-    {
-      style: {
-        overflow: "auto",
-        maxHeight: "200px",
-        minWidth: "100px",
-        border: "1px solid black",
-        flex: 1,
-      },
-    },
-    items.map((item) =>
-      h(
-        "div",
-        {
-          style: {
-            background: item === selected ? "#ccc" : "none",
-            padding: "0.1rem",
-          },
-          onclick: () => onSelect(item),
-        },
-        item
-      )
-    )
-  );
 }
 
 function valueList(map) {
@@ -57,9 +35,6 @@ function filterMap(map, filter) {
     .filter(([_, cat]) => cat === filter)
     .map(([item, _]) => item)
     .sort();
-}
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function saveString(s) {
   s = JSON.stringify(s).replace(/'/g, "''");
@@ -246,7 +221,7 @@ function SqueakBrowserComponent({ initialClass }) {
       List({
         items: systemCategories,
         selected: selectedSystemCategory,
-        onSelect: (i) => {
+        setSelected: (i) => {
           setSelectedSystemCategory(i);
           setSelectedClass(null);
           setSelectedCategory(null);
@@ -257,7 +232,7 @@ function SqueakBrowserComponent({ initialClass }) {
       List({
         items: classes,
         selected: selectedClass,
-        onSelect: (i) => {
+        setSelected: (i) => {
           setSelectedClass(i);
           setSelectedCategory(null);
           setSelectedSelector(null);
@@ -267,7 +242,7 @@ function SqueakBrowserComponent({ initialClass }) {
       List({
         items: selectorCategories,
         selected: selectedCategory,
-        onSelect: (i) => {
+        setSelected: (i) => {
           setSelectedCategory(i);
           setSelectedSelector(null);
           setSourceString(null);
@@ -276,7 +251,7 @@ function SqueakBrowserComponent({ initialClass }) {
       List({
         items: selectors,
         selected: selectedSelector,
-        onSelect: setSelectedSelector,
+        setSelected: setSelectedSelector,
       })
     ),
     h(
@@ -360,46 +335,6 @@ export const base = new Extension()
     editor.setAttribute("text", x.editor.getAttribute("text"));
     editor.shard.focus();
   });
-
-let init = false;
-if (!init) {
-  init = true;
-  const module = await import(
-    "../external/squeak_headless_with_plugins_bundle.js"
-  );
-  runHeadless(config.baseURL + "/external/squeak-minimal.image");
-  await wait(1000);
-  customElements.define("squeak-browser", SqueakBrowser);
-  // x.editor.appendChild(e.createWidget("squeak-browser"));
-}
-
-async function runHeadless(imageUrl) {
-  const imageData = await (
-    await fetch(imageUrl, {
-      method: "GET",
-      mode: "cors",
-      cache: "no-store",
-    })
-  ).arrayBuffer();
-
-  const image = new Squeak.Image("minimal");
-  image.readFromBuffer(imageData, function startRunning() {
-    const display = { vmOptions: ["-vm-display-null", "-nodisplay"] };
-    const vm = new Squeak.Interpreter(image, display);
-    function run() {
-      try {
-        vm.interpret(50, function (ms) {
-          if (!display.quitFlag) {
-            setTimeout(run, ms === "sleep" ? 10 : 100);
-          }
-        });
-      } catch (e) {
-        console.error("Failure during Squeak run: ", e);
-      }
-    }
-    run();
-  });
-}
 
 async function setupTHREEJS() {
   console.log("SETUP");

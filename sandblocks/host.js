@@ -1,4 +1,12 @@
-import { request, socket } from "./main.js";
+export const socket = io();
+export function request(name, data) {
+  return new Promise((resolve, reject) => {
+    socket.emit(name, data, (ret) => {
+      if (ret.error) reject(ret.error);
+      else resolve(ret);
+    });
+  });
+}
 
 export class Process {
   static complete(command, args, cwd, input) {

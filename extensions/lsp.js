@@ -1,8 +1,8 @@
 import { Extension } from "../core/extension.js";
-import { Process } from "../sandblocks/process.js";
 import { Semantics } from "../sandblocks/semantics.js";
 import { openComponentInWindow } from "../sandblocks/window.js";
-import { FileEditor } from "../sandblocks/file-editor.js";
+import { Process } from "../sandblocks/host.js";
+import { FileEditor } from "../sandblocks/file-project/file-editor.js";
 
 const configuration = [
   {
@@ -352,7 +352,8 @@ export class LanguageClient extends Semantics {
         }
         break;
       default:
-        console.log("Unhandled server message", message);
+        if (!message.method.startsWith("$/"))
+          console.log("Unhandled server message", message);
         break;
     }
   }

@@ -1,5 +1,5 @@
 import { Extension } from "../core/extension.js";
-import { socket } from "../sandblocks/main.js";
+import { socket } from "../sandblocks/host.js";
 import { Replacement, h, shard } from "../view/widgets.js";
 
 function makeWatchExtension(config) {

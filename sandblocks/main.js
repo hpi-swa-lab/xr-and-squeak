@@ -1,94 +1,42 @@
 import { Editor } from "../view/editor.js";
-import { config } from "../core/config.js";
-import { button, el, useAsyncEffect } from "../view/widgets.js";
+import { button, useAsyncEffect } from "../view/widgets.js";
 import { render, h } from "../view/widgets.js";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
-import { Project } from "../core/project.js";
 import { matchesKey } from "../utils.js";
-import { openComponentInWindow } from "./window.js";
-import { FileEditor } from "./file-editor.js";
-import {} from "./search.js";
+import { choose, openComponentInWindow } from "./window.js";
+import {} from "./file-project/search.js";
+
+const PROJECT_TYPES = {
+  FileProject: {
+    path: "./file-project/main.js",
+    name: "FileProject",
+    label: "Open Folder",
+    createArgs: () => [prompt()],
+  },
+  SqueakProject: {
+    path: "./squeak-project/main.js",
+    name: "SqueakProject",
+    label: "Squeak Image",
+    createArgs: () => [],
+  },
+};
 
 Editor.init();
 
-config.baseURL = "/";
-
-export const socket = io();
-
-class SBProject extends Project {
-  static deserialize(str) {
-    if (!str) return null;
-    try {
-      const res = JSON.parse(str);
-      if (typeof res.path !== "string") return null;
-      return new SBProject(res.path);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  constructor(path) {
-    super();
-    this.path = path;
-  }
-
-  async open() {
-    this.root = await request("openProject", { path: this.path });
-  }
-
-  async writeFile(path, data) {
-    await request("writeFile", { path, data });
-  }
-
-  async readFiles(paths) {
-    return await request("readFiles", { paths });
-  }
-
-  get allSources() {
-    const out = [];
-    const recurse = (file, path) => {
-      if (file.children) {
-        file.children.forEach((child) =>
-          recurse(child, path + "/" + file.name)
-        );
-      } else {
-        out.push({
-          path: path + "/" + file.name,
-          hash: file.hash,
-        });
-      }
-    };
-    for (const child of this.root.children) recurse(child, this.path);
-    return out;
-  }
-
-  serialize() {
-    return JSON.stringify({ path: this.path });
-  }
-}
-
-render(h(Sandblocks), document.body);
-
-export function request(name, data) {
-  return new Promise((resolve, reject) => {
-    socket.emit(name, data, (ret) => {
-      if (ret.error) reject(ret.error);
-      else resolve(ret);
-    });
-  });
-}
-
-function useRebuild() {
-  const [_, setNum] = useState(0);
-  return () => setNum((n) => n + 1);
-}
-
 function Sandblocks() {
-  const [project, setProject] = useState(() =>
-    SBProject.deserialize(localStorage.lastProject)
-  );
-  const rebuild = useRebuild();
+  const [openProjects, setOpenProjects] = useState([]);
+
+  useAsyncEffect(async () => {
+    const lastProjects = JSON.parse(localStorage.lastProjects ?? "[]");
+    for (const info of lastProjects) {
+      const desc = PROJECT_TYPES[info.type];
+      const Project = (await import(desc.path))[desc.name];
+      const project = Project.deserialize(info);
+      await project.open();
+      setOpenProjects((p) => [...p, project]);
+    }
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
@@ -96,7 +44,8 @@ function Sandblocks() {
         openComponentInWindow(Workspace, {});
       } else if (matchesKey(e, "Ctrl-0")) {
         const search = document.createElement("sb-search");
-        search.project = project;
+        // FIXME
+        search.project = openProjects[0];
         document.body.appendChild(search);
       } else {
         return;
@@ -106,71 +55,35 @@ function Sandblocks() {
     };
     document.body.addEventListener("keydown", handler);
     return () => document.body.removeEventListener("keydown", handler);
-  }, [project]);
+  }, [openProjects]);
 
-  useAsyncEffect(async () => {
-    if (project) {
-      await project.open();
-      rebuild();
-      localStorage.lastProject = project.serialize();
-    }
-  }, [project]);
+  useEffect(() => {
+    localStorage.lastProjects = JSON.stringify(
+      openProjects.map((p) => p.fullSerialize())
+    );
+  }, [openProjects]);
 
   return [
-    button("Open Project", () => setProject(new SBProject(prompt()))),
-    button("Install Language", () =>
-      request("installLanguage", {
-        repo: prompt("Repo? (just username/repo)"),
-        branch: prompt("Branch? (prefer commit hashes)"),
-        path: prompt("Path? (leave empty for root"),
-      }).then(() => alert("Installed!"))
-    ),
-    button("Open Workspace (Ctrl-g)", () =>
-      openComponentInWindow(Workspace, {})
-    ),
-    project?.root &&
-      el(
-        "sb-project-file-list",
-        h(File, {
-          file: project.root,
-          path: project.path,
-          isRoot: true,
-          onOpen: (path) =>
-            openComponentInWindow(FileEditor, { project, path }),
+    h(
+      "div",
+      { style: "flex" },
+      button("Open Project", async () => {
+        const desc = await choose(Object.values(PROJECT_TYPES), (i) => i.label);
+        if (!desc) return;
+        const Project = (await import(desc.path))[desc.name];
+        const project = new Project(...(await desc.createArgs()));
+        await project.open();
+
+        setOpenProjects((p) => [...p, project]);
+      }),
+      openProjects.map((project) =>
+        project.renderItem({
+          onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),
         })
-      ),
+      )
+    ),
+    openProjects.map((project) => project.renderBackground?.()),
   ];
 }
 
-function File({ file, onOpen, path, isRoot }) {
-  const isFolder = file.children;
-  const [open, setOpen] = useState(isRoot);
-  return el("sb-file" + (isFolder ? " sb-folder" : ""), [
-    h(
-      "div",
-      {
-        onclick: () => (isFolder ? setOpen((o) => !o) : onOpen(path)),
-        class: "sb-file-name",
-      },
-      `${isFolder ? (open ? "▼ " : "▶ ") : ""}${file.name}`
-    ),
-    open &&
-      isFolder &&
-      el(
-        "sb-file-list",
-        file.children
-          .sort((a, b) =>
-            !!a.children === !!b.children
-              ? a.name.localeCompare(b.name)
-              : !!b.children - !!a.children
-          )
-          .map((child) =>
-            h(File, {
-              file: child,
-              onOpen,
-              path: path + "/" + child.name,
-            })
-          )
-      ),
-  ]);
-}
+render(h(Sandblocks), document.body);

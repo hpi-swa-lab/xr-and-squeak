@@ -313,3 +313,7 @@ export function matchesKey(e, key) {
   if (modifiers.includes("Shift") && !e.shiftKey) return false;
   return e.key === baseKey;
 }
+
+export function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}

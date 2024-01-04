@@ -34,6 +34,7 @@ export function List({
   selected,
   height,
   onConfirm,
+  autofocus,
 }) {
   const selectedRef = useRef(null);
 
@@ -63,6 +64,7 @@ export function List({
       class: "sb-list",
       tabIndex: -1,
       focusable: true,
+      autofocus,
       style: { maxHeight: height },
       onkeydown: (e) => {
         if (e.key === "ArrowDown") {

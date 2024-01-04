@@ -1,3 +1,4 @@
+import { button } from "../view/widgets.js";
 import { config } from "./config.js";
 
 export class Project extends EventTarget {
@@ -5,6 +6,8 @@ export class Project extends EventTarget {
 
   // array of { path: string, hash: string }
   get allSources() {}
+
+  get name() {}
 
   async writeFile(path, source) {}
 
@@ -63,5 +66,22 @@ export class Project extends EventTarget {
         }
       });
     });
+  }
+
+  renderItem({ onClose }) {
+    return [this.name, button("Close", onClose)];
+  }
+
+  renderBackground() {
+    return null;
+  }
+
+  serialize() {}
+
+  fullSerialize() {
+    return {
+      ...this.serialize(),
+      type: this.constructor.name,
+    };
   }
 }

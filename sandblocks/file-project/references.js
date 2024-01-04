@@ -1,8 +1,8 @@
-import { editor, h, useAsyncEffect } from "../view/widgets.js";
-import { useState } from "../external/preact-hooks.mjs";
-import { Extension } from "../core/extension.js";
-import { openComponentInWindow } from "./window.js";
-import { List } from "./list.js";
+import { editor, h, useAsyncEffect } from "../../view/widgets.js";
+import { useState } from "../../external/preact-hooks.mjs";
+import { Extension } from "../../core/extension.js";
+import { openComponentInWindow } from "../window.js";
+import { List } from "../list.js";
 import { FileEditor } from "./file-editor.js";
 
 export const references = new Extension()

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "../external/preact-hooks.mjs";
 import { matchesKey, orParentThat } from "../utils.js";
 import { h, button, registerPreactElement, render } from "../view/widgets.js";
+import { List } from "./list.js";
 
 function wantsMouseOverFocus(e) {
   return (
@@ -89,18 +90,26 @@ export function Window({
   useEffect(() => {
     raise();
     const focus = root.querySelector("[autofocus]");
+    let position;
     if (focus) {
       focus.focus();
       const my = windowRef.current.getBoundingClientRect();
       const their = focus.getBoundingClientRect();
-      setPosition({
+      position = {
         x: globalMousePos.x - (their.x - my.x) - their.width / 2,
         y: globalMousePos.y - (their.y - my.y) - their.height / 2,
-      });
+      };
     } else if (initialSize.x === "auto") {
-      setPosition({
+      position = {
         x: globalMousePos.x - windowRef.current.offsetWidth / 2,
         y: globalMousePos.y - windowRef.current.offsetHeight / 2,
+      };
+    }
+
+    if (position) {
+      setPosition({
+        x: Math.max(0, position.x),
+        y: Math.max(0, position.y),
       });
     }
   }, []);
@@ -262,7 +271,7 @@ export function confirmUnsavedChanges() {
     openComponentInWindow(
       Dialog,
       {
-        message: "Discard unsaved changes?",
+        body: "Discard unsaved changes?",
         actions: [
           ["Discard", () => resolve(true), true],
           ["Cancel", () => resolve(false)],
@@ -274,35 +283,79 @@ export function confirmUnsavedChanges() {
   });
 }
 
-export function Dialog({ message, actions, cancelActionIndex, window }) {
+export function choose(items, labelFunc) {
+  return new Promise((resolve) => {
+    openComponentInWindow(
+      Choose,
+      { items, labelFunc, resolve },
+      { doNotStartAttached: true, initialSize: { x: 200, y: "auto" } }
+    );
+  });
+}
+
+function Choose({ items, labelFunc, resolve, window }) {
+  const [selected, setSelected] = useState(items[0]);
+
+  return h(Dialog, {
+    window,
+    body: h(
+      "div",
+      { style: { display: "flex", flexDirection: "column", gap: "1rem" } },
+      h("div", {}, "Choose an item:"),
+      h(
+        "div",
+        {},
+        h(List, {
+          autofocus: true,
+          selected,
+          setSelected,
+          items,
+          labelFunc,
+          onConfirm: (i) => {
+            window.close();
+            resolve(i);
+          },
+          height: "10rem",
+        })
+      )
+    ),
+    actions: [
+      ["Cancel", () => resolve(null)],
+      ["Confirm", () => resolve(selected)],
+    ],
+    cancelActionIndex: 0,
+  });
+}
+
+export function Dialog({ body, actions, cancelActionIndex, window }) {
   return h(
     "div",
     {
       style: {
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
+        alignItems: "stretch",
         justifyContent: "center",
         gap: "1rem",
         padding: "1rem",
       },
+      onkeydown:
+        cancelActionIndex !== undefined &&
+        ((e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            window.close();
+            actions[cancelActionIndex][1]();
+          }
+        }),
     },
     [
-      message,
+      body,
       h(
         "div",
         {
           style: { display: "flex", gap: "1rem" },
-          onkeydown:
-            cancelActionIndex !== undefined &&
-            ((e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                e.stopPropagation();
-                window.close();
-                actions[cancelActionIndex][1]();
-              }
-            }),
         },
         actions.map(([label, action, autofocus]) =>
           button(

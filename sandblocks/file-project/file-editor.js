@@ -1,10 +1,11 @@
-import { h } from "../view/widgets.js";
-import { editor, useAsyncEffect } from "../view/widgets.js";
-import { languageForExtension } from "../core/languages.js";
-import { useEffect, useState, useRef } from "../external/preact-hooks.mjs";
+import { h } from "../../view/widgets.js";
+import { editor, useAsyncEffect } from "../../view/widgets.js";
+import { languageForExtension } from "../../core/languages.js";
+import { useEffect, useState, useRef } from "../../external/preact-hooks.mjs";
 import { references } from "./references.js";
-import { Extension } from "../core/extension.js";
-import { confirmUnsavedChanges } from "./window.js";
+import { Extension } from "../../core/extension.js";
+import { confirmUnsavedChanges } from "../window.js";
+import { wait } from "../../utils.js";
 
 const search = new Extension()
   .registerShortcut("search", (x) => {
@@ -148,10 +149,6 @@ function wrapNumber(n, min, max) {
   if (n < min) return max;
   if (n > max) return min;
   return n;
-}
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function SearchField({
