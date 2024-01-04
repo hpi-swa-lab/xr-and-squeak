@@ -347,11 +347,7 @@ export class LanguageClient extends Semantics {
         );
         for (const [context] of this.textDocumentVersions.entries()) {
           if (context.path === message.params.uri.slice("file://".length)) {
-            context.editor.updateExtension(
-              diagnostics,
-              "lsp-diagnostics",
-              () => {}
-            );
+            context.editor.updateExtension(diagnostics, "lsp-diagnostics");
           }
         }
         break;

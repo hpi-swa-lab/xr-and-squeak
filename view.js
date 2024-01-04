@@ -389,6 +389,18 @@ class _EditableElement extends HTMLElement {
     return orParentThat(this, (x) => x.tagName === "SB-EDITOR");
   }
 
+  isReplacementAllowed(tag) {
+    return !this.disabledReplacements?.has(tag.toUpperCase());
+  }
+
+  setAllowReplacement(tagName, allow) {
+    if (allow) {
+      this.disabledReplacements?.delete(tagName.toUpperCase());
+    } else {
+      (this.disabledReplacements ??= new Set()).add(tagName.toUpperCase());
+    }
+  }
+
   getRange() {
     return this.node.range;
   }

@@ -172,6 +172,8 @@ class ExtensionInstance {
       // for nodes whose weakrefs have not been collected yet
       if (!view.isConnected) return;
 
+      if (!view.isReplacementAllowed(tag)) return;
+
       let replacement;
       if (view.tagName.toLowerCase() === tag) {
         // already exists, update

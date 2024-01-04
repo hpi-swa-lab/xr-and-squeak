@@ -185,6 +185,16 @@ export class Editor extends HTMLElement {
     );
   }
 
+  changeDOM(cb) {
+    ToggleableMutationObserver.ignoreMutation(() => {
+      cb();
+      this.extensionsDo((e) => e.process(["replacement"], this.source));
+      this.extensionsDo((e) =>
+        e.process(["always"], this.selected?.node ?? this.source)
+      );
+    });
+  }
+
   processType() {
     this.clearSuggestions();
     if (this.selected)
@@ -223,7 +233,7 @@ export class Editor extends HTMLElement {
       this.extensionInstances.find((e) => e.extension === stringOrExtension) ??
       this.inlineExtensions.find((e) => e.name === stringOrExtension) ??
       this.inlineExtensions.find((e) => e.extension === stringOrExtension);
-    cb(ext);
+    cb?.(ext);
     ToggleableMutationObserver.ignoreMutation(() => {
       ext.process([trigger], this.selected?.node ?? this.source);
     });

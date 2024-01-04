@@ -1,6 +1,10 @@
-import { Extension } from "./extension.js";
 import { h, render } from "./external/preact.mjs";
-import { nextHash, orParentThat, parentWithTag } from "./utils.js";
+import {
+  ToggleableMutationObserver,
+  nextHash,
+  orParentThat,
+  parentWithTag,
+} from "./utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "./external/preact-hooks.mjs";
 
@@ -99,6 +103,34 @@ export class Replacement extends Widget {
   constructor() {
     super();
     this.hash = nextHash();
+  }
+
+  handleClick(e) {
+    if (e.button === 0 && e.altKey) {
+      this.uninstallAndMark();
+    }
+  }
+
+  isReplacementAllowed(tagName) {
+    // only confirm that we may stay being this replacement but
+    // don't allow another replacement to take our place
+    return this.tagName === tagName.toUpperCase();
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.addEventListener("click", this.handleClick);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener("click", this.handleClick);
+  }
+
+  uninstallAndMark() {
+    const source = this.source.toHTML();
+    source.setAllowReplacement(this.tagName, false);
+    this.editor.changeDOM(() => this.replaceWith(source));
   }
 
   update(source) {

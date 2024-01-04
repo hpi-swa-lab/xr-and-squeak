@@ -6,7 +6,7 @@
 - [ ] proceed with save, even if formatting fails
 - [ ] editor.selectionRange in the presence of a watch
 - [ ] shard focus and caret movement
-- [ ] convert replacement to text
+- [ ] don't error on malformed replacement source
 
 ## lower priority
 
