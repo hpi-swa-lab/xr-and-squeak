@@ -1,50 +1,21 @@
-import { clamp } from "../utils.js";
+import { clamp, getSelection } from "../utils.js";
 
 customElements.define(
   "sb-suggestions",
   class extends HTMLElement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `
-        <style>
-          :host {
-            position: absolute;
-            z-index: 100;
-            background: #f5f5f5;
-            color: #000;
-            padding: 0.25rem;
-            border-radius: 0.25rem;
-            white-space: nowrap;
-            cursor: pointer;
-            user-select: none;
-            font-family: monospace;
-            line-height: 1.5;
-            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
-            border: 1px solid #aaa;
-            min-width: 200px;
-            display: none;
-          }
-          #entries > div[active] {
-            background: #ceddfe;
-            border-radius: 0.25rem;
-          }
-          #entries > div {
-            padding: 0.15rem 1rem;
-          }
-        </style>
-        <div id="entries"><slot></slot></div>
-      `;
+    connectedCallback() {
+      this.classList.add("suggestions");
     }
 
+    // node selection in the editor changed
     onSelected(selected) {
       if (selected !== this.anchor) this.remove();
     }
 
-    use() {
-      this.anchor.node.replaceWith(
-        this.shadowRoot.querySelector("div[active]").textContent
-      );
+    use(div = null) {
+      div ??= this.querySelector("div[active]");
+      if (div.item.use) div.item.use(this.anchor.node);
+      else this.anchor.node.replaceWith(div.item.insertText ?? div.item.label);
     }
 
     canMove(delta) {
@@ -58,8 +29,43 @@ customElements.define(
       const index = this.activeIndex;
       if (index === -1) return;
       const newIndex = clamp(index + delta, 0, this.entries.length - 1);
-      this.entries[index].removeAttribute("active");
-      this.entries[newIndex].setAttribute("active", "true");
+      this.setActiveIndex(newIndex);
+    }
+
+    showDetail(entry) {
+      entry.querySelector(".detail").innerText = entry.item.detail.replace(
+        /\n/g,
+        " "
+      );
+      entry.querySelector(".detail").title = entry.item.detail;
+    }
+
+    setActiveIndex(index) {
+      if (index === -1) return;
+
+      this.entries.forEach((x) => x.removeAttribute("active"));
+      const entry = this.entries[index];
+      entry.setAttribute("active", "true");
+
+      // show detail
+      if (entry.item.detail) {
+        this.showDetail(entry);
+      } else {
+        if (entry.item.fetchDetail)
+          entry.item.fetchDetail().then((detail) => {
+            entry.item.detail = detail;
+            this.showDetail(entry);
+          });
+      }
+
+      // scroll to entry
+      const rect = entry.getBoundingClientRect();
+      const parentRect = this.getBoundingClientRect();
+      if (rect.top < parentRect.top) {
+        entry.scrollIntoView({ block: "start" });
+      } else if (rect.bottom > parentRect.bottom) {
+        entry.scrollIntoView({ block: "end" });
+      }
     }
 
     get active() {
@@ -67,11 +73,11 @@ customElements.define(
     }
 
     get entries() {
-      return this.shadowRoot.querySelector("#entries").querySelectorAll("div");
+      return this.querySelectorAll("div");
     }
 
     get activeEntry() {
-      return this.shadowRoot.querySelector("div[active]");
+      return this.querySelector("div[active]");
     }
 
     get activeIndex() {
@@ -79,8 +85,15 @@ customElements.define(
     }
 
     clear() {
-      this.shadowRoot.querySelector("#entries").innerHTML = "";
+      this.innerHTML = "";
       this.remove();
+    }
+
+    icon(name) {
+      const span = document.createElement("span");
+      span.classList.add("material-symbols-outlined");
+      span.innerText = name;
+      return span;
     }
 
     add(view, list) {
@@ -89,17 +102,31 @@ customElements.define(
       this.anchor = view;
       for (const item of list) {
         const entry = document.createElement("div");
-        entry.textContent = item;
+        entry.item = item;
+        entry.appendChild(this.icon(item.icon ?? "code"));
+        entry.appendChild(
+          document.createTextNode(item.label ?? item.insertText)
+        );
+
+        const detail = document.createElement("span");
+        detail.className = "detail";
+        entry.appendChild(detail);
+
         entry.addEventListener("click", () => {
-          this.dispatchEvent(new CustomEvent("select", { detail: item }));
+          this.use(entry);
         });
-        this.shadowRoot.querySelector("#entries").appendChild(entry);
+        this.appendChild(entry);
       }
-      this.entries[0].setAttribute("active", "true");
-      this.shadowRoot.host.style.display = "block";
-      const rect = view.getBoundingClientRect();
-      this.shadowRoot.host.style.top = `${rect.bottom + 5}px`;
-      this.shadowRoot.host.style.left = `${rect.left}px`;
+
+      this.setActiveIndex(0);
+      this.show();
+    }
+
+    show() {
+      this.style.display = "block";
+      const rect = getSelection().getRangeAt(0).getClientRects()[0];
+      this.style.top = `${rect.bottom + 5}px`;
+      this.style.left = `${rect.left}px`;
       document.body.appendChild(this);
     }
   }

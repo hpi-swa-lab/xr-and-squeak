@@ -47,6 +47,16 @@ function Sandblocks() {
   const [openProjects, setOpenProjects] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
 
+  // Debugging utility for diffing
+  // useEffect(() => {
+  //   const e = document.createElement("sb-editor");
+  //   document.body.appendChild(e);
+  //   e.load("a", "tsx", []);
+  //   setTimeout(function () {
+  //     e.replaceFullTextFromCommand("b");
+  //   }, 1000);
+  // }, []);
+
   useAsyncEffect(async () => {
     const lastProjects = JSON.parse(localStorage.lastProjects ?? "[]");
     for (const info of lastProjects) {

@@ -3,6 +3,71 @@ import { Semantics } from "../sandblocks/semantics.js";
 import { openComponentInWindow } from "../sandblocks/window.js";
 import { Process } from "../sandblocks/host.js";
 import { FileEditor } from "../sandblocks/file-project/file-editor.js";
+import { sequenceMatch } from "../utils.js";
+
+const LSP_SYMBOL_KIND = {
+  file: 1,
+  module: 2,
+  namespace: 3,
+  package: 4,
+  class: 5,
+  method: 6,
+  property: 7,
+  field: 8,
+  constructor: 9,
+  enum: 10,
+  interface: 11,
+  function: 12,
+  variable: 13,
+  constant: 14,
+  string: 15,
+  number: 16,
+  boolean: 17,
+  array: 18,
+  object: 19,
+  key: 20,
+  null: 21,
+  enumMember: 22,
+  struct: 23,
+  event: 24,
+  operator: 25,
+  typeParameter: 26,
+};
+
+const lspSymbolKindIcons = {
+  [LSP_SYMBOL_KIND.file]: "draft",
+  [LSP_SYMBOL_KIND.module]: "description",
+  [LSP_SYMBOL_KIND.namespace]: "category",
+  [LSP_SYMBOL_KIND.package]: "package_2",
+  [LSP_SYMBOL_KIND.class]: "account_tree",
+  [LSP_SYMBOL_KIND.method]: "crisis_alert",
+  [LSP_SYMBOL_KIND.property]: "line_start_circle",
+  [LSP_SYMBOL_KIND.field]: "line_start_circle",
+  [LSP_SYMBOL_KIND.constructor]: "star",
+  [LSP_SYMBOL_KIND.enum]: "list",
+  [LSP_SYMBOL_KIND.interface]: "new_releases",
+  [LSP_SYMBOL_KIND.function]: "target",
+  [LSP_SYMBOL_KIND.variable]: "timeline",
+  [LSP_SYMBOL_KIND.constant]: "circle",
+  [LSP_SYMBOL_KIND.string]: "abc",
+  [LSP_SYMBOL_KIND.number]: "123",
+  [LSP_SYMBOL_KIND.boolean]: "done",
+  [LSP_SYMBOL_KIND.array]: "data_array",
+  [LSP_SYMBOL_KIND.object]: "data_object",
+  [LSP_SYMBOL_KIND.key]: "key",
+  [LSP_SYMBOL_KIND.null]: "check_box_outline_blank",
+  [LSP_SYMBOL_KIND.enumMember]: "chevron_right",
+  [LSP_SYMBOL_KIND.struct]: "event_list",
+  [LSP_SYMBOL_KIND.event]: "flag",
+  [LSP_SYMBOL_KIND.operator]: "plus",
+  [LSP_SYMBOL_KIND.typeParameter]: "play_shapes",
+};
+
+const LSP_TEXT_DOCUMENT_SYNC_KIND = {
+  none: 0,
+  full: 1,
+  incremental: 2,
+};
 
 const configuration = [
   {
@@ -42,7 +107,9 @@ export const base = new Extension()
     (x) => sem(x)?.didClose(x),
   ])
   .registerQuery("save", (e) => [(x) => x.isRoot, (x) => sem(x)?.didSave(x)])
-  .registerQuery("type", (e) => [(x) => sem(x)?.didChange(x)]);
+  .registerPreChangesApply((changes, oldSource, newSource, root) => {
+    sem(root)?.didChange(root, oldSource, newSource, changes);
+  });
 
 export const formatting = new Extension().registerPreSave((e) => [
   (x) => x.isRoot,
@@ -52,21 +119,71 @@ export const formatting = new Extension().registerPreSave((e) => [
 export const suggestions = new Extension().registerType((e) => [
   async (x) => {
     if (!sem(x)) return;
+    // always re-add our old suggestions while we wait for fresh ones
+    // to come in, to prevent a brief flash during wait
+    const current = e.data("lsp-current-completion") ?? [];
+    e.addSuggestions(x, current);
 
     const promise = sem(x).completion(x);
     e.setData("lsp-completion", promise);
     const suggestions = await promise;
+    // check that no other completion has been started since
     if (e.data("lsp-completion") === promise) {
       const list = suggestions
         .sort((a, b) => a.sortText.localeCompare(b.sortText))
-        .filter((b) => b.label.includes(x.text));
-      e.addSuggestions(
-        x,
-        list.map((b) => b.insertText ?? b.label)
-      );
+        .filter((b) =>
+          sequenceMatch(
+            b.filterText?.toLowerCase() ?? x.text.toLowerCase(),
+            b.label.toLowerCase()
+          )
+        )
+        .slice(0, 30)
+        .map((b) => ({
+          insertText: b.insertText,
+          label: b.label,
+          icon: lspSymbolKindIcons[b.kind],
+          fetchDetail: async () => {
+            const full = await sem(x)?.completionItemResolve(b);
+            // update our old item with all info
+            Object.assign(b, full);
+            return full.detail;
+          },
+          use: (x) => {
+            x.replaceWith(b.insertText ?? b.label);
+            if (b.additionalTextEdits) {
+              const selection = x.editor.selectionRange;
+              const shard = x.editor.selectedShard;
+
+              const edits = b.additionalTextEdits.map((e) => convertEdit(x, e));
+              x.editor.applyChanges(edits, null, [0, 0]);
+
+              // potentially shift selection to accommodate inserts before the cursor
+              for (const edit of edits) {
+                if (edit.to < selection[0]) {
+                  selection[0] += edit.insert.length - (edit.to - edit.from);
+                  selection[1] += edit.insert.length - (edit.to - edit.from);
+                }
+              }
+
+              x.editor.selectRange(...selection, shard, false);
+            }
+          },
+        }));
+
+      e.setData("lsp-current-completion", list);
+      x.editor.clearSuggestions();
+      e.addSuggestions(x, list);
     }
   },
 ]);
+
+function convertEdit(node, edit) {
+  return {
+    from: positionToIndex(node.root.sourceString, edit.range.start),
+    to: positionToIndex(node.root.sourceString, edit.range.end),
+    insert: edit.newText,
+  };
+}
 
 function positionToIndex(sourceString, { line, character }) {
   let index = 0;
@@ -101,35 +218,6 @@ async function browseLocation(project, { uri, range: { start, end } }) {
   });
 }
 
-const symbolKind = {
-  file: 1,
-  module: 2,
-  namespace: 3,
-  package: 4,
-  class: 5,
-  method: 6,
-  property: 7,
-  field: 8,
-  constructor: 9,
-  enum: 10,
-  interface: 11,
-  function: 12,
-  variable: 13,
-  constant: 14,
-  string: 15,
-  number: 16,
-  boolean: 17,
-  array: 18,
-  object: 19,
-  key: 20,
-  null: 21,
-  enumMember: 22,
-  struct: 23,
-  event: 24,
-  operator: 25,
-  typeParameter: 26,
-};
-
 export const browse = new Extension().registerShortcut(
   "browseIt",
   async (node, view, e) => {
@@ -148,7 +236,6 @@ export const diagnostics = new Extension().registerQuery(
     (x) => x.isRoot,
     (x) => {
       for (const diagnostic of sem(x)?.diagnosticsFor(x.context.path) ?? []) {
-        console.log(diagnostic);
         const start = positionToIndex(x.sourceString, diagnostic.range.start);
         const end = positionToIndex(x.sourceString, diagnostic.range.end);
         const target = x.childEncompassingRange([start, end]);
@@ -272,6 +359,7 @@ export class LanguageClient extends Semantics {
     const res = await this._request("initialize", {
       rootUri: `file://${this.project.path}`,
       capabilities: {
+        window: { workDoneProgress: true },
         textDocument: {
           hover: {},
           synchronization: {
@@ -285,6 +373,9 @@ export class LanguageClient extends Semantics {
               preselectSupport: true,
               insertReplaceSupport: true,
               labelDetailsSupport: true,
+              resolveSupport: {
+                properties: ["documentation", "detail", "additionalTextEdits"],
+              },
             },
           },
           documentSymbol: {
@@ -298,6 +389,7 @@ export class LanguageClient extends Semantics {
           },
         },
       },
+      workDoneToken: "1d546990-40a3-4b77-b134-46622995f6ae",
     });
 
     this.serverCapabilities = res.capabilities;
@@ -333,7 +425,17 @@ export class LanguageClient extends Semantics {
     });
   }
 
-  async didChange(node) {
+  get serverChangeKind() {
+    if (
+      typeof this.serverCapabilities?.textDocumentSync?.change === "undefined"
+    )
+      return this.serverCapabilities?.textDocumentSync;
+    return this.serverCapabilities?.textDocumentSync?.change;
+  }
+
+  async didChange(node, oldSource, newSource, changes) {
+    if (this.serverChangeKind === LSP_TEXT_DOCUMENT_SYNC_KIND.none) return;
+
     const version = this.textDocumentVersions.get(node.context) + 1;
     this.textDocumentVersions.set(node.context, version);
 
@@ -342,7 +444,17 @@ export class LanguageClient extends Semantics {
         uri: `file://${node.context.path}`,
         version,
       },
-      contentChanges: [{ text: node.root.sourceString }],
+      contentChanges:
+        this.serverChangeKind === LSP_TEXT_DOCUMENT_SYNC_KIND.full
+          ? [{ text: newSource }]
+          : changes.map((change) => ({
+              range: {
+                start: indexToPosition(oldSource, change.from),
+                end: indexToPosition(oldSource, change.to),
+              },
+              rangeLength: change.to - change.from,
+              text: change.insert ?? "",
+            })),
     });
   }
 
@@ -362,8 +474,8 @@ export class LanguageClient extends Semantics {
       },
       options: { tabSize: 2 },
     });
-    node.editor.setTextTracked(
-      this.applyEdits(node.sourceString, edits),
+    node.editor.applyChanges(
+      edits.map((e) => convertEdit(node, e)),
       null,
       [0, 0]
     );
@@ -374,12 +486,17 @@ export class LanguageClient extends Semantics {
       textDocument: {
         uri: `file://${node.context.path}`,
       },
-      position: {
-        line: node.editor.selectionRange[0],
-        character: node.editor.selectionRange[1],
-      },
+      position: indexToPosition(
+        node.root.sourceString,
+        node.editor.selectionRange[0]
+      ),
     });
+    // TODO incomplete flag
     return res.items;
+  }
+
+  async completionItemResolve(item) {
+    return await this._request("completionItem/resolve", item);
   }
 
   async workspaceSymbols(query = "") {
@@ -428,11 +545,20 @@ export class LanguageClient extends Semantics {
           }
         }
         break;
+      case "window/workDoneProgress/create":
+        this._response(message.id, null);
+        break;
       default:
-        if (!message.method.startsWith("$/"))
-          console.log("Unhandled server message", message);
+        // if (!message.method.startsWith("$/"))
+        if (message.id)
+          throw new Error("No response for server request", message);
+        console.log("Unhandled server message", message);
         break;
     }
+  }
+
+  async _response(id, result) {
+    await this.transport.write(JSON.stringify({ jsonrpc: "2.0", id, result }));
   }
 
   _request(method, params) {

@@ -111,7 +111,7 @@ export class TrueDiff {
     const buffer = new EditBuffer();
     const root = this.computeEditScript(a, b, null, 0, buffer);
 
-    a.editor.extensionsDo((e) => e.filterDiff(buffer));
+    a.editor?.extensionsDo((e) => e.filterDiff(buffer));
 
     buffer.apply();
     root.cleanDiffData();
@@ -376,14 +376,19 @@ export class DetachOp extends DiffOp {
       });
     } else {
       this.node.parent.removeChild(this.node);
+      // view may have already been removed
+      this.updateViews(this.node, (view) => {
+        if (view.parentElement) {
+          view.parentElement.removeChild(view);
+        }
+      });
       // recurse so that, if any parents are replaced but
       // children are in shards, we still catch the children
       this.updateViewsRecurse(this.node, (view, shard) => {
-        // view may have already been removed
-        if (view.parentElement) {
-          buffer.rememberDetached(view, shard);
-          view.parentElement.removeChild(view);
-        }
+        buffer.rememberDetached(view, shard);
+        // FIXME we used to recursively remove children from DOM
+        // but this breaks attaching re-attaching nodes. Do we
+        // break attaching to shards without?
       });
     }
   }
@@ -404,7 +409,8 @@ export class AttachOp extends DiffOp {
 
     this.parent?.insertChild(this.node, this.index);
 
-    if (this.attachingToRoot) {
+    // FIXME do we still need detachedRootShards?
+    if (this.attachingToRoot && buffer.detachedRootShards.length > 0) {
       buffer.detachedRootShards.forEach((shard) => {
         shard.source = this.node;
         shard.appendChild(buffer.getDetachedOrConstruct(this.node, shard));

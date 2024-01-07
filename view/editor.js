@@ -11,6 +11,7 @@ import { Block, Text } from "./elements.js";
 import { Shard } from "./shard.js";
 import { languageFor } from "../core/languages.js";
 import {} from "./suggestions.js";
+import { TrueDiff } from "../core/diff.js";
 
 // An Editor manages the view for a single model.
 //
@@ -129,41 +130,64 @@ export class Editor extends HTMLElement {
     change.selectionRange = selectionRange;
 
     if (change) {
-      this.extensionsDo((e) => e.filterChange(change, this.sourceString));
+      this.extensionsDo((e) =>
+        e.filterChange(change, this.sourceString, this.source)
+      );
     }
 
-    this.setTextTracked(
-      this.sourceString.slice(0, change.from) +
-        (change.insert ?? "") +
-        this.sourceString.slice(change.to),
-      shard,
-      change.selectionRange
-    );
+    this.applyChanges([change], shard);
   }
 
   insertTextFromCommand(position, text) {
     this.replaceTextFromCommand([position, position], text);
   }
 
-  replaceTextFromCommand(range, text) {
-    const position = range[0] + text.length;
-    this.setTextTracked(
-      this.sourceString.slice(0, range[0]) +
-        text +
-        this.sourceString.slice(range[1]),
-      this.selectedShard ?? this.shardForRange(range),
-      [position, position]
+  replaceFullTextFromCommand(text, shard, selectionRange) {
+    this.applyChanges(
+      [
+        {
+          from: 0,
+          to: this.sourceString.length,
+          insert: text,
+          selectionRange: selectionRange ?? [text.length, text.length],
+        },
+      ],
+      shard
     );
   }
 
-  setTextTracked(text, shard, selectionRange) {
+  replaceTextFromCommand(range, text) {
+    const position = range[0] + text.length;
+    this.applyChanges(
+      [
+        {
+          from: range[0],
+          to: range[1],
+          insert: text,
+          selectionRange: [position, position],
+        },
+      ],
+      this.selectedShard ?? this.shardForRange(range)
+    );
+  }
+
+  applyChanges(changes, shard, doNotCommitToHistory = false) {
     const oldSelected = this.editHistory.lastView;
     const oldRange = this.selectionRange ?? [0, 0];
     const oldSource = this.sourceString;
 
-    this.setText(text, shard, selectionRange);
+    let newSource = oldSource;
+    for (const { from, to, insert } of changes) {
+      newSource =
+        newSource.slice(0, from) + (insert ?? "") + newSource.slice(to);
+    }
+    this.extensionsDo((e) =>
+      e.preChangesApply(changes, oldSource, newSource, this.source)
+    );
 
-    if (oldSelected !== this.selected) {
+    this._setText(newSource, shard, changes[changes.length - 1].selectionRange);
+
+    if (!doNotCommitToHistory && oldSelected !== this.selected) {
       this.editHistory.push(oldSource, oldRange, this.selected);
     }
     this.dispatchEvent(
@@ -171,14 +195,14 @@ export class Editor extends HTMLElement {
     );
   }
 
-  setText(text, shard, selectionRange) {
+  _setText(text, shard, selectionRange) {
     if (text) {
       this.sourceString = text;
       this.source.updateModelAndView(this.sourceString);
     }
 
     this.extensionsDo((e) => e.process(["replacement"], this.source));
-    this.resyncSelectionAfterChange(...selectionRange, shard);
+    this.resyncSelectionAfterChange(...(selectionRange ?? [0, 0]), shard);
     this.processType();
     this.extensionsDo((e) =>
       e.process(["always"], this.selected?.node ?? this.source)
@@ -241,16 +265,28 @@ export class Editor extends HTMLElement {
 
   undo() {
     if (!this.editHistory.canUndo()) return;
-    const { sourceString, cursorRange } = this.editHistory.undo();
-    this.sourceString = sourceString;
-    this.setText(sourceString, null, cursorRange);
+    const { sourceString, cursorRange, view } = this.editHistory.undo();
+    // TODO update to only remember and apply changes
+    this.applyChanges(
+      [
+        {
+          from: 0,
+          to: this.sourceString.length,
+          insert: sourceString,
+          selectionRange: cursorRange,
+        },
+      ],
+      view.deref()?.shard,
+      true
+    );
   }
 
   redo() {
     // TODO need to push newest item
-    if (!this.editHistory.canRedo()) return;
-    const { sourceString, cursorRange } = this.editHistory.redo();
-    this.setText(sourceString, null, cursorRange);
+    // TODO not implemented
+    // if (!this.editHistory.canRedo()) return;
+    // const { sourceString, cursorRange } = this.editHistory.redo();
+    // this.setText(sourceString, null, cursorRange);
   }
 
   connectedCallback() {
@@ -274,7 +310,7 @@ export class Editor extends HTMLElement {
   }
 
   async updateEditor() {
-    await this._initEditor(
+    await this.load(
       this.getAttribute("text"),
       this.getAttribute("language"),
       this.getAttribute("extensions").split(" ").filter(Boolean)
@@ -283,7 +319,7 @@ export class Editor extends HTMLElement {
 
   initializing = false;
 
-  async _initEditor(text, language, extensionNames) {
+  async load(text, language, extensionNames) {
     if (this.initializing) {
       this.queuedUpdate = arguments;
       return;
@@ -316,7 +352,7 @@ export class Editor extends HTMLElement {
     if (this.queuedUpdate) {
       let update = this.queuedUpdate;
       this.queuedUpdate = null;
-      await this._initEditor(...update);
+      await this.load(...update);
     }
 
     queueMicrotask(() => this.dispatchEvent(new CustomEvent("loaded")));

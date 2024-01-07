@@ -51,6 +51,7 @@ export class Extension {
   constructor() {
     this.queries = new Map();
     this.changeFilters = [];
+    this.preChangesApply = [];
     this.diffFilters = [];
   }
 
@@ -60,6 +61,7 @@ export class Extension {
     }
     for (const filter of this.changeFilters) other.registerChangeFilter(filter);
     for (const filter of this.diffFilters) other.registerDiffFilter(filter);
+    for (const cb of this.preChangesApply) other.registerPreChangesApply(cb);
   }
 
   registerQuery(trigger, query) {
@@ -70,6 +72,11 @@ export class Extension {
 
   registerChangeFilter(filter) {
     this.changeFilters.push(filter);
+    return this;
+  }
+
+  registerPreChangesApply(cb) {
+    this.preChangesApply.push(cb);
     return this;
   }
 
@@ -142,9 +149,17 @@ class ExtensionInstance {
     this.extension = extension;
   }
 
-  filterChange(change, sourceString) {
+  // opportunity to filter a *user*-entered change
+  filterChange(change, sourceString, root) {
     this.extension.changeFilters.forEach((filter) =>
-      filter(change, sourceString)
+      filter(change, sourceString, root)
+    );
+  }
+
+  // notification just before changes are applied to the text
+  preChangesApply(changes, oldSource, newSource, root) {
+    this.extension.preChangesApply.forEach((filter) =>
+      filter(changes, oldSource, newSource, root)
     );
   }
 
@@ -271,7 +286,7 @@ class ExtensionInstance {
         doubleClick: "parents",
         shortcut: "parents",
         open: "subtree",
-        type: "selection",
+        type: "single",
         selection: "selection",
         caret: "single",
         replacement: "all",
@@ -434,18 +449,4 @@ class ExtensionInstance {
   setData(key, value) {
     this._data.set(key, value);
   }
-}
-
-function sequenceMatch(query, word) {
-  if (query.length < 2) return false;
-  if (word.length < query.length) return false;
-  if (query[0] !== word[0]) return false;
-  if (query[1] !== word[1]) return false;
-
-  let i = 0;
-  for (const char of word.toLowerCase()) {
-    if (char === query[i]) i++;
-    if (i === query.length) return true;
-  }
-  return false;
 }

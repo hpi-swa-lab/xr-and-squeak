@@ -14,6 +14,8 @@ export const button = (label, onclick, autofocus) =>
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) => h("sb-shard", { initNode: [node], key: node });
+export const icon = (name) =>
+  h("span", { class: "material-symbols-outlined" }, name);
 
 function _Editor({ inlineExtensions, editorRef, ...props }) {
   const i = useMemo(

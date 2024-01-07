@@ -317,3 +317,16 @@ export function matchesKey(e, key) {
 export function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export function sequenceMatch(query, word) {
+  if (!query) return true;
+  if (word.length < query.length) return false;
+  if (query[0] !== word[0]) return false;
+
+  let i = 0;
+  for (const char of word.toLowerCase()) {
+    if (char === query[i]) i++;
+    if (i === query.length) return true;
+  }
+  return false;
+}

@@ -132,3 +132,47 @@ td {
   text-decoration: wavy;
   background-color: #ffcccc;
 }
+
+.suggestions {
+  position: absolute;
+  z-index: 100;
+  background: #f5f5f5;
+  color: #000;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  font-family: monospace;
+  line-height: 1.5;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid #aaa;
+  width: 300px;
+  display: none;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.suggestions > div[active] {
+  background: #ceddfe;
+  border-radius: 0.25rem;
+}
+.suggestions > div[active] .detail {
+  display: inline;
+}
+.suggestions > div .detail {
+  display: none;
+  font-size: 0.8em;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.suggestions > div {
+  padding: 0.15rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.suggestions .material-symbols-outlined {
+  font-size: 1.4em;
+}
