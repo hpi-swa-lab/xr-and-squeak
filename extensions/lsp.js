@@ -185,35 +185,39 @@ export class StdioTransport extends Transport {
     this.command = command;
     this.args = args;
     this.cwd = cwd;
-    this.buffer = "";
+    this.buffer = new Uint8Array();
+  }
+
+  appendData(data) {
+    const newBuffer = new Uint8Array(this.buffer.length + data.length);
+    newBuffer.set(this.buffer);
+    newBuffer.set(data, this.buffer.length);
+    this.buffer = newBuffer;
   }
 
   async start() {
     this.process = new Process()
       .onClose(this.onClose)
       .onStdout((data) => {
-        this.buffer += data;
+        this.appendData(data);
         this._processBuffer();
       })
       .onStderr(this.onStderr);
-    await this.process.start(this.command, this.args, this.cwd);
+    await this.process.start(this.command, this.args, this.cwd, true);
   }
 
   _processBuffer() {
-    const headerEnd = this.buffer.indexOf("\r\n\r\n");
-    const header = headerEnd > 0 ? this.buffer.slice(0, headerEnd) : null;
-    const size = header?.match(/Content-Length: (\d+)/i)?.[1];
+    const headerEnd = this.buffer.indexOf(13); // \r for \r\n\r\n sequence
+    const prefix = new TextDecoder().decode(this.buffer.slice(0, headerEnd));
+    const size = prefix?.match(/Content-Length: (\d+)/i)?.[1];
 
     if (size) {
       const length = parseInt(size, 10);
       const start = headerEnd + 4;
       const end = start + length;
 
-      // FIXME not nice to do the roundtrip via bytes here, should store bytes
-      // in the first place (Content-Length is in bytes)
-      const raw = new TextEncoder().encode(this.buffer);
-      if (raw.length >= end) {
-        const data = raw.slice(start, end);
+      if (this.buffer.length >= end) {
+        const data = this.buffer.slice(start, end);
         this.onMessage(JSON.parse(new TextDecoder().decode(data)));
         this.buffer = this.buffer.slice(end);
         this._processBuffer();
@@ -222,8 +226,12 @@ export class StdioTransport extends Transport {
   }
 
   async write(data) {
-    // TODO need to encode as utf8 first
-    await this.process.write(`Content-Length: ${data.length}\r\n\r\n${data}`);
+    const payload = new TextEncoder().encode(data);
+    const header = `Content-Length: ${payload.length}\r\n\r\n`;
+    const full = new Uint8Array(header.length + payload.length);
+    full.set(new TextEncoder().encode(header));
+    full.set(payload, header.length);
+    await this.process.write(full);
   }
 }
 

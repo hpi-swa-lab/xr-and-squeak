@@ -24,9 +24,10 @@ export class Process {
     });
   }
 
-  async start(command, args, cwd) {
-    const res = await request("startProcess", { command, args, cwd });
+  async start(command, args, cwd, binary = false) {
+    const res = await request("startProcess", { command, args, cwd, binary });
     this.pid = res.pid;
+    this.binary = binary;
 
     socket.on("process", (data) => {
       if (data.pid === this.pid) {
@@ -35,10 +36,10 @@ export class Process {
             this._onClose?.(data.code);
             break;
           case "stderr":
-            this._onStderr?.(data.data);
+            this._emit(this._onStderr, data.data);
             break;
           case "stdout":
-            this._onStdout?.(data.data);
+            this._emit(this._onStdout, data.data);
             break;
         }
       }
@@ -60,9 +61,38 @@ export class Process {
     return this;
   }
 
+  // if binary, expect data to be Uint8Array
   async write(data) {
     console.assert(!!this.pid);
-    await request("writeProcess", { pid: this.pid, data });
+    await request("writeProcess", {
+      pid: this.pid,
+      data: this.binary ? await this._arrayToBase64(data) : data,
+    });
+  }
+
+  async _arrayToBase64(array) {
+    return (
+      await new Promise((r) => {
+        const reader = new FileReader();
+        reader.onload = () => r(reader.result);
+        reader.readAsDataURL(new Blob([array]));
+      })
+    ).substring("data:application/octet-stream;base64,".length);
+  }
+
+  async _base64ToArray(base64) {
+    return new Uint8Array(
+      await (
+        await fetch("data:application/octet-binary;base64," + base64)
+      ).arrayBuffer()
+    );
+  }
+
+  _emit(cb, data) {
+    if (cb) {
+      if (this.binary) this._base64ToArray(data).then((data) => cb(data));
+      else cb(data);
+    }
   }
 
   async close() {

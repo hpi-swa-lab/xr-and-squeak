@@ -120,15 +120,20 @@ npx tree-sitter build-wasm
 cp ${repoName}.wasm ${upToRoot}/../../../external/${repoName}.wasm"`);
   });
 
-  handler(socket, "startProcess", async ({ command, args, cwd }) => {
+  handler(socket, "startProcess", async ({ command, args, cwd, binary }) => {
     const proc = spawn(command, args, { cwd, shell: true });
     const pid = proc.pid;
+
+    function enc(data) {
+      return data.toString(binary ? "base64" : "utf-8");
+    }
 
     const weakProc = new WeakRef(proc);
     cleanup.push(() => weakProc.deref()?.kill());
 
     const writeCallback = (req) => {
-      if (req.pid === pid) proc.stdin.write(req.data);
+      if (req.pid === pid)
+        proc.stdin.write(binary ? Buffer.from(req.data, "base64") : req.data);
     };
     const closeCallback = (req) => {
       if (req.pid === pid) proc.stdin.end();
@@ -137,11 +142,11 @@ cp ${repoName}.wasm ${upToRoot}/../../../external/${repoName}.wasm"`);
     socket.on("writeProcess", writeCallback);
     socket.on("closeProcess", closeCallback);
     proc.stdout.on("data", (data) => {
-      socket.emit("process", { type: "stdout", data: data.toString(), pid });
+      socket.emit("process", { type: "stdout", data: enc(data), pid });
     });
     proc.stderr.on("data", (data) => {
       console.log(data.toString());
-      socket.emit("process", { type: "stderr", data: data.toString(), pid });
+      socket.emit("process", { type: "stderr", data: enc(data), pid });
     });
     proc.on("close", (code) => {
       socket.emit("process", { type: "close", code, pid });
@@ -152,5 +157,5 @@ cp ${repoName}.wasm ${upToRoot}/../../../external/${repoName}.wasm"`);
   });
 });
 
-const port = process.env.PORT ?? 3000
+const port = process.env.PORT ?? 3000;
 server.listen(port, () => console.log(`listening on *:${port}`));
