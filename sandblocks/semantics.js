@@ -1,5 +1,3 @@
-import { LanguageClient, StdioTransport } from "../extensions/lsp.js";
-
 export class Semantics {
   static handles(path) {}
 

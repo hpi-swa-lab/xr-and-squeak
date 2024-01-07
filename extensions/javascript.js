@@ -96,52 +96,6 @@ async function asyncEval(str) {
   return eval(str);
 }
 
-export const prettier = new Extension().registerPreSave((e) => [
-  (x) => x.isRoot,
-  async (x) => {
-    const prettier = await import("https://esm.sh/prettier@3.1.1/standalone");
-    const babel = await import("https://esm.sh/prettier@3.1.1/plugins/babel");
-    const estree = await import("https://esm.sh/prettier@3.1.1/plugins/estree");
-    const { formatted, cursorOffset } = await prettier.formatWithCursor(
-      x.sourceString,
-      {
-        cursorOffset: x.editor.selectionRange[0],
-        filepath: x.context.path,
-        parser: "babel",
-        plugins: [babel.default, estree.default],
-        arrowParens: "always",
-        bracketSpacing: true,
-        endOfLine: "lf",
-        htmlWhitespaceSensitivity: "css",
-        insertPragma: false,
-        singleAttributePerLine: false,
-        bracketSameLine: false,
-        jsxBracketSameLine: false,
-        jsxSingleQuote: false,
-        printWidth: 80,
-        proseWrap: "preserve",
-        quoteProps: "as-needed",
-        requirePragma: false,
-        semi: true,
-        singleQuote: false,
-        tabWidth: 2,
-        trailingComma: "es5",
-        useTabs: false,
-        embeddedLanguageFormatting: "auto",
-        vueIndentScriptAndStyle: false,
-      }
-    );
-    const delta = cursorOffset - x.editor.selectionRange[0];
-    if (formatted !== x.sourceString)
-      ToggleableMutationObserver.ignoreMutation(() =>
-        x.editor.setTextTracked(formatted, null, [
-          x.editor.selectionRange[0] + delta,
-          x.editor.selectionRange[1] + delta,
-        ])
-      );
-  },
-]);
-
 export const print = new Extension().registerShortcut(
   "printIt",
   async (x, view, e) => {

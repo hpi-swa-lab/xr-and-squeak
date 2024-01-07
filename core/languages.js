@@ -28,46 +28,81 @@ registerLanguage(
     branch: "0c0b18de798a90cd22819cec4802a27b914e395c",
     extensions: ["js"],
     defaultExtensions: [
-      "javascript:base",
       "lsp:base",
       "lsp:browse",
       "lsp:diagnostics",
-      "javascript:prettier",
+      "base:identifierSuggestions",
+      "prettier:javascript",
       "watch:javascript",
       "javascript:print",
+      "javascript:base",
     ],
   })
 );
+
+const typescript = {
+  name: "typescript",
+  repo: "tree-sitter/tree-sitter-typescript",
+  branch: "d847898fec3fe596798c9fda55cb8c05a799001a",
+  path: "/typescript/",
+  extensions: ["ts"],
+  defaultExtensions: [
+    "typescript:base",
+    "lsp:base",
+    "lsp:browse",
+    "lsp:diagnostics",
+    // "lsp:suggestions",
+    "base:identifierSuggestions",
+    "prettier:typescript",
+  ],
+};
+
+registerLanguage(new TreeSitterLanguage(typescript));
+registerLanguage(
+  new TreeSitterLanguage({
+    ...typescript,
+    name: "tsx",
+    path: "/tsx/",
+    extensions: ["tsx"],
+  })
+);
+
 registerLanguage(
   new TreeSitterLanguage({
     repo: "tree-sitter/tree-sitter-css",
     branch: "98c7b3dceb24f1ee17f1322f3947e55638251c37",
     extensions: ["css"],
-    defaultExtensions: ["css:base"],
+    defaultExtensions: ["css:base", "base:identifierSuggestions"],
   })
 );
+
 registerLanguage(
   new TreeSitterLanguage({
     repo: "tree-sitter/tree-sitter-json",
     branch: "3fef30de8aee74600f25ec2e319b62a1a870d51e",
     extensions: ["json"],
-    defaultExtensions: ["json:base"],
+    defaultExtensions: ["json:base", "base:identifierSuggestions"],
   })
 );
+
 registerLanguage(
   new TreeSitterLanguage({
     repo: "tom95/tree-sitter-smalltalk",
     branch: "fd6a5a256f831f0882b435d976c9baab04fb9e2b",
     extensions: ["st"],
+    defaultExtensions: ["base:identifierSuggestions"],
   })
 );
+
 registerLanguage(
   new TreeSitterLanguage({
     repo: "tlaplus-community/tree-sitter-tlaplus",
     branch: "c5fae9e4ad9f483fb6232a8688a2c940be6b496b",
     extensions: ["tla"],
+    defaultExtensions: ["base:identifierSuggestions"],
   })
 );
+
 registerLanguage(
   new TreeSitterComposedLanguage({
     name: "markdown",
@@ -76,6 +111,7 @@ registerLanguage(
       "markdown:base",
       "markdown:inline",
       "markdown:taskList",
+      "base:identifierSuggestions",
     ],
     baseLanguage: new TreeSitterLanguage({
       repo: "MDeiml/tree-sitter-markdown",

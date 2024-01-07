@@ -39,7 +39,7 @@ export const javascript = makeWatchExtension({
     (x) => x.type === "subscript_expression",
     (x) => x.childBlock(0),
     (a) => a.type === "array",
-    (a) => a.childBlock(0)?.childBlock(0).text === "sbWatch",
+    (a) => a.childBlock(0)?.childBlock(0)?.text === "sbWatch",
     (a) => a.parent,
   ],
   id: [

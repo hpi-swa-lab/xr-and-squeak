@@ -7,7 +7,12 @@ import { FileEditor } from "../sandblocks/file-project/file-editor.js";
 const configuration = [
   {
     handles(path) {
-      return path.endsWith(".ts") || path.endsWith(".js");
+      return (
+        path.endsWith(".ts") ||
+        path.endsWith(".js") ||
+        path.endsWith(".tsx") ||
+        path.endsWith(".jsx")
+      );
     },
     create(project, handles) {
       return new LanguageClient(
@@ -44,12 +49,44 @@ export const formatting = new Extension().registerPreSave((e) => [
   (x) => sem(x)?.formatting(x),
 ]);
 
+export const suggestions = new Extension().registerType((e) => [
+  async (x) => {
+    if (!sem(x)) return;
+
+    const promise = sem(x).completion(x);
+    e.setData("lsp-completion", promise);
+    const suggestions = await promise;
+    if (e.data("lsp-completion") === promise) {
+      const list = suggestions
+        .sort((a, b) => a.sortText.localeCompare(b.sortText))
+        .filter((b) => b.label.includes(x.text));
+      e.addSuggestions(
+        x,
+        list.map((b) => b.insertText ?? b.label)
+      );
+    }
+  },
+]);
+
 function positionToIndex(sourceString, { line, character }) {
   let index = 0;
   for (let i = 0; i < line; i++) {
     index = sourceString.indexOf("\n", index) + 1;
   }
   return index + character;
+}
+function indexToPosition(sourceString, index) {
+  let line = 0;
+  let character = 0;
+  for (let i = 0; i < index; i++) {
+    if (sourceString[i] === "\n") {
+      line++;
+      character = 0;
+    } else {
+      character++;
+    }
+  }
+  return { line, character };
 }
 
 async function browseLocation(project, { uri, range: { start, end } }) {
@@ -111,6 +148,7 @@ export const diagnostics = new Extension().registerQuery(
     (x) => x.isRoot,
     (x) => {
       for (const diagnostic of sem(x)?.diagnosticsFor(x.context.path) ?? []) {
+        console.log(diagnostic);
         const start = positionToIndex(x.sourceString, diagnostic.range.start);
         const end = positionToIndex(x.sourceString, diagnostic.range.end);
         const target = x.childEncompassingRange([start, end]);
@@ -170,16 +208,21 @@ export class StdioTransport extends Transport {
       const length = parseInt(size, 10);
       const start = headerEnd + 4;
       const end = start + length;
-      if (this.buffer.length >= end) {
-        const data = this.buffer.slice(start, end);
+
+      // FIXME not nice to do the roundtrip via bytes here, should store bytes
+      // in the first place (Content-Length is in bytes)
+      const raw = new TextEncoder().encode(this.buffer);
+      if (raw.length >= end) {
+        const data = raw.slice(start, end);
+        this.onMessage(JSON.parse(new TextDecoder().decode(data)));
         this.buffer = this.buffer.slice(end);
-        this.onMessage(JSON.parse(data));
         this._processBuffer();
       }
     }
   }
 
   async write(data) {
+    // TODO need to encode as utf8 first
     await this.process.write(`Content-Length: ${data.length}\r\n\r\n${data}`);
   }
 }
@@ -227,6 +270,18 @@ export class LanguageClient extends Semantics {
             didSave: true,
             dynamicRegistration: true,
           },
+          completion: {
+            dynamicRegistration: true,
+            completionItem: {
+              documentationFormat: ["markdown", "plaintext"],
+              preselectSupport: true,
+              insertReplaceSupport: true,
+              labelDetailsSupport: true,
+            },
+          },
+          documentSymbol: {
+            tagSupport: { valueSet: [1] },
+          },
         },
         workspace: {
           applyEdit: true,
@@ -262,7 +317,8 @@ export class LanguageClient extends Semantics {
     await this._notification("textDocument/didOpen", {
       textDocument: {
         uri: `file://${node.context.path}`,
-        languageId: node.language.name,
+        languageId:
+          node.language.name === "tsx" ? "typescriptreact" : node.language.name,
         version: 1,
         text: node.sourceString,
       },
@@ -303,6 +359,19 @@ export class LanguageClient extends Semantics {
       null,
       [0, 0]
     );
+  }
+
+  async completion(node) {
+    const res = await this._request("textDocument/completion", {
+      textDocument: {
+        uri: `file://${node.context.path}`,
+      },
+      position: {
+        line: node.editor.selectionRange[0],
+        character: node.editor.selectionRange[1],
+      },
+    });
+    return res.items;
   }
 
   async workspaceSymbols(query = "") {

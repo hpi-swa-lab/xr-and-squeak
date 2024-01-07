@@ -114,6 +114,7 @@ wget https://github.com/${repo}/archive/${branch}.zip
 unzip ${branch}.zip
 cd ${repoName}-${branch}/${path}
 npm install
+${path ? `cd ${path}; npm install` : ""}
 npx tree-sitter generate
 npx tree-sitter build-wasm
 cp ${repoName}.wasm ${upToRoot}/../../../external/${repoName}.wasm"`);
@@ -151,4 +152,5 @@ cp ${repoName}.wasm ${upToRoot}/../../../external/${repoName}.wasm"`);
   });
 });
 
-server.listen(3000, () => console.log("listening on *:3000"));
+const port = process.env.PORT ?? 3000
+server.listen(port, () => console.log(`listening on *:${port}`));

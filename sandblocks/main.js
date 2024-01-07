@@ -22,19 +22,44 @@ const PROJECT_TYPES = {
   },
 };
 
+async function loadProjectType(desc) {
+  return (await import(desc.path))[desc.name];
+}
+
+async function loadSerializedProject(serialized) {
+  return (await loadProjectType(PROJECT_TYPES[serialized.type])).deserialize(
+    serialized
+  );
+}
+
+function projectEqual(a, b) {
+  const aInfo = a.fullSerialize();
+  const bInfo = b.fullSerialize();
+  for (const key of Object.keys(aInfo)) {
+    if (aInfo[key] !== bInfo[key]) return false;
+  }
+  return true;
+}
+
 Editor.init();
 
 function Sandblocks() {
   const [openProjects, setOpenProjects] = useState([]);
+  const [recentProjects, setRecentProjects] = useState([]);
 
   useAsyncEffect(async () => {
     const lastProjects = JSON.parse(localStorage.lastProjects ?? "[]");
     for (const info of lastProjects) {
-      const desc = PROJECT_TYPES[info.type];
-      const Project = (await import(desc.path))[desc.name];
-      const project = Project.deserialize(info);
+      const project = await loadSerializedProject(info);
       await project.open();
       setOpenProjects((p) => [...p, project]);
+    }
+  }, []);
+
+  useAsyncEffect(async () => {
+    for (const info of JSON.parse(localStorage.recentProjects ?? "[]")) {
+      const project = await loadSerializedProject(info);
+      setRecentProjects((p) => [...p, project]);
     }
   }, []);
 
@@ -62,6 +87,11 @@ function Sandblocks() {
       openProjects.map((p) => p.fullSerialize())
     );
   }, [openProjects]);
+  useEffect(() => {
+    localStorage.recentProjects = JSON.stringify(
+      recentProjects.map((p) => p.fullSerialize())
+    );
+  }, [recentProjects]);
 
   return [
     h(
@@ -70,10 +100,20 @@ function Sandblocks() {
       button("Open Project", async () => {
         const desc = await choose(Object.values(PROJECT_TYPES), (i) => i.label);
         if (!desc) return;
-        const Project = (await import(desc.path))[desc.name];
-        const project = new Project(...(await desc.createArgs()));
+        const project = new (await loadProjectType(desc))(
+          ...(await desc.createArgs())
+        );
         await project.open();
-
+        setOpenProjects((p) => [...p, project]);
+        setRecentProjects((p) => [
+          project,
+          ...p.filter((x) => !projectEqual(x, project)),
+        ]);
+      }),
+      button("Open Recent", async () => {
+        const project = await choose(recentProjects, (i) => i.name);
+        if (!project) return;
+        await project.open();
         setOpenProjects((p) => [...p, project]);
       }),
       openProjects.map((project) =>

@@ -54,6 +54,14 @@ export class Extension {
     this.diffFilters = [];
   }
 
+  copyTo(other) {
+    for (const [trigger, queries] of this.queries.entries()) {
+      for (const query of queries) other.registerQuery(trigger, query);
+    }
+    for (const filter of this.changeFilters) other.registerChangeFilter(filter);
+    for (const filter of this.diffFilters) other.registerDiffFilter(filter);
+  }
+
   registerQuery(trigger, query) {
     if (!this.queries.has(trigger)) this.queries.set(trigger, []);
     this.queries.get(trigger).push(query);
@@ -397,8 +405,24 @@ class ExtensionInstance {
     }
   }
 
-  addSuggestions(suggestions) {
-    this.processingNode.editor.addSuggestions(suggestions);
+  addSuggestions(node, suggestions) {
+    node.editor.addSuggestions(suggestions);
+  }
+
+  addSuggestionsAndFilter(node, candidates) {
+    const query = node.text.toLowerCase();
+    const exactMatches = candidates
+      .filter((w) => w.toLowerCase().startsWith(query))
+      .sort((a, b) => a.length - b.length);
+    const fuzzyMatches = candidates
+      .filter((w) => !exactMatches.includes(w) && sequenceMatch(query, w))
+      .sort((a, b) => a.length - b.length);
+    this.addSuggestions(
+      node,
+      [...exactMatches, ...fuzzyMatches]
+        .slice(0, 10)
+        .filter((w) => w.toLowerCase() !== query)
+    );
   }
 
   _data = new Map();
@@ -410,4 +434,18 @@ class ExtensionInstance {
   setData(key, value) {
     this._data.set(key, value);
   }
+}
+
+function sequenceMatch(query, word) {
+  if (query.length < 2) return false;
+  if (word.length < query.length) return false;
+  if (query[0] !== word[0]) return false;
+  if (query[1] !== word[1]) return false;
+
+  let i = 0;
+  for (const char of word.toLowerCase()) {
+    if (char === query[i]) i++;
+    if (i === query.length) return true;
+  }
+  return false;
 }

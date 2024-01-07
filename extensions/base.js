@@ -225,20 +225,6 @@ export const base = new Extension()
       ),
   ]);
 
-function sequenceMatch(query, word) {
-  if (query.length < 2) return false;
-  if (word.length < query.length) return false;
-  if (query[0] !== word[0]) return false;
-  if (query[1] !== word[1]) return false;
-
-  let i = 0;
-  for (const char of word.toLowerCase()) {
-    if (char === query[i]) i++;
-    if (i === query.length) return true;
-  }
-  return false;
-}
-
 const words = new Map();
 function noteWord(word) {
   if (word.match(/^[A-Za-z][A-Za-z_-]+$/))
@@ -253,21 +239,7 @@ function forgetWord(word) {
 export const identifierSuggestions = new Extension()
   .registerType((e) => [
     (x) => x.isText,
-    (x) => {
-      const candidates = [...words.keys()];
-      const query = x.text.toLowerCase();
-      const exactMatches = candidates
-        .filter((w) => w.toLowerCase().startsWith(query))
-        .sort((a, b) => a.length - b.length);
-      const fuzzyMatches = candidates
-        .filter((w) => !exactMatches.includes(w) && sequenceMatch(query, w))
-        .sort((a, b) => a.length - b.length);
-      return e.addSuggestions(
-        [...exactMatches, ...fuzzyMatches]
-          .slice(0, 10)
-          .filter((w) => w.toLowerCase() !== query)
-      );
-    },
+    (x) => e.addSuggestionsAndFilter(x, [...words.keys()]),
   ])
   .registerExtensionConnected((e) => [(x) => x.isText, (x) => noteWord(x.text)])
   .registerDiffFilter((diff) => {
