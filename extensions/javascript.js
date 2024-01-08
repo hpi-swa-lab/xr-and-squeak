@@ -90,6 +90,27 @@ customElements.define(
   }
 );
 
+
+
+customElements.define(
+  "sb-js-lexical-declaration-smiley",
+  class extends Replacement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.innerHTML = `<slot></slot>`;
+    }
+
+    update(source) {
+      this.render(
+          h("div", {style: "border: 1px solid green"}, (source.childNode(0).text === "let" ? "😀" : "😇"),
+            ...source.children.slice(1).map(c => shard(c)).map(ea => h("span", {style: "border: 1px solid red"}, ea)),
+          )
+      );
+    }
+  }
+);
+
 async function asyncEval(str) {
   // TODO need to analyze the resulting tree an insert a return stmt for the last expression
   // return await eval("(async () => {" + str + "})()");
@@ -123,6 +144,19 @@ export const multilingual = new Extension().registerReplacement((e) => [
   (x) => x.atField("function").text === "sqCompile",
   (x) => e.ensureReplacement(x, "sb-js-language-box"),
 ]);
+
+export const alwaysTrue = new Extension()
+  .registerType((e) => [
+    (x) => x.type === "true" || x.type === "false",
+    (x) => x.replaceWith("true"),
+  ])
+
+export const smileys = new Extension()
+  .registerReplacement((e) => [
+    (x) => x.type === "lexical_declaration",
+    (x) => e.ensureReplacement(x, "sb-js-lexical-declaration-smiley")
+  ])
+
 
 export const base = new Extension()
   .registerDoubleClick((e) => [

@@ -7,29 +7,14 @@
   var baseDir = lively.query(this, "lively-container").getDir()
   setConfig({baseURL: baseDir})
 
-   Editor.init()
+  Editor.init()
 
-  // await System.import(baseDir + "/main.js");
-
-//   var ui = await (
-//       <sb-editor
-//         extensions="smalltalk:base base:base"
-//         text={`initialize
-
-//   true ifTrue: [2 + 2]`}
-//         language="smalltalk"></sb-editor>)
-//   ui 
-
- "loaded editor"
-
-</script>
-
-## JavaScript
-
-<script>
   var ui = await (<sb-editor
-    extensions="javascript:base base:base base:identifierSuggestions editorConfig:base"
+    extensions="javascript:base javascript:smileys base:base base:identifierSuggestions editorConfig:base"
     text={`console.log(sbWatch(hello, 12398482))
+
+let a = 3 + 4, c = 3
+const b = a + 1
 
 function a() {
 }`}

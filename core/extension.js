@@ -7,6 +7,11 @@ export class Extension {
   static extensionRegistry = new Map();
   static packageLoaders = new Map();
 
+  static clearRegistry() {
+    this.extensionRegistry = new Map();
+    this.packageLoaders = new Map();
+  }
+
   static async get(name) {
     let extension = this.extensionRegistry.get(name);
     if (!extension) {
