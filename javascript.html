@@ -5,20 +5,20 @@
     <title>Sandblocks Text</title>
   </head>
   <body>
-    <h3>Simple Javascript</h3>
+    <h3>Simple Javascript Demo</h3>
     <sb-editor
-      extensions="javascript:base javascript:outline javascript:workspace base:base base:identifierSuggestions editorConfig:base"
+      extensions="javascript:base base:base base:identifierSuggestions editorConfig:base"
       text='console.log(sbWatch("hello", 12398482))
-
 function a() {
 }
 '
       language="javascript"
     ></sb-editor>
 
+    <link href="view/editor-style.css" rel="stylesheet" />
     <script type="module">
       import { Editor } from './view/editor.js';
-      Edit.init()
+      Editor.init()
     </script>
   </body>
 </html>
