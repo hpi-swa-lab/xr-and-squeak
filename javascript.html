@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 
 <html>
   <head>
@@ -10,6 +10,7 @@
       extensions="javascript:base base:base base:identifierSuggestions editorConfig:base"
       text='console.log(sbWatch("hello", 12398482))
 function a() {
+  
 }
 '
       language="javascript"
@@ -17,12 +18,12 @@ function a() {
 
     <link href="view/editor-style.css" rel="stylesheet" />
     <script type="module">
-      import  {setConfig} from "./core/config.js"
-      import { Editor } from './view/editor.js';
+      import { setConfig } from "./core/config.js";
+      import { Editor } from "./view/editor.js";
 
-      var baseDir = new URL(".", location.href).toString()
-      setConfig({baseURL: baseDir})     
-      Editor.init()
+      var baseDir = new URL(".", location.href).toString();
+      setConfig({ baseURL: baseDir });
+      Editor.init();
     </script>
   </body>
 </html>

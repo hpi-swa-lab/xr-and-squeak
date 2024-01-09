@@ -27,7 +27,7 @@ export class Editor extends HTMLElement {
 
   static init() {
     Extension.clearRegistry();
-    
+
     this.registerKeyMap({
       undo: "Ctrl-z",
       redo: "Ctrl-Z",
