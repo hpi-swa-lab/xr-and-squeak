@@ -294,6 +294,17 @@ export class Shard extends HTMLElement {
     return this.visibleRanges.some((r) => rangeContains(r, range));
   }
 
+  rectsForRange(range) {
+    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
+    for (const visible of this.visibleRanges) {
+      if (rangeContains(visible, range)) {
+        const selection = this._cursorToRange(...range);
+        return selection.getClientRects();
+      }
+    }
+    return [];
+  }
+
   // Recursively iterate over all elements within this shard.
   // when encountering an element that is neither a Block nor a Text,
   // we note it.

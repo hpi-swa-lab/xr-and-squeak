@@ -1,6 +1,5 @@
 import { Extension } from "../core/extension.js";
 import { config } from "../core/config.js";
-import { ToggleableMutationObserver } from "../utils.js";
 import {
   Widget,
   ul,
@@ -90,8 +89,6 @@ customElements.define(
   }
 );
 
-
-
 customElements.define(
   "sb-js-lexical-declaration-smiley",
   class extends Replacement {
@@ -103,9 +100,15 @@ customElements.define(
 
     update(source) {
       this.render(
-          h("div", {style: "border: 1px solid green"}, (source.childNode(0).text === "let" ? "😀" : "😇"),
-            ...source.children.slice(1).map(c => shard(c)).map(ea => h("span", {style: "border: 1px solid red"}, ea)),
-          )
+        h(
+          "span",
+          { style: "border: 1px solid green" },
+          source.childNode(0).text === "let" ? "😀" : "😇",
+          ...source.children
+            .slice(1)
+            .map((c) => shard(c))
+            .map((ea) => h("span", { style: "border: 1px solid red" }, ea))
+        )
       );
     }
   }
@@ -145,18 +148,15 @@ export const multilingual = new Extension().registerReplacement((e) => [
   (x) => e.ensureReplacement(x, "sb-js-language-box"),
 ]);
 
-export const alwaysTrue = new Extension()
-  .registerType((e) => [
-    (x) => x.type === "true" || x.type === "false",
-    (x) => x.replaceWith("true"),
-  ])
+export const alwaysTrue = new Extension().registerType((e) => [
+  (x) => x.type === "true" || x.type === "false",
+  (x) => x.replaceWith("true"),
+]);
 
-export const smileys = new Extension()
-  .registerReplacement((e) => [
-    (x) => x.type === "lexical_declaration",
-    (x) => e.ensureReplacement(x, "sb-js-lexical-declaration-smiley")
-  ])
-
+export const smileys = new Extension().registerReplacement((e) => [
+  (x) => x.type === "lexical_declaration",
+  (x) => e.ensureReplacement(x, "sb-js-lexical-declaration-smiley"),
+]);
 
 export const base = new Extension()
   .registerDoubleClick((e) => [

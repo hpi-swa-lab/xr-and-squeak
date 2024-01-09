@@ -3,15 +3,85 @@ import {
   ToggleableMutationObserver,
   findChange,
   getSelection,
+  last,
   orParentThat,
   parentWithTag,
   rangeContains,
+  rangeEqual,
 } from "../utils.js";
 import { Block, Text } from "./elements.js";
 import { Shard } from "./shard.js";
 import { languageFor } from "../core/languages.js";
 import {} from "./suggestions.js";
-import { TrueDiff } from "../core/diff.js";
+
+class SBSelection extends EventTarget {
+  range = [0, 0];
+  view = null;
+  shard = null;
+  rect = DOMRectReadOnly.fromRect({ x: 0, y: 0, width: 0, height: 0 });
+
+  // encompasses exactly the full node
+  get isExact() {
+    return this.range && this.view && rangeEqual(this.range, this.view.range);
+  }
+
+  resyncFromDOM(editor) {
+    const selection = getSelection();
+    const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
+    // not ours
+    if (shard?.editor !== editor) return;
+
+    const { selectionRange, selected } =
+      shard._extractSourceStringAndCursorRange() ?? {};
+    this._update(
+      shard,
+      selectionRange,
+      selected,
+      last(selection.getRangeAt(0).getClientRects())
+    );
+  }
+
+  resyncAfterChange(editor, newRange) {
+    newRange ??= this.range;
+
+    this.rect = getSelection().getRangeAt(0).getBoundingClientRect();
+
+    const shards = editor.allShards
+      .map((s) => (s._extractSourceStringAndCursorRange(), s))
+      .map((s) => [s, last(s.rectsForRange(newRange))])
+      .filter(([, r]) => r);
+
+    const [bestShard, bestRect] = shards.reduce(([a, rectA], [b, rectB]) =>
+      this.distance(rectA) < this.distance(rectB) ? [a, rectA] : [b, rectB]
+    );
+
+    this._update(
+      bestShard,
+      newRange,
+      bestShard.findSelectedForRange(newRange),
+      bestRect
+    );
+    bestShard.selectRange(...newRange);
+  }
+
+  _update(shard, range, view, rect) {
+    this.shard = shard;
+    this.range = range;
+    this.rect = rect;
+
+    if (this.view !== view) {
+      this.dispatchEvent(new CustomEvent("viewChange", { detail: view }));
+      this.view = view;
+    }
+    this.dispatchEvent(new CustomEvent("caretChange"));
+  }
+
+  distance(b) {
+    return Math.sqrt(
+      Math.pow(this.rect.x - b.x, 2) + Math.pow(this.rect.y - b.y, 2)
+    );
+  }
+}
 
 // An Editor manages the view for a single model.
 //
@@ -27,7 +97,7 @@ export class Editor extends HTMLElement {
 
   static init() {
     Extension.clearRegistry();
-    
+
     this.registerKeyMap({
       undo: "Ctrl-z",
       redo: "Ctrl-Z",
@@ -91,6 +161,20 @@ export class Editor extends HTMLElement {
     this._sourceString = text;
   }
 
+  get selectionRange() {
+    return this.selection.range;
+  }
+  set selectionRange(range) {
+    throw new Error("FIXME set selectionRange");
+  }
+
+  get selected() {
+    return this.selection.view;
+  }
+  set selected(node) {
+    throw new Error("FIXME set selected");
+  }
+
   set interactionMode(mode) {
     this._interactionMode = mode;
     this.hideSelection.textContent =
@@ -109,6 +193,22 @@ export class Editor extends HTMLElement {
     this.hideSelection = document.createElement("style");
 
     this.interactionMode = "text";
+
+    this.selection = new SBSelection();
+
+    this.selection.addEventListener("viewChange", ({ detail: view }) => {
+      this.suggestions.onSelected(view);
+      if (view) this.extensionsDo((e) => e.process(["selection"], view.node));
+    });
+    this.selection.addEventListener("caretChange", () => {
+      this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
+
+      if (this.selection.isExact && !this.hideSelection.isConnected) {
+        this.appendChild(this.hideSelection);
+      } else if (!this.selection.isExact && this.hideSelection.isConnected) {
+        this.removeChild(this.hideSelection);
+      }
+    });
   }
 
   replaceSelection(text) {
@@ -204,7 +304,7 @@ export class Editor extends HTMLElement {
     }
 
     this.extensionsDo((e) => e.process(["replacement"], this.source));
-    this.resyncSelectionAfterChange(...(selectionRange ?? [0, 0]), shard);
+    this.selection.resyncAfterChange(this, selectionRange);
     this.processType();
     this.extensionsDo((e) =>
       e.process(["always"], this.selected?.node ?? this.source)
@@ -370,41 +470,7 @@ export class Editor extends HTMLElement {
     const target = getSelection().anchorNode;
     if (!orParentThat(target, (p) => p === this)) return;
 
-    const { selectionRange, selected } =
-      this.selectedShard?._extractSourceStringAndCursorRange() ?? {};
-    this._updateSelected(selected, selectionRange);
-    this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
-  }
-
-  _updateSelected(newSelected, selectionRange) {
-    const oldSelection = this.selected;
-    this.selected = newSelected;
-    this.selectionRange = selectionRange;
-    if (oldSelection !== this.selected) {
-      this.suggestions.onSelected(this.selected);
-      if (this.selected)
-        this.extensionsDo((e) => e.process(["selection"], this.selected.node));
-    }
-
-    const selectionIsExact =
-      selectionRange &&
-      this.selected &&
-      selectionRange[0] === this.selected.range[0] &&
-      selectionRange[1] === this.selected.range[1];
-    if (selectionIsExact && !this.hideSelection.isConnected) {
-      this.appendChild(this.hideSelection);
-    } else if (!selectionIsExact && this.hideSelection.isConnected) {
-      this.removeChild(this.hideSelection);
-    }
-  }
-
-  resyncSelectionAfterChange(start, end, preferredShard) {
-    // FIXME quite heavy and usually not necessary for all. we just need to
-    // make sure the visibleRanges have reacted to changes in replacements.
-    this.allShards.forEach((s) => s._extractSourceStringAndCursorRange());
-
-    const selected = this.selectRange(start, end, preferredShard, false);
-    this._updateSelected(selected, [start, end]);
+    this.selection.resyncFromDOM(this);
   }
 
   selectRange(start, end, preferredShard = null, scrollIntoView = true) {
