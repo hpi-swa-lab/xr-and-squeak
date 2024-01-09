@@ -9,8 +9,10 @@ import {
   Replacement,
   editor,
   h,
+  shardList,
 } from "../view/widgets.js";
 import {} from "../view/widget-utils.js";
+import { SBList } from "../core/model.js";
 
 customElements.define(
   "sb-outline",
@@ -104,10 +106,12 @@ customElements.define(
           "span",
           { style: "border: 1px solid green" },
           source.childNode(0).text === "let" ? "😀" : "😇",
-          ...source.children
-            .slice(1)
-            .map((c) => shard(c))
-            .map((ea) => h("span", { style: "border: 1px solid red" }, ea))
+          true
+            ? shardList(source.children.slice(1))
+            : source.children
+                .slice(1)
+                .map((c) => shard(c))
+                .map((ea) => h("span", { style: "border: 1px solid red" }, ea))
         )
       );
     }

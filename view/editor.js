@@ -9,7 +9,7 @@ import {
   rangeContains,
   rangeEqual,
 } from "../utils.js";
-import { Block, Text } from "./elements.js";
+import { Block, Text, ViewList } from "./elements.js";
 import { Shard } from "./shard.js";
 import { languageFor } from "../core/languages.js";
 import {} from "./suggestions.js";
@@ -136,6 +136,7 @@ export class Editor extends HTMLElement {
 
     customElements.define("sb-shard", Shard);
     customElements.define("sb-block", Block);
+    customElements.define("sb-view-list", ViewList);
     customElements.define("sb-text", Text);
     customElements.define("sb-editor", Editor);
   }
@@ -411,10 +412,15 @@ export class Editor extends HTMLElement {
   }
 
   static observedAttributes = ["text", "language", "extensions"];
+  _queued = false;
   attributeChangedCallback() {
-    queueMicrotask(async () => {
-      await this.updateEditor();
-    });
+    if (!this._queued) {
+      this._queued = true;
+      queueMicrotask(async () => {
+        this._queued = false;
+        await this.updateEditor();
+      });
+    }
   }
 
   async updateEditor() {

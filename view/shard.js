@@ -221,17 +221,14 @@ export class Shard extends HTMLElement {
   }
 
   update(node) {
-    if (!this.source) {
-      this.appendChild(node.toHTML());
+    if (
+      !this.source ||
+      !this.source.equals(node) ||
+      this.childNodes.length === 0
+    ) {
+      this.innerHTML = "";
+      this.append(node.toHTML());
       this.source = node;
-    } else if (this.source !== node) {
-      this.source = node;
-      if (this.childNodes[0]?.node !== this.source) {
-        if (this.childNodes[0]) this.removeChild(this.childNodes[0]);
-        this.appendChild(node.toHTML());
-      }
-    } else if (this.childNodes.length === 0) {
-      this.appendChild(node.toHTML());
     }
   }
 
@@ -333,10 +330,7 @@ export class Shard extends HTMLElement {
   // later grab the string from the previous element to the cursor.
   _getNestedContentElements(parent, list, cursorElements, insideBlocks) {
     for (const child of parent.childNodes) {
-      if (
-        cursorElements.includes(child) ||
-        (insideBlocks && !(child instanceof Block || child instanceof Text))
-      )
+      if (cursorElements.includes(child) || (insideBlocks && !child.isNodeView))
         list.push(child);
       this._getNestedContentElements(
         child,

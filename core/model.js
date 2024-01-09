@@ -554,11 +554,13 @@ export class SBBlock extends SBNode {
 // a fake root for a list of nodes, for use in e.g. a shard
 export class SBList extends SBNode {
   constructor(list) {
+    super();
     this.list = list;
+    console.assert(list.length > 0);
   }
 
   get children() {
-    return list;
+    return this.list;
   }
 
   get type() {
@@ -566,15 +568,37 @@ export class SBList extends SBNode {
   }
 
   get parent() {
-    return list[0]?.parent;
+    return this.list[0].parent;
+  }
+
+  get id() {
+    return this.list.map((a) => a.id).join(":");
+  }
+
+  get range() {
+    return [this.list[0].range[0], this.list[this.list.length - 1].range[1]];
   }
 
   equals(node) {
     if (!(node instanceof SBList)) return false;
     if (this.list.length !== node.list.length) return false;
     for (let i = 0; i < this.list.length; i++) {
-      if (this.list[i].equals(node.list[i])) return false;
+      if (!this.list[i].equals(node.list[i])) return false;
     }
     return true;
+  }
+
+  toHTML() {
+    if (false) {
+      return this.list.map((ea) => ea.toHTML());
+    } else {
+      const list = document.createElement("sb-view-list");
+      for (const child of this.list) {
+        list.appendChild(child.toHTML());
+      }
+      list.node = this;
+      (this.views ??= new WeakArray()).push(list);
+      return list;
+    }
   }
 }
