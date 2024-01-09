@@ -238,11 +238,12 @@ function forgetWord(word) {
 }
 export const identifierSuggestions = new Extension()
   .registerType((e) => [
-    (x) => x.isText,
+    (x) => !!x.text,
     (x) =>
-      e.addSuggestionsAndFilter(x, [
-        ...words.keys().map((x) => ({ label: x })),
-      ]),
+      e.addSuggestionsAndFilter(
+        x,
+        [...words.keys()].map((x) => ({ label: x }))
+      ),
   ])
   .registerExtensionConnected((e) => [(x) => x.isText, (x) => noteWord(x.text)])
   .registerDiffFilter((diff) => {

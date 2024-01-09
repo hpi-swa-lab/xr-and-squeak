@@ -44,7 +44,10 @@ class SBSelection extends EventTarget {
   resyncAfterChange(editor, newRange) {
     newRange ??= this.range;
 
-    this.rect = getSelection().getRangeAt(0).getBoundingClientRect();
+    this.rect =
+      (getSelection().rangeCount > 0 &&
+        getSelection().getRangeAt(0).getBoundingClientRect()) ??
+      this.rect;
 
     const shards = editor.allShards
       .map((s) => (s._extractSourceStringAndCursorRange(), s))
