@@ -1,4 +1,4 @@
-import { exec, rangeEqual } from "../utils.js";
+import { exec, rangeEqual, sequenceMatch } from "../utils.js";
 
 // An extension groups a set of functionality, such as syntax highlighting,
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
@@ -432,16 +432,16 @@ class ExtensionInstance {
   addSuggestionsAndFilter(node, candidates) {
     const query = node.text.toLowerCase();
     const exactMatches = candidates
-      .filter((w) => w.toLowerCase().startsWith(query))
-      .sort((a, b) => a.length - b.length);
+      .filter((w) => w.label.toLowerCase().startsWith(query))
+      .sort((a, b) => a.label.length - a.label.length);
     const fuzzyMatches = candidates
-      .filter((w) => !exactMatches.includes(w) && sequenceMatch(query, w))
-      .sort((a, b) => a.length - b.length);
+      .filter((w) => !exactMatches.includes(w) && sequenceMatch(query, w.label))
+      .sort((a, b) => a.label.length - b.label.length);
     this.addSuggestions(
       node,
       [...exactMatches, ...fuzzyMatches]
         .slice(0, 10)
-        .filter((w) => w.toLowerCase() !== query)
+        .filter((w) => w.label.toLowerCase() !== query)
     );
   }
 

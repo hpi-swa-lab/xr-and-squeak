@@ -99,7 +99,7 @@ class SubtreeRegistry {
 }
 
 export class TrueDiff {
-  applyEdits(a, b) {
+  detectEdits(a, b) {
     if (false) {
       console.log(a.print(0, true), b.print(0, true));
     }
@@ -110,7 +110,11 @@ export class TrueDiff {
 
     const buffer = new EditBuffer();
     const root = this.computeEditScript(a, b, null, 0, buffer);
+    return { root, buffer };
+  }
 
+  applyEdits(a, b) {
+    const { root, buffer } = this.detectEdits(a, b);
     a.editor?.extensionsDo((e) => e.filterDiff(buffer));
 
     buffer.apply();

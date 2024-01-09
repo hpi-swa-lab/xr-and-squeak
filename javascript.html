@@ -20,6 +20,7 @@ function a() {
     <script type="module">
       import { setConfig } from "./core/config.js";
       import { Editor } from "./view/editor.js";
+      import { languageFor } from "./core/languages.js";
 
       var baseDir = new URL(".", location.href).toString();
       setConfig({ baseURL: baseDir });

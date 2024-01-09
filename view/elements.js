@@ -168,4 +168,9 @@ export class Text extends _EditableElement {
       this.textContent = newValue;
     }
   }
+  findTextForCursor(cursor) {
+    const [start, end] = this.range;
+    if (start <= cursor && end >= cursor) return this;
+    else return null;
+  }
 }
