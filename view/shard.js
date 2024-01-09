@@ -61,6 +61,12 @@ export class Shard extends HTMLElement {
             this.editor.suggestions?.moveSelected(1);
           }
           break;
+        case "ArrowLeft":
+          const current = this.editor.selection.range;
+          if (this.visibleRanges.some(([start, _]) => current[0] === start)) {
+            debugger;
+          }
+          break;
       }
 
       for (const [action, key] of Object.entries(Editor.keyMap)) {
