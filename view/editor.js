@@ -177,6 +177,9 @@ export class Editor extends HTMLElement {
   set selected(node) {
     throw new Error("FIXME set selected");
   }
+  get selectedText() {
+    return this.sourceString.slice(...this.selectionRange);
+  }
 
   set interactionMode(mode) {
     this._interactionMode = mode;
@@ -517,6 +520,37 @@ export class Editor extends HTMLElement {
       }
     }
     return null;
+  }
+
+  shardAndPositionForMove(position, delta) {
+    const candidates = this.allShards;
+    const index = delta > 0 ? 1 : 0;
+
+    const rangeFilter = ([start, end]) =>
+      delta > 0 ? end > position : start < position;
+
+    const best = candidates.reduce((best, candidate) => {
+      const distance = candidate.distanceToIndex(position, rangeFilter);
+      const bestDistance = best.distanceToIndex(position, rangeFilter);
+      if (distance < bestDistance) {
+        return candidate;
+      } else if (
+        distance === bestDistance &&
+        best.pixelDistanceToSelection(this.editor.selection) <
+          candidate.pixelDistanceToSelection(this.editor.selection)
+      ) {
+        return candidate;
+      }
+      return best;
+    });
+    const distance = best.distanceToIndex(position, rangeFilter);
+    return {
+      shard: best,
+      position:
+        position +
+        (distance === 0 ? delta : 0) +
+        (delta > 0 ? distance : -distance),
+    };
   }
 
   _shards = [];
