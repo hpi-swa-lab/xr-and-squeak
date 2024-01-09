@@ -75,6 +75,10 @@ class SBNode {
     this._id = this.constructor.next().toString();
   }
 
+  equals(node) {
+    return this === node;
+  }
+
   exec(...script) {
     return exec(this, ...script);
   }
@@ -544,5 +548,33 @@ export class SBBlock extends SBNode {
     block.node = this;
     (this.views ??= new WeakArray()).push(block);
     return block;
+  }
+}
+
+// a fake root for a list of nodes, for use in e.g. a shard
+export class SBList extends SBNode {
+  constructor(list) {
+    this.list = list;
+  }
+
+  get children() {
+    return list;
+  }
+
+  get type() {
+    throw new Error("FIXME: SBList has no type");
+  }
+
+  get parent() {
+    return list[0]?.parent;
+  }
+
+  equals(node) {
+    if (!(node instanceof SBList)) return false;
+    if (this.list.length !== node.list.length) return false;
+    for (let i = 0; i < this.list.length; i++) {
+      if (this.list[i].equals(node.list[i])) return false;
+    }
+    return true;
   }
 }

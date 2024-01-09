@@ -33,10 +33,8 @@ customElements.define(
     }
 
     showDetail(entry) {
-      entry.querySelector(".detail").innerText = entry.item.detail.replace(
-        /\n/g,
-        " "
-      );
+      entry.querySelector(".detail").innerText =
+        entry.item.detail?.replace(/\n/g, " ") ?? "";
       entry.querySelector(".detail").title = entry.item.detail;
     }
 

@@ -1,6 +1,5 @@
 import { Extension } from "../core/extension.js";
 import { config } from "../core/config.js";
-import { ToggleableMutationObserver } from "../utils.js";
 import {
   Widget,
   ul,
@@ -102,7 +101,7 @@ customElements.define(
     update(source) {
       this.render(
         h(
-          "div",
+          "span",
           { style: "border: 1px solid green" },
           source.childNode(0).text === "let" ? "😀" : "😇",
           ...source.children
