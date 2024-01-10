@@ -44,9 +44,6 @@
   editor1.editor.on("change", (() => update()).debounce(500));
   editor2.editor.on("change", (() => update()).debounce(500));
 
-  function selectOperation(op) {
-    lively.openInspector(op)
-  }
 
   function update() {
     var a = language.parse(editor2.value)
@@ -61,10 +58,7 @@
     // lively.openInspector(root)
     operations.innerHTML = ""
     
-    for (let op of buffer.posBuf) {
-      operations.appendChild(<li click={() => selectOperation(op)}>{op.constructor.name} {op.node.id}</li>)
-    }
-    
+   
     vis.edits = buffer 
     vis.update()
   }

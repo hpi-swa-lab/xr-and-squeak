@@ -365,6 +365,8 @@ class DiffOp {
       this.updateViewsRecurse(child, cb);
     });
   }
+            
+        
 }
 
 export class DetachOp extends DiffOp {
