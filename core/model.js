@@ -75,16 +75,16 @@ export class SBLanguage {
   }
 }
 
-class SBNode {
-  static _id = 0;
-  static next() {
-    return this._id++;
-  }
+let _nodeId = 0;
+function _nextNodeId() {
+  return _nodeId++;
+}
 
+class SBNode {
   _parent = null;
 
   constructor() {
-    this._id = this.constructor.next().toString();
+    this._id = _nextNodeId().toString();
   }
 
   equals(node) {
