@@ -110,21 +110,23 @@ export class TrueDiff {
 
     const buffer = new EditBuffer();
     const root = this.computeEditScript(a, b, null, 0, buffer);
-    return { root, buffer };
+    return { root, diff: buffer };
   }
 
-  applyEdits(a, b) {
-    const { root, buffer } = this.detectEdits(a, b);
+  applyEdits(a, b, leaveInfoForDebug = false) {
+    const { root, diff } = this.detectEdits(a, b);
 
     const tx = new Transaction();
-    buffer.apply(tx);
+    diff.apply(tx);
     this.recurseParallel(b, root, (b, a) => {
       tx.set(a, "_range", b.range);
       if (a._field !== b._field) tx.set(a, "_field", b._field);
     });
-    root.cleanDiffData();
+    
+    if (!leaveInfoForDebug)
+      root.cleanDiffData();
 
-    return { root, tx, diff: buffer };
+    return { root, tx, diff };
   }
 
   recurseParallel(a, b, cb) {
@@ -289,13 +291,17 @@ export class TrueDiff {
         if (aChild?.assigned && aChild.assigned === bChild) {
           this.updateLiterals(aChild, bChild, editBuffer);
         } else {
-          if (aChild) {
-            editBuffer.detach(aChild);
-            this.unloadUnassigned(aChild, editBuffer);
-          }
-          if (bChild) {
-            const newTree = this.loadUnassigned(bChild, editBuffer);
-            editBuffer.attach(newTree, a, bChild.siblingIndex);
+          if (aChild && bChild && aChild.type === bChild.type && !aChild.assigned && !bChild.assigned) {
+            this.computeEditScriptRecurse(aChild, bChild, editBuffer);
+          } else {
+            if (aChild) {
+              editBuffer.detach(aChild);
+              this.unloadUnassigned(aChild, editBuffer);
+            }
+            if (bChild) {
+              const newTree = this.loadUnassigned(bChild, editBuffer);
+              editBuffer.attach(newTree, a, bChild.siblingIndex);
+            }
           }
         }
       });

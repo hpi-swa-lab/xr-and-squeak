@@ -95,6 +95,14 @@ class SBNode {
     return exec(this, ...script);
   }
 
+  internalClone() {
+    const c = this.shallowClone();
+    c._id = this._id
+    for (const child of this.children){
+      c.appendChild(child.internalClone())}
+    return c
+  }
+
   get language() {
     return this.isRoot ? this._language : this.root.language;
   }
@@ -535,6 +543,10 @@ export class SBBlock extends SBNode {
     if (child._parent) child._parent.removeChild(child);
     this._children.splice(index, 0, child);
     child._parent = this;
+  }
+
+  appendChild(child) {
+    this.insertChild(child, this.children.length);
   }
 
   get text() {

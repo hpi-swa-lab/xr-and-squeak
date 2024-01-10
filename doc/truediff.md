@@ -31,14 +31,15 @@
     if (i == 0) return "Foo!"
   } 
 }`   
-  editor2.value = `let a = 3 + 4\na++`      
   editor2.value = `class Test { 
   foo(i) { 
     if (i == 0) return "Bar"
     else if (i == -1) return "Foo!"
   } 
-}`      
+}`
 
+  editor1.value = `let a = 3`      
+  editor2.value = `let a = 3;`      
   let operations = <ul style="display: inline-block; width:120px"></ul>
 
   editor1.editor.on("change", (() => update()).debounce(500));
@@ -46,20 +47,23 @@
 
 
   function update() {
-    var a = language.parse(editor2.value)
-    let b = language.parse(editor1.value)
+    var a = language.parse(editor1.value)
+    let b = language.parse(editor2.value)
   
-    vis.tree2 = a;
-    vis.tree1 = b;
+  
+    const frozenA = a.internalClone()
+    debugger
+    const { root, diff } = new TrueDiff().applyEdits(a,b,true)
     
-    const { root, buffer } = new TrueDiff().detectEdits(a,b)
+    vis.tree1 = frozenA;
+    vis.tree2 = root;
     
     
     // lively.openInspector(root)
     operations.innerHTML = ""
     
    
-    vis.edits = buffer 
+    vis.edits = diff ?? []
     vis.update()
   }
   
