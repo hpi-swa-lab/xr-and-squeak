@@ -23,7 +23,7 @@
   await language.ready()
   
   
-  var vis = await (<sandblocks-tree-matches></sandblocks-tree-matches>)
+  var vis = await (<sandblocks-tree-matches style="display: inline-block"></sandblocks-tree-matches>)
 
   // editor1.value =  `let a = 3 + 4`   
   editor1.value =  `class Test { 
@@ -39,18 +39,33 @@
   } 
 }`      
 
+  let operations = <ul style="display: inline-block; width:120px"></ul>
+
   editor1.editor.on("change", (() => update()).debounce(500));
   editor2.editor.on("change", (() => update()).debounce(500));
 
+  function selectOperation(op) {
+    lively.openInspector(op)
+  }
+
   function update() {
-    vis.tree2 = language.parse(editor2.value )._tree;
-    vis.tree1 = language.parse(editor1.value)._tree;
-    // vis.matches = match(vis.tree1.rootNode, vis.tree2.rootNode, 0, 100)
+    var a = language.parse(editor2.value)
+    let b = language.parse(editor1.value)
+  
+    vis.tree2 = a;
+    vis.tree1 = b;
     
-    vis.matches = []
+    const { root, buffer } = new TrueDiff().detectEdits(a,b)
     
-    // lively.openInspector(vis.tree2)
     
+    // lively.openInspector(root)
+    operations.innerHTML = ""
+    
+    for (let op of buffer.posBuf) {
+      operations.appendChild(<li click={() => selectOperation(op)}>{op.constructor.name} {op.node.id}</li>)
+    }
+    
+    vis.edits = buffer 
     vis.update()
   }
   
@@ -58,7 +73,11 @@
   
   let pane = <div>
     {editor1}{editor2}
-    {vis}
+    <table>
+      <tr><td>{operations}</td>
+      <td>{vis}</td>
+      </tr>
+    </table>
   </div>
   
   
