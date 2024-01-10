@@ -372,7 +372,22 @@ class DiffOp {
     });
   }
             
-        
+  debugString() {         
+    let nodeString = "";
+    if (this.node) {
+      if (this.node.type) {
+         nodeString = this.node.type
+      } else {
+        nodeString = '"' + this.node.text + '"'
+      }
+      nodeString += " [" + this.node.id  + "]"
+    };
+            
+    if (this.parent) {
+      nodeString += " parent " + this.parent.id  + ""
+    };
+    return this.constructor.name + " " + nodeString;
+  }        
 }
 
 export class DetachOp extends DiffOp {
