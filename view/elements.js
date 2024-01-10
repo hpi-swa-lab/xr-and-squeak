@@ -139,7 +139,13 @@ export class Block extends _EditableElement {
   // insert a node at the given index, skipping over any
   // elements that do not correspond to nodes
   // FIXME may want to consider mapping via .node instead
-  insertNode(node, index) {
+  insertNode(tx, node, index) {
+    const oldOwner = node.owner;
+    const oldAfter = node.nextElementSibling;
+    tx.undo.push(() =>
+      oldOwner ? oldOwner.insertBefore(node, oldAfter) : node.remove()
+    );
+
     for (const child of this.childNodes) {
       if (index === 0) {
         this.insertBefore(node, child);

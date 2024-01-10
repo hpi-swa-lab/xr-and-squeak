@@ -155,14 +155,8 @@ export class Editor extends HTMLElement {
     this.selectRange(...(this.selectionRange ?? [0, 0]), shard, false);
   }
 
-  _sourceString = null;
   get sourceString() {
-    return this._sourceString;
-  }
-  set sourceString(text) {
-    // need a trailing newline for contenteditable, empty nodes cannot be edited
-    if (text && text.slice(-1) !== "\n") text += "\n";
-    this._sourceString = text;
+    return this.source.sourceString;
   }
 
   get selectionRange() {
@@ -223,12 +217,11 @@ export class Editor extends HTMLElement {
     this.replaceTextFromTyping({
       range: range,
       text,
-      shard: this.selectedShard,
       selectionRange: [range[0] + text.length, range[0] + text.length],
     });
   }
 
-  replaceTextFromTyping({ range, text, shard, selectionRange }) {
+  replaceTextFromTyping({ range, text, selectionRange }) {
     const change = findChange(
       this.sourceString.slice(...range),
       text,
@@ -244,7 +237,7 @@ export class Editor extends HTMLElement {
       );
     }
 
-    this.applyChanges([change], shard);
+    this.applyChanges([change]);
   }
 
   insertTextFromCommand(position, text) {
@@ -252,35 +245,31 @@ export class Editor extends HTMLElement {
   }
 
   replaceFullTextFromCommand(text, shard, selectionRange) {
-    this.applyChanges(
-      [
-        {
-          from: 0,
-          to: this.sourceString.length,
-          insert: text,
-          selectionRange: selectionRange ?? [text.length, text.length],
-        },
-      ],
-      shard
-    );
+    this.applyChanges([
+      {
+        from: 0,
+        to: this.sourceString.length,
+        insert: text,
+        selectionRange: selectionRange ?? [text.length, text.length],
+      },
+    ]);
   }
 
   replaceTextFromCommand(range, text) {
     const position = range[0] + text.length;
-    this.applyChanges(
-      [
-        {
-          from: range[0],
-          to: range[1],
-          insert: text,
-          selectionRange: [position, position],
-        },
-      ],
-      this.selectedShard ?? this.shardForRange(range)
-    );
+    this.applyChanges([
+      {
+        from: range[0],
+        to: range[1],
+        insert: text,
+        selectionRange: [position, position],
+      },
+    ]);
   }
 
-  applyChanges(changes, shard, doNotCommitToHistory = false) {
+  // apply a change to the text buffer and notify all interested parties
+  // NOTE: the change may be denied if it would destroy a sticky replacement
+  applyChanges(changes, doNotCommitToHistory = false) {
     const oldSelected = this.editHistory.lastView;
     const oldRange = this.selectionRange ?? [0, 0];
     const oldSource = this.sourceString;
@@ -290,32 +279,48 @@ export class Editor extends HTMLElement {
       newSource =
         newSource.slice(0, from) + (insert ?? "") + newSource.slice(to);
     }
-    this.extensionsDo((e) =>
-      e.preChangesApply(changes, oldSource, newSource, this.source)
-    );
 
-    this._setText(newSource, shard, changes[changes.length - 1].selectionRange);
+    const diff = this._setText(newSource, last(changes).selectionRange);
+    if (diff) {
+      this.clearSuggestions();
+      if (this.selected)
+        this.extensionsDo((e) => e.process(["type"], this.selected.node));
+      this.extensionsDo((e) =>
+        e.process(["always"], this.selected?.node ?? this.source)
+      );
+      this.extensionsDo((e) =>
+        e.changesApplied(changes, oldSource, newSource, this.source, diff)
+      );
 
-    if (!doNotCommitToHistory && oldSelected !== this.selected) {
-      this.editHistory.push(oldSource, oldRange, this.selected);
+      if (!doNotCommitToHistory && oldSelected !== this.selected) {
+        this.editHistory.push(oldSource, oldRange, this.selected);
+      }
+      this.dispatchEvent(
+        new CustomEvent("change", { detail: this.sourceString })
+      );
     }
-    this.dispatchEvent(
-      new CustomEvent("change", { detail: this.sourceString })
-    );
   }
 
-  _setText(text, shard, selectionRange) {
-    if (text) {
-      this.sourceString = text;
-      this.source.updateModelAndView(this.sourceString);
+  // update the text buffer and resync selection and replacements
+  // returns either the diff on success or null if the change was
+  // denied
+  _setText(text, selectionRange) {
+    const { diff, tx } = this.source.updateModelAndView(text);
+
+    let mayCommit = true;
+    this.extensionsDo(
+      (e) =>
+        (mayCommit = mayCommit && e._processStickyReplacements(this.source))
+    );
+    if (!mayCommit) {
+      tx.rollback();
+      this.selection.resyncAfterChange(this);
+      return null;
     }
 
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     this.selection.resyncAfterChange(this, selectionRange);
-    this.processType();
-    this.extensionsDo((e) =>
-      e.process(["always"], this.selected?.node ?? this.source)
-    );
+    return diff;
   }
 
   changeDOM(cb) {
@@ -326,12 +331,6 @@ export class Editor extends HTMLElement {
         e.process(["always"], this.selected?.node ?? this.source)
       );
     });
-  }
-
-  processType() {
-    this.clearSuggestions();
-    if (this.selected)
-      this.extensionsDo((e) => e.process(["type"], this.selected.node));
   }
 
   set inlineExtensions(extensions) {
@@ -385,7 +384,6 @@ export class Editor extends HTMLElement {
           selectionRange: cursorRange,
         },
       ],
-      view.deref()?.shard,
       true
     );
   }
@@ -440,7 +438,6 @@ export class Editor extends HTMLElement {
     }
     this.initializing = true;
 
-    this.sourceString = text;
     if (this.shard) {
       this.extensionsDo((e) =>
         e.process(["extensionDisconnected"], this.source)
@@ -458,9 +455,9 @@ export class Editor extends HTMLElement {
     this.appendChild(this.createShardFor(root));
 
     this.extensionInstances = extensions.map((e) => e.instance());
-    this.extensionsDo((e) =>
-      e.process(["extensionConnected", "replacement", "always"], this.source)
-    );
+    this.extensionsDo((e) => e.process(["extensionConnected"], this.source));
+    this.extensionsDo((e) => e.process(["replacement"], this.source));
+    this.extensionsDo((e) => e.process(["always"], this.source));
     this.initializing = false;
 
     if (this.queuedUpdate) {
@@ -530,7 +527,6 @@ export class Editor extends HTMLElement {
 
   shardAndPositionForMove(position, delta) {
     const candidates = this.allShards;
-    const index = delta > 0 ? 1 : 0;
 
     const rangeFilter = ([start, end]) =>
       delta > 0 ? end > position : start < position;

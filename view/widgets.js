@@ -103,6 +103,8 @@ export class Widget extends HTMLElement {
 export class Replacement extends Widget {
   shards = [];
 
+  // isSticky = true;
+
   constructor() {
     super();
     this.hash = nextHash();

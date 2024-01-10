@@ -115,12 +115,23 @@ export class TrueDiff {
 
   applyEdits(a, b) {
     const { root, buffer } = this.detectEdits(a, b);
-    a.editor?.extensionsDo((e) => e.filterDiff(buffer));
 
-    buffer.apply();
+    const tx = new Transaction();
+    buffer.apply(tx);
+    this.recurseParallel(b, root, (b, a) => {
+      tx.set(a, "_range", b.range);
+      if (a._field !== b._field) tx.set(a, "_field", b._field);
+    });
     root.cleanDiffData();
 
-    return root;
+    return { root, tx, diff: buffer };
+  }
+
+  recurseParallel(a, b, cb) {
+    cb(a, b);
+    for (let i = 0; i < a.children.length; i++) {
+      this.recurseParallel(a.children[i], b.children[i], cb);
+    }
   }
 
   // SHARES
@@ -235,7 +246,6 @@ export class TrueDiff {
         ? a
         : this.updateLiterals(a, b, editBuffer);
       a.assigned = null;
-      newTree._range = b.range;
       return newTree;
     }
 
@@ -255,7 +265,6 @@ export class TrueDiff {
         editBuffer.attach(newTree, a, index);
         index++;
       }
-      a._range = b.range;
       return a;
     }
 
@@ -267,7 +276,6 @@ export class TrueDiff {
   }
   computeEditScriptRecurse(a, b, editBuffer) {
     if (a.type === b.type) {
-      a._range = b.range;
       const aList = [...a.children];
       const bList = [...b.children];
       this.computeEditScriptList(aList, bList, a, editBuffer);
@@ -310,8 +318,6 @@ export class TrueDiff {
     }
   }
   updateLiterals(a, b, editBuffer) {
-    a._field = b._field;
-    a._range = b.range;
     if (a.text !== b.text) editBuffer.update(a, b.text);
     for (let i = 0; i < a.children.length; i++) {
       this.updateLiterals(a.children[i], b.children[i], editBuffer);
@@ -369,21 +375,21 @@ export class DetachOp extends DiffOp {
   get detachingFromRoot() {
     return !this.node.parent;
   }
-  apply(buffer) {
+  apply(buffer, tx) {
     buffer.notePendingDetached(this.node);
 
     if (this.detachingFromRoot) {
       this.node.viewsDo((view) => {
         buffer.rememberDetached(view, view.shard);
         buffer.rememberDetachedRootShard(view.shard);
-        view.parentElement.removeChild(view);
+        tx.removeDOMChild(view.parentElement, view);
       });
     } else {
-      this.node.parent.removeChild(this.node);
+      tx.removeNodeChild(this.node.parent, this.node);
       // view may have already been removed
       this.updateViews(this.node, (view) => {
         if (view.parentElement) {
-          view.parentElement.removeChild(view);
+          tx.removeDOMChild(view.parentElement, view);
         }
       });
       // recurse so that, if any parents are replaced but
@@ -408,22 +414,26 @@ export class AttachOp extends DiffOp {
   get attachingToRoot() {
     return !this.parent;
   }
-  apply(buffer) {
+  apply(buffer, tx) {
     buffer.forgetPendingDetached(this.node);
 
-    this.parent?.insertChild(this.node, this.index);
+    if (this.parent) tx.insertNodeChild(this.parent, this.node, this.index);
 
     // FIXME do we still need detachedRootShards?
     if (this.attachingToRoot && buffer.detachedRootShards.length > 0) {
       buffer.detachedRootShards.forEach((shard) => {
-        shard.source = this.node;
-        shard.appendChild(buffer.getDetachedOrConstruct(this.node, shard));
+        tx.set(shard, "source", this.node);
+        tx.appendDOMChild(
+          shard,
+          buffer.getDetachedOrConstruct(this.node, shard)
+        );
       });
     } else {
       this.updateViews(this.parent, (parentView, shard) => {
-        // insertNode is a no-op for replacements --> they will insert
-        // nodes as needed when their shards update
-        parentView.insertNode(
+        // insertNode is overridden as a no-op for replacements --> they
+        // will insert nodes as needed when their shards update
+        tx.insertDOMChild(
+          parentView,
           buffer.getDetachedOrConstruct(this.node, shard),
           this.index
         );
@@ -438,10 +448,10 @@ export class UpdateOp extends DiffOp {
     this.node = node;
     this.text = text;
   }
-  apply() {
-    this.node._text = this.text;
+  apply(_buffer, tx) {
+    tx.updateNodeText(this.node, this.text);
     this.updateViews(this.node, (view) => {
-      view.setAttribute("text", this.text);
+      tx.setDOMAttribute(view, "text", this.text);
     });
   }
 }
@@ -532,9 +542,9 @@ class EditBuffer {
   printLabel(node) {
     return node.type ?? `"${node.text.replace(/\n/g, "\\n")}"`;
   }
-  apply() {
-    this.negBuf.forEach((f) => f.apply(this));
-    this.posBuf.forEach((f) => f.apply(this));
+  apply(tx) {
+    this.negBuf.forEach((f) => f.apply(this, tx));
+    this.posBuf.forEach((f) => f.apply(this, tx));
     this.assertNoPendingDetached();
   }
   getDetachedOrConstruct(node, shard) {
@@ -557,5 +567,66 @@ class EditBuffer {
   }
   log(...op) {
     if (false) console.log(...op);
+  }
+}
+
+class Transaction {
+  undo = [];
+
+  commit() {
+    this.undo = null;
+  }
+  rollback() {
+    this.undo.reverse().forEach((f) => f());
+    this.undo = null;
+  }
+
+  setDOMAttribute(node, attr, value) {
+    const oldValue = node.getAttribute(attr);
+    this.undo.push(() => node.setAttribute(attr, oldValue));
+    node.setAttribute(attr, value);
+  }
+
+  insertDOMChild(parent, child, index) {
+    parent.insertNode(this, child, index);
+  }
+
+  removeDOMChild(parent, child) {
+    const oldAfter = child.nextElementSibling;
+    this.undo.push(() => parent.insertBefore(child, oldAfter));
+    parent.removeChild(child);
+  }
+
+  appendDOMChild(parent, child) {
+    this.undo.push(() => parent.removeChild(child));
+    parent.appendChild(child);
+  }
+
+  updateNodeText(node, text) {
+    this.set(node, "_text", text);
+  }
+
+  insertNodeChild(parent, child, index) {
+    const oldParent = child.parent;
+    const oldIndex = oldParent?.children.indexOf(child);
+
+    this.undo.push(() =>
+      oldParent
+        ? oldParent.insertChild(child, oldIndex)
+        : parent.removeChild(child)
+    );
+    parent.insertChild(child, index);
+  }
+
+  removeNodeChild(parent, child) {
+    const index = parent.children.indexOf(child);
+    this.undo.push(() => parent.insertChild(child, index));
+    parent.removeChild(child);
+  }
+
+  set(object, field, value) {
+    const oldValue = object[field];
+    this.undo.push(() => (object[field] = oldValue));
+    object[field] = value;
   }
 }

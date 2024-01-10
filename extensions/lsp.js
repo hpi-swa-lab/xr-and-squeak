@@ -107,7 +107,7 @@ export const base = new Extension()
     (x) => sem(x)?.didClose(x),
   ])
   .registerQuery("save", (e) => [(x) => x.isRoot, (x) => sem(x)?.didSave(x)])
-  .registerPreChangesApply((changes, oldSource, newSource, root) => {
+  .registerChangesApplied((changes, oldSource, newSource, root, _diff) => {
     sem(root)?.didChange(root, oldSource, newSource, changes);
   });
 
@@ -155,7 +155,7 @@ export const suggestions = new Extension().registerType((e) => [
               const shard = x.editor.selectedShard;
 
               const edits = b.additionalTextEdits.map((e) => convertEdit(x, e));
-              x.editor.applyChanges(edits, null, [0, 0]);
+              x.editor.applyChanges(edits, [0, 0]);
 
               // potentially shift selection to accommodate inserts before the cursor
               for (const edit of edits) {
@@ -476,7 +476,6 @@ export class LanguageClient extends Semantics {
     });
     node.editor.applyChanges(
       edits.map((e) => convertEdit(node, e)),
-      null,
       [0, 0]
     );
   }

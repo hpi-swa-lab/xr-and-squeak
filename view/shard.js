@@ -155,15 +155,10 @@ export class Shard extends HTMLElement {
         this.editor.replaceTextFromTyping({
           range: this.range,
           text: sourceString,
-          shard: this,
           selectionRange,
         });
       });
     });
-
-    this.editor.extensionsDo((e) =>
-      e.process(["replacement", "always"], this.source)
-    );
   }
 
   disconnectedCallback() {
