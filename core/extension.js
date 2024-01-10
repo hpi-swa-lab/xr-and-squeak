@@ -1,5 +1,7 @@
 import { exec, rangeEqual, sequenceMatch } from "../utils.js";
 
+class StickyReplacementRemoved extends Error {}
+
 // An extension groups a set of functionality, such as syntax highlighting,
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
 // store their runtime data in separate ExtensionInstances, per editor.
@@ -55,18 +57,16 @@ export class Extension {
 
   constructor() {
     this.queries = new Map();
-    this.changeFilters = [];
-    this.preChangesApply = [];
-    this.diffFilters = [];
+    this.filters = new Map();
   }
 
   copyTo(other) {
     for (const [trigger, queries] of this.queries.entries()) {
       for (const query of queries) other.registerQuery(trigger, query);
     }
-    for (const filter of this.changeFilters) other.registerChangeFilter(filter);
-    for (const filter of this.diffFilters) other.registerDiffFilter(filter);
-    for (const cb of this.preChangesApply) other.registerPreChangesApply(cb);
+    for (const [type, filters] of this.filters.entries()) {
+      for (const filter of filters) other.registerFilter(type, filter);
+    }
   }
 
   registerQuery(trigger, query) {
@@ -75,19 +75,24 @@ export class Extension {
     return this;
   }
 
+  _registerFilter(type, filter) {
+    if (!this.filters.has(type)) this.filters.set(type, []);
+    this.filters.get(type).push(filter);
+    return this;
+  }
+
+  _processFilter(type, ...args) {
+    for (const filter of this.filters.get(type) ?? []) {
+      filter(...args);
+    }
+  }
+
   registerChangeFilter(filter) {
-    this.changeFilters.push(filter);
-    return this;
+    return this._registerFilter("change", filter);
   }
 
-  registerPreChangesApply(cb) {
-    this.preChangesApply.push(cb);
-    return this;
-  }
-
-  registerDiffFilter(filter) {
-    this.diffFilters.push(filter);
-    return this;
+  registerChangesApplied(filter) {
+    return this._registerFilter("changesApplied", filter);
   }
 
   registerAlways(query) {
@@ -156,20 +161,19 @@ class ExtensionInstance {
 
   // opportunity to filter a *user*-entered change
   filterChange(change, sourceString, root) {
-    this.extension.changeFilters.forEach((filter) =>
-      filter(change, sourceString, root)
-    );
+    this.extension._processFilter("change", change, sourceString, root);
   }
 
   // notification just before changes are applied to the text
-  preChangesApply(changes, oldSource, newSource, root) {
-    this.extension.preChangesApply.forEach((filter) =>
-      filter(changes, oldSource, newSource, root)
+  changesApplied(changes, oldSource, newSource, root, diff) {
+    this.extension._processFilter(
+      "changesApplied",
+      changes,
+      oldSource,
+      newSource,
+      root,
+      diff
     );
-  }
-
-  filterDiff(diffs) {
-    this.extension.diffFilters.forEach((filter) => filter(diffs));
   }
 
   createWidget(tag) {
@@ -191,9 +195,6 @@ class ExtensionInstance {
 
   ensureReplacement(node, tag, props) {
     console.assert(this.processingTrigger === "replacement");
-    const applyProps = (view) => {
-      for (const [key, value] of Object.entries(props ?? {})) view[key] = value;
-    };
 
     node.viewsDo((view) => {
       // FIXME does this make sense? it prevents creation of replacements
@@ -202,12 +203,24 @@ class ExtensionInstance {
 
       if (!view.isReplacementAllowed(tag)) return;
 
+      if (this._recordReplacementsOnly) {
+        if (view.tagName.toLowerCase() === tag) {
+          this.newReplacements.add(view);
+        } else {
+          const replacement = [...this.currentReplacements].find(
+            (r) => r.source === node && !r.isConnected
+          );
+          if (replacement) this.newReplacements.add(replacement);
+        }
+        return;
+      }
+
       let replacement;
       if (view.tagName.toLowerCase() === tag) {
         // already exists, update
         view.source = node;
         replacement = view;
-        applyProps(replacement);
+        Object.assign(replacement, props ?? {});
         view.update(node);
       } else {
         replacement = [...this.currentReplacements].find(
@@ -216,7 +229,7 @@ class ExtensionInstance {
         if (replacement) {
           // existed just now but got unmounted, remount
           view.replaceWith(replacement);
-          applyProps(replacement);
+          Object.assign(replacement, props ?? {});
           replacement.update(node);
           node.views.remove(view);
           console.assert(node.views.includes(replacement));
@@ -224,7 +237,7 @@ class ExtensionInstance {
           // does not exist yet, create
           replacement = document.createElement(tag);
           replacement.source = node;
-          applyProps(replacement);
+          Object.assign(replacement, props ?? {});
           replacement.init(node);
           replacement.update(node);
           view.replaceWith(replacement);
@@ -395,6 +408,32 @@ class ExtensionInstance {
     if (queued) {
       this._processTrigger(...queued);
     }
+  }
+
+  _recordReplacementsOnly = false;
+
+  _processStickyReplacements(node) {
+    try {
+      this.processingTrigger = "replacement";
+      this._recordReplacementsOnly = true;
+      node.root.allNodesDo((node) => this.runQueries("replacement", node));
+
+      for (const view of this.currentReplacements) {
+        if (!this.newReplacements.has(view) && view.isSticky) {
+          throw new StickyReplacementRemoved();
+        }
+      }
+    } catch (e) {
+      if (e instanceof StickyReplacementRemoved) {
+        return false;
+      } else {
+        throw e;
+      }
+    } finally {
+      this._recordReplacementsOnly = false;
+      this.processingTrigger = null;
+    }
+    return true;
   }
 
   registerShortcut(node, identifier, callback) {

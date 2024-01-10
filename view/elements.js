@@ -16,6 +16,10 @@ class _EditableElement extends HTMLElement {
     return orParentThat(this, (x) => x.tagName === "SB-EDITOR");
   }
 
+  get isNodeView() {
+    return true;
+  }
+
   isReplacementAllowed(tag) {
     return !this.disabledReplacements?.has(tag.toUpperCase());
   }
@@ -46,6 +50,33 @@ class _EditableElement extends HTMLElement {
     this.editor.changeSelection((selection) =>
       selection.selectAllChildren(this)
     );
+  }
+
+  findTextForCursor(cursor) {
+    for (const child of this.children) {
+      if (["SB-TEXT", "SB-BLOCK"].includes(child.tagName)) {
+        const [start, end] = child.node.range;
+        if (start <= cursor && end >= cursor) {
+          if (child.tagName === "SB-BLOCK")
+            return child.findTextForCursor(cursor);
+          else return child;
+        }
+      }
+    }
+    return null;
+  }
+
+  anyTextForCursor() {
+    const recurse = (n) => {
+      for (const child of n.shadowRoot?.children ?? n.children) {
+        if (child.tagName === "SB-TEXT") return child;
+        else {
+          const ret = recurse(child);
+          if (ret) return ret;
+        }
+      }
+    };
+    return recurse(this);
   }
 
   connectedCallback() {
@@ -104,36 +135,17 @@ export class Block extends _EditableElement {
     )
       this.setAttribute("scope", true);
   }
-  findTextForCursor(cursor) {
-    for (const child of this.children) {
-      if (["SB-TEXT", "SB-BLOCK"].includes(child.tagName)) {
-        const [start, end] = child.node.range;
-        if (start <= cursor && end >= cursor) {
-          if (child.tagName === "SB-BLOCK")
-            return child.findTextForCursor(cursor);
-          else return child;
-        }
-      }
-    }
-    return null;
-  }
-  anyTextForCursor() {
-    const recurse = (n) => {
-      for (const child of n.shadowRoot?.children ?? n.children) {
-        if (child.tagName === "SB-TEXT") return child;
-        else {
-          const ret = recurse(child);
-          if (ret) return ret;
-        }
-      }
-    };
-    return recurse(this);
-  }
 
   // insert a node at the given index, skipping over any
   // elements that do not correspond to nodes
   // FIXME may want to consider mapping via .node instead
-  insertNode(node, index) {
+  insertNode(tx, node, index) {
+    const oldOwner = node.owner;
+    const oldAfter = node.nextElementSibling;
+    tx.undo.push(() =>
+      oldOwner ? oldOwner.insertBefore(node, oldAfter) : node.remove()
+    );
+
     for (const child of this.childNodes) {
       if (index === 0) {
         this.insertBefore(node, child);
@@ -174,3 +186,5 @@ export class Text extends _EditableElement {
     else return null;
   }
 }
+
+export class ViewList extends _EditableElement {}

@@ -1,6 +1,5 @@
-import { WeakArray, exec } from "../utils.js";
+import { WeakArray, exec, last } from "../utils.js";
 import { TrueDiff } from "./diff.js";
-import md5 from "../external/md5.min.js";
 
 /*
     https://github.com/bryc/code/blob/master/jshash/experimental/cyrb53.js
@@ -47,19 +46,32 @@ export class SBLanguage {
 
   async initModelAndView(text) {
     await this.ready();
-    return this.updateModelAndView(text);
+
+    text = this._ensureTrailingLineBreak(text);
+    return this._assignState(this.parse(text), text);
   }
 
-  updateModelAndView(text, oldRoot = null) {
-    if (text.slice(-1) !== "\n") text += "\n";
+  updateModelAndView(text, oldRoot) {
+    console.assert(oldRoot);
+    text = this._ensureTrailingLineBreak(text);
 
-    let newRoot = this.parse(text, oldRoot);
-    if (oldRoot) {
-      newRoot = new TrueDiff().applyEdits(oldRoot, newRoot);
-    }
-    newRoot._language = this;
-    newRoot._sourceString = text;
-    return newRoot;
+    const { tx, root, diff } = new TrueDiff().applyEdits(
+      oldRoot,
+      this.parse(text, oldRoot)
+    );
+    root._language = this;
+    tx.set(root, "_sourceString", text);
+    return { tx, root, diff };
+  }
+
+  _ensureTrailingLineBreak(text) {
+    return last(text) === "\n" ? text : text + "\n";
+  }
+
+  _assignState(root, text) {
+    root._language = this;
+    root._sourceString = text;
+    return root;
   }
 }
 
@@ -114,7 +126,7 @@ class SBNode {
   }
 
   updateModelAndView(text) {
-    this.language.updateModelAndView(text, this);
+    return this.language.updateModelAndView(text, this);
   }
 
   destroy() {
@@ -439,7 +451,7 @@ export class SBText extends SBNode {
   }
 
   shallowClone() {
-    return new SBText(this.text, this.range[0], this.range[1], this.named);
+    return new SBText(this.text, this.range[0], this.range[1]);
   }
 
   get structureHash() {
@@ -513,11 +525,14 @@ export class SBBlock extends SBNode {
     this._children.push(child);
     child._parent = this;
   }
+
   removeChild(child) {
     this._children.splice(this._children.indexOf(child), 1);
     child._parent = null;
   }
+
   insertChild(child, index) {
+    if (child._parent) child._parent.removeChild(child);
     this._children.splice(index, 0, child);
     child._parent = this;
   }
@@ -554,11 +569,13 @@ export class SBBlock extends SBNode {
 // a fake root for a list of nodes, for use in e.g. a shard
 export class SBList extends SBNode {
   constructor(list) {
+    super();
     this.list = list;
+    console.assert(list.length > 0);
   }
 
   get children() {
-    return list;
+    return this.list;
   }
 
   get type() {
@@ -566,15 +583,37 @@ export class SBList extends SBNode {
   }
 
   get parent() {
-    return list[0]?.parent;
+    return this.list[0].parent;
+  }
+
+  get id() {
+    return this.list.map((a) => a.id).join(":");
+  }
+
+  get range() {
+    return [this.list[0].range[0], this.list[this.list.length - 1].range[1]];
   }
 
   equals(node) {
     if (!(node instanceof SBList)) return false;
     if (this.list.length !== node.list.length) return false;
     for (let i = 0; i < this.list.length; i++) {
-      if (this.list[i].equals(node.list[i])) return false;
+      if (!this.list[i].equals(node.list[i])) return false;
     }
     return true;
+  }
+
+  toHTML() {
+    if (false) {
+      return this.list.map((ea) => ea.toHTML());
+    } else {
+      const list = document.createElement("sb-view-list");
+      for (const child of this.list) {
+        list.appendChild(child.toHTML());
+      }
+      list.node = this;
+      (this.views ??= new WeakArray()).push(list);
+      return list;
+    }
   }
 }

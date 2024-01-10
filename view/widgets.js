@@ -2,6 +2,7 @@ import { h, render } from "../external/preact.mjs";
 import { nextHash, orParentThat, parentWithTag } from "../utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
+import { SBList } from "../core/model.js";
 
 export { h, render } from "../external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
@@ -13,7 +14,12 @@ export const button = (label, onclick, autofocus) =>
   h("button", { onclick, autofocus }, label);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
-export const shard = (node) => h("sb-shard", { initNode: [node], key: node });
+export const shard = (node) =>
+  h("sb-shard", { initNode: [node], key: node.id });
+export const shardList = (list) => {
+  const node = new SBList(list);
+  return h("sb-shard", { initNode: [node], key: node.id });
+};
 export const icon = (name) =>
   h("span", { class: "material-symbols-outlined" }, name);
 
@@ -96,6 +102,8 @@ export class Widget extends HTMLElement {
 
 export class Replacement extends Widget {
   shards = [];
+
+  // isSticky = true;
 
   constructor() {
     super();

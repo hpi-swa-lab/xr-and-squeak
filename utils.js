@@ -334,3 +334,34 @@ export function sequenceMatch(query, word) {
 export function last(array) {
   return array[array.length - 1];
 }
+
+export function rectDistance(a, b) {
+  const left = b.right < a.left;
+  const right = a.right < b.left;
+  const bottom = b.bottom < a.top;
+  const top = a.bottom < b.top;
+
+  function dist([x1, y1], [x2, y2]) {
+    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+  }
+
+  if (top && left) {
+    return dist([a.left, a.bottom], [b.right, b.top]);
+  } else if (left && bottom) {
+    return dist([a.left, a.top], [b.right, b.bottom]);
+  } else if (bottom && right) {
+    return dist([a.right, a.top], [b.left, b.bottom]);
+  } else if (right && top) {
+    return dist([a.right, a.bottom], [b.left, b.top]);
+  } else if (left) {
+    return a.left - b.right;
+  } else if (right) {
+    return b.left - a.right;
+  } else if (bottom) {
+    return a.top - b.bottom;
+  } else if (top) {
+    return b.top - a.bottom;
+  } else {
+    return 0;
+  }
+}

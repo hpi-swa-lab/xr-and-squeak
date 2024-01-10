@@ -246,7 +246,7 @@ export const identifierSuggestions = new Extension()
       ),
   ])
   .registerExtensionConnected((e) => [(x) => x.isText, (x) => noteWord(x.text)])
-  .registerDiffFilter((diff) => {
+  .registerChangesApplied((_changes, _oldSource, _newSource, _root, diff) => {
     diff.opsDo((op) => {
       if (op instanceof UpdateOp && op.node.isText) {
         forgetWord(op.node.text);
@@ -260,7 +260,3 @@ export const identifierSuggestions = new Extension()
       }
     });
   });
-
-function insert(string, index, extra) {
-  return string.substring(0, index) + extra + string.substring(index);
-}

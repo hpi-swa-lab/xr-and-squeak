@@ -8,6 +8,8 @@ import {
   rangeContains,
   orParentThat,
   matchesKey,
+  last,
+  rectDistance,
 } from "../utils.js";
 import { Block, Text } from "./elements.js";
 
@@ -47,6 +49,12 @@ export class Shard extends HTMLElement {
       );
     });
 
+    this.addEventListener("copy", function (e) {
+      e.clipboardData.setData("text/plain", this.editor.selectedText);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
     this.addEventListener("keydown", async (e) => {
       switch (e.key) {
         case "ArrowUp":
@@ -61,12 +69,14 @@ export class Shard extends HTMLElement {
             this.editor.suggestions?.moveSelected(1);
           }
           break;
-        // case "ArrowLeft":
-        //   const current = this.editor.selection.range;
-        //   if (this.visibleRanges.some(([start, _]) => current[0] === start)) {
-        //     debugger;
-        //   }
-        //   break;
+        case "Delete":
+        case "Backspace":
+          this.handleDelete(e);
+          break;
+        case "ArrowRight":
+        case "ArrowLeft":
+          this.handleMove(e, e.key === "ArrowRight" ? 1 : -1);
+          break;
       }
 
       for (const [action, key] of Object.entries(Editor.keyMap)) {
@@ -145,15 +155,10 @@ export class Shard extends HTMLElement {
         this.editor.replaceTextFromTyping({
           range: this.range,
           text: sourceString,
-          shard: this,
           selectionRange,
         });
       });
     });
-
-    this.editor.extensionsDo((e) =>
-      e.process(["replacement", "always"], this.source)
-    );
   }
 
   disconnectedCallback() {
@@ -163,6 +168,10 @@ export class Shard extends HTMLElement {
     this.editor.deregisterShard(this);
 
     this.addEventListener("blur", (e) => this.editor.clearSuggestions());
+  }
+
+  get root() {
+    return this.childNodes[0];
   }
 
   get editor() {
@@ -207,17 +216,14 @@ export class Shard extends HTMLElement {
   }
 
   update(node) {
-    if (!this.source) {
-      this.appendChild(node.toHTML());
+    if (
+      !this.source ||
+      !this.source.equals(node) ||
+      this.childNodes.length === 0
+    ) {
+      this.innerHTML = "";
+      this.append(node.toHTML());
       this.source = node;
-    } else if (this.source !== node) {
-      this.source = node;
-      if (this.childNodes[0]?.node !== this.source) {
-        if (this.childNodes[0]) this.removeChild(this.childNodes[0]);
-        this.appendChild(node.toHTML());
-      }
-    } else if (this.childNodes.length === 0) {
-      this.appendChild(node.toHTML());
     }
   }
 
@@ -319,10 +325,7 @@ export class Shard extends HTMLElement {
   // later grab the string from the previous element to the cursor.
   _getNestedContentElements(parent, list, cursorElements, insideBlocks) {
     for (const child of parent.childNodes) {
-      if (
-        cursorElements.includes(child) ||
-        (insideBlocks && !(child instanceof Block || child instanceof Text))
-      )
+      if (cursorElements.includes(child) || (insideBlocks && !child.isNodeView))
         list.push(child);
       this._getNestedContentElements(
         child,
@@ -386,7 +389,64 @@ export class Shard extends HTMLElement {
     });
   }
 
-  get root() {
-    return this.childNodes[0];
+  distanceToIndex(position, filter) {
+    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
+    let distance = this.editor.sourceString.length;
+    for (const range of this.visibleRanges.filter(filter)) {
+      if (range[0] <= position && range[1] >= position) return 0;
+      distance = Math.min(
+        distance,
+        Math.abs(position - range[0]),
+        Math.abs(position - range[1])
+      );
+    }
+    return distance;
+  }
+
+  pixelDistanceToSelection(selection) {
+    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
+    const mine = this.containsRange(selection.range)
+      ? last(this.rectsForRange(selection.range))
+      : this.getBoundingClientRect();
+    return rectDistance(selection.rect, mine);
+  }
+
+  isMoveAtBoundary(position, delta) {
+    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
+    return this.visibleRanges.some(([start, end]) =>
+      delta > 0 ? position === end : position === start
+    );
+  }
+
+  // TODO handle shift-selection and ctrl move
+  handleMove(e, delta) {
+    const current = this.editor.selection.range[0];
+    if (this.isMoveAtBoundary(current, delta)) {
+      const { shard, position } = this.editor.shardAndPositionForMove(
+        current,
+        delta
+      );
+      shard.selectRange(position, position);
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  handleDelete(e) {
+    const current = this.editor.selection.range[0];
+    const isDelete = e.key === "Delete";
+    if (this.isMoveAtBoundary(current, isDelete ? 1 : -1)) {
+      const pos = isDelete ? current : current - 1;
+      this.editor.applyChanges([
+        {
+          from: current + (isDelete ? 0 : -1),
+          to: current + (isDelete ? 1 : 0),
+          text: "",
+          selectionRange: [pos, pos],
+        },
+      ]);
+      e.preventDefault();
+      e.stopPropagation();
+    }
   }
 }
