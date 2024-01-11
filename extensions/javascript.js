@@ -180,7 +180,7 @@ customElements.define(
             white-space: wrap;
             height: 20px; 
             border: 1px solid red`, onclick: async (evt) => { 
-              var chooser = await (<lively-crayoncolors></lively-crayoncolors>)
+              var chooser = await lively.create("lively-crayoncolors")
               lively.setPosition(chooser, lively.pt(0,0))
               evt.target.appendChild(chooser)
               chooser.addEventListener("color-choosen", () => {
