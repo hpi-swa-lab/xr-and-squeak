@@ -13,6 +13,7 @@ import {
 } from "../view/widgets.js";
 import {} from "../view/widget-utils.js";
 import { SBList } from "../core/model.js";
+import { markAsEditableElement } from "../core/focus.js";
 
 customElements.define(
   "sb-outline",
@@ -115,6 +116,30 @@ customElements.define(
         )
       );
     }
+  }
+);
+
+customElements.define(
+  "sb-text-entry-test",
+  class extends Widget {
+    ranges = [[0, 0]];
+    connectedCallback() {
+      super.connectedCallback();
+      const input = document.createElement("input");
+      markAsEditableElement(input);
+      this.appendChild(input);
+      // this.render( h("input", { "sb-editable": true, ref: (e) => (e.sbRanges = this.ranges) }));
+    }
+  }
+);
+export const textEntryTest = new Extension().registerShortcut(
+  "browseIt",
+  (x, view, e) => {
+    console.log("browse");
+    const widget = e.createWidget("sb-text-entry-test");
+    widget.ranges = [[x.range[1], x.range[1]]];
+    view.after(widget);
+    widget.focus();
   }
 );
 

@@ -122,9 +122,8 @@ export class TrueDiff {
       tx.set(a, "_range", b.range);
       if (a._field !== b._field) tx.set(a, "_field", b._field);
     });
-    
-    if (!leaveInfoForDebug)
-      root.cleanDiffData();
+
+    if (!leaveInfoForDebug) root.cleanDiffData();
 
     return { root, tx, diff };
   }
@@ -291,7 +290,13 @@ export class TrueDiff {
         if (aChild?.assigned && aChild.assigned === bChild) {
           this.updateLiterals(aChild, bChild, editBuffer);
         } else {
-          if (aChild && bChild && aChild.type === bChild.type && !aChild.assigned && !bChild.assigned) {
+          if (
+            aChild &&
+            bChild &&
+            aChild.type === bChild.type &&
+            !aChild.assigned &&
+            !bChild.assigned
+          ) {
             this.computeEditScriptRecurse(aChild, bChild, editBuffer);
           } else {
             if (aChild) {
@@ -371,8 +376,6 @@ class DiffOp {
       this.updateViewsRecurse(child, cb);
     });
   }
-            
-        
 }
 
 export class DetachOp extends DiffOp {
@@ -539,7 +542,6 @@ class EditBuffer {
     this.posBuf.push(new LoadOp(node));
   }
   update(node, text) {
-    // assert(node.views.length > 0);
     this.log(
       "update",
       this.printLabel(node),

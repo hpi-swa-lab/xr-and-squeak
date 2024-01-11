@@ -6,85 +6,14 @@ import {
   last,
   orParentThat,
   parentWithTag,
-  rangeContains,
   rangeEqual,
+  rectDistance,
 } from "../utils.js";
 import { Block, Text, ViewList } from "./elements.js";
 import { Shard } from "./shard.js";
 import { languageFor } from "../core/languages.js";
 import {} from "./suggestions.js";
-
-class SBSelection extends EventTarget {
-  range = [0, 0];
-  view = null;
-  shard = null;
-  rect = DOMRectReadOnly.fromRect({ x: 0, y: 0, width: 0, height: 0 });
-
-  // encompasses exactly the full node
-  get isExact() {
-    return this.range && this.view && rangeEqual(this.range, this.view.range);
-  }
-
-  resyncFromDOM(editor) {
-    const selection = getSelection();
-    const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
-    // not ours
-    if (shard?.editor !== editor) return;
-
-    const { selectionRange, selected } =
-      shard._extractSourceStringAndCursorRange() ?? {};
-    this._update(
-      shard,
-      selectionRange,
-      selected,
-      last(selection.getRangeAt(0).getClientRects())
-    );
-  }
-
-  resyncAfterChange(editor, newRange) {
-    newRange ??= this.range;
-
-    this.rect =
-      (getSelection().rangeCount > 0 &&
-        getSelection().getRangeAt(0).getBoundingClientRect()) ??
-      this.rect;
-
-    const shards = editor.allShards
-      .map((s) => (s._extractSourceStringAndCursorRange(), s))
-      .map((s) => [s, last(s.rectsForRange(newRange))])
-      .filter(([, r]) => r);
-
-    const [bestShard, bestRect] = shards.reduce(([a, rectA], [b, rectB]) =>
-      this.distance(rectA) < this.distance(rectB) ? [a, rectA] : [b, rectB]
-    );
-
-    this._update(
-      bestShard,
-      newRange,
-      bestShard.findSelectedForRange(newRange),
-      bestRect
-    );
-    bestShard.selectRange(...newRange);
-  }
-
-  _update(shard, range, view, rect) {
-    this.shard = shard;
-    this.range = range;
-    this.rect = rect;
-
-    if (this.view !== view) {
-      this.dispatchEvent(new CustomEvent("viewChange", { detail: view }));
-      this.view = view;
-    }
-    this.dispatchEvent(new CustomEvent("caretChange"));
-  }
-
-  distance(b) {
-    return Math.sqrt(
-      Math.pow(this.rect.x - b.x, 2) + Math.pow(this.rect.y - b.y, 2)
-    );
-  }
-}
+import { SBSelection } from "../core/focus.js";
 
 // An Editor manages the view for a single model.
 //
@@ -314,12 +243,12 @@ export class Editor extends HTMLElement {
     );
     if (!mayCommit) {
       tx.rollback();
-      this.selection.resyncAfterChange(this);
+      this.selection.moveToRange(this, this.selection.range);
       return null;
     }
 
     this.extensionsDo((e) => e.process(["replacement"], this.source));
-    this.selection.resyncAfterChange(this, selectionRange);
+    this.selection.moveToRange(this, selectionRange);
     return diff;
   }
 
@@ -479,80 +408,17 @@ export class Editor extends HTMLElement {
     const target = getSelection().anchorNode;
     if (!orParentThat(target, (p) => p === this)) return;
 
-    this.selection.resyncFromDOM(this);
+    const selection = getSelection();
+    const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
+    // not ours
+    if (shard?.editor !== this) return;
+
+    const { selectionRange, view, rect } = shard._extractSelectionRange() ?? {};
+    this.selection.informChange(view, selectionRange, rect);
   }
 
-  selectRange(start, end, preferredShard = null, scrollIntoView = true) {
-    const shard =
-      this.shardForRange(start, end, preferredShard) ??
-      this.closestShardForRange(start, end);
-    shard?.selectRange(start, end);
-
-    const selected = shard?.findSelectedForRange([start, end]);
-    if (scrollIntoView)
-      selected?.scrollIntoView({ block: "nearest", inline: "nearest" });
-    return selected;
-  }
-
-  shardForRange(start, end, preferredShard = null) {
-    if (
-      preferredShard &&
-      preferredShard.isConnected &&
-      preferredShard.containsRange([start, end])
-    ) {
-      return preferredShard;
-    } else {
-      for (const shard of this.allShards) {
-        if (shard.isConnected && shard.containsRange([start, end])) {
-          return shard;
-        }
-      }
-    }
-    return null;
-  }
-
-  closestShardForRange(start, end) {
-    // first shard that is just after start
-    // FIXME may want to take the best one of all possible
-    for (const shard of this.allShards) {
-      if (
-        shard.isConnected &&
-        shard.visibleRanges.some((r) => rangeContains(r, [start, start]))
-      ) {
-        return shard;
-      }
-    }
-    return null;
-  }
-
-  shardAndPositionForMove(position, delta) {
-    const candidates = this.allShards;
-
-    const rangeFilter = ([start, end]) =>
-      delta > 0 ? end > position : start < position;
-
-    const best = candidates.reduce((best, candidate) => {
-      const distance = candidate.distanceToIndex(position, rangeFilter);
-      const bestDistance = best.distanceToIndex(position, rangeFilter);
-      if (distance < bestDistance) {
-        return candidate;
-      } else if (
-        distance === bestDistance &&
-        best.pixelDistanceToSelection(this.editor.selection) <
-          candidate.pixelDistanceToSelection(this.editor.selection)
-      ) {
-        return candidate;
-      }
-      return best;
-    });
-    const distance = best.distanceToIndex(position, rangeFilter);
-    return {
-      shard: best,
-      position:
-        position +
-        (distance === 0 ? delta : 0) +
-        (delta > 0 ? distance : -distance),
-    };
+  selectRange(start, end, scrollIntoView = true) {
+    this.selection.moveToRange(this, [start, end], scrollIntoView);
   }
 
   _shards = [];
@@ -588,6 +454,10 @@ export class Editor extends HTMLElement {
 
   get allShards() {
     return this._shards;
+  }
+
+  get allEditableElements() {
+    return this.querySelectorAll("[sb-editable]");
   }
 
   get selectedShard() {

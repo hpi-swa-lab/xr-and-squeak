@@ -365,3 +365,21 @@ export function rectDistance(a, b) {
     return 0;
   }
 }
+
+export function lastDeepChild(element) {
+  if (element.children.length > 0) return lastDeepChild(last(element.children));
+  else return element;
+}
+
+export function firstDeepChild(element) {
+  if (element.children.length > 0) return firstDeepChild(element.children[0]);
+  else return element;
+}
+
+export function withDo(obj, cb) {
+  return cb(obj);
+}
+
+export function isNullRect(rect) {
+  return rect.x === 0 && rect.y === 0 && rect.width === 0 && rect.height === 0;
+}

@@ -148,6 +148,10 @@ export class Replacement extends Widget {
     }
   }
 
+  get range() {
+    return this.source.range;
+  }
+
   init(source) {
     // subclasses may perform initialization here, such as creating shards
   }

@@ -97,10 +97,11 @@ class SBNode {
 
   internalClone() {
     const c = this.shallowClone();
-    c._id = this._id
-    for (const child of this.children){
-      c.appendChild(child.internalClone())}
-    return c
+    c._id = this._id;
+    for (const child of this.children) {
+      c.appendChild(child.internalClone());
+    }
+    return c;
   }
 
   get language() {
@@ -146,12 +147,18 @@ class SBNode {
   }
 
   viewsDo(cb) {
-    if (this.views) this.views.forEach(cb);
+    if (this._views) this._views.forEach(cb);
+  }
+
+  get views() {
+    const out = [];
+    this._views.forEach((v) => out.push(v));
+    return out;
   }
 
   // quick way to obtain a view to the element, should only be used for debugging
   get debugView() {
-    return this.views?._array[0].deref();
+    return this._views?._array[0].deref();
   }
 
   get editor() {
@@ -491,7 +498,7 @@ export class SBText extends SBNode {
     const text = document.createElement("sb-text");
     text.setAttribute("text", this.text);
     text.node = this;
-    (this.views ??= new WeakArray()).push(text);
+    (this._views ??= new WeakArray()).push(text);
     return text;
   }
 }
@@ -573,7 +580,7 @@ export class SBBlock extends SBNode {
       block.appendChild(child.toHTML());
     }
     block.node = this;
-    (this.views ??= new WeakArray()).push(block);
+    (this._views ??= new WeakArray()).push(block);
     return block;
   }
 }
@@ -624,7 +631,7 @@ export class SBList extends SBNode {
         list.appendChild(child.toHTML());
       }
       list.node = this;
-      (this.views ??= new WeakArray()).push(list);
+      (this._views ??= new WeakArray()).push(list);
       return list;
     }
   }

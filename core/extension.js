@@ -231,8 +231,8 @@ class ExtensionInstance {
           view.replaceWith(replacement);
           Object.assign(replacement, props ?? {});
           replacement.update(node);
-          node.views.remove(view);
-          console.assert(node.views.includes(replacement));
+          node._views.remove(view);
+          console.assert(node._views.includes(replacement));
         } else {
           // does not exist yet, create
           replacement = document.createElement(tag);
@@ -241,8 +241,8 @@ class ExtensionInstance {
           replacement.init(node);
           replacement.update(node);
           view.replaceWith(replacement);
-          node.views.remove(view);
-          node.views.push(replacement);
+          node._views.remove(view);
+          node._views.push(replacement);
         }
       }
 

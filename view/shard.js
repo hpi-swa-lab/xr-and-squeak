@@ -10,8 +10,13 @@ import {
   matchesKey,
   last,
   rectDistance,
+  lastDeepChild,
+  firstDeepChild,
+  withDo,
+  parentWithTag,
 } from "../utils.js";
 import { Block, Text } from "./elements.js";
+import { markAsEditableElement } from "../core/focus.js";
 
 // A Shard is a self-contained editable element.
 //
@@ -69,14 +74,6 @@ export class Shard extends HTMLElement {
             this.editor.suggestions?.moveSelected(1);
           }
           break;
-        case "Delete":
-        case "Backspace":
-          this.handleDelete(e);
-          break;
-        case "ArrowRight":
-        case "ArrowLeft":
-          this.handleMove(e, e.key === "ArrowRight" ? 1 : -1);
-          break;
       }
 
       for (const [action, key] of Object.entries(Editor.keyMap)) {
@@ -109,7 +106,7 @@ export class Shard extends HTMLElement {
             case "copy":
               // if we don't have a selection, cut/copy the full node
               if (new Set(this.editor.selectionRange).size === 1) {
-                this.selectRange(...selected.getRange());
+                debugger;
               }
               preventDefault = false;
               break;
@@ -139,6 +136,8 @@ export class Shard extends HTMLElement {
     }))
       this.setAttribute(key, value);
 
+    markAsEditableElement(this);
+
     this.editor.registerShard(this);
 
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
@@ -149,7 +148,7 @@ export class Shard extends HTMLElement {
 
       ToggleableMutationObserver.ignoreMutation(() => {
         const { selectionRange, sourceString } =
-          this._extractSourceStringAndCursorRange();
+          this._extractSourceStringAndSelectionRangeAfterMutation();
         for (const mutation of mutations) this.observer.undoMutation(mutation);
 
         this.editor.replaceTextFromTyping({
@@ -231,17 +230,45 @@ export class Shard extends HTMLElement {
     return this.editor.sourceString.slice(...this.range);
   }
 
+  // extract the current DOM selection.
+  // to be used only after DOM changes have been reconciled with the model.
+  _extractSelectionRange() {
+    return this._rangeForSelection(getSelection().getRangeAt(0));
+  }
+
+  _rangeForSelection(range) {
+    const selectionRange = [
+      this._indexForSelection(range.startContainer, range.startOffset),
+      this._indexForSelection(range.endContainer, range.endOffset),
+    ].sort((a, b) => a - b);
+    return {
+      selectionRange,
+      rect: range.getBoundingClientRect(),
+      view: this.findSelectedForRange(selectionRange),
+    };
+  }
+
+  _indexForSelection(node, offset) {
+    if (node instanceof window.Text)
+      return parentWithTag(node, "SB-TEXT").range[0] + offset;
+    return orParentThat(
+      node.children[clamp(offset, 0, node.children.length - 1)],
+      (n) => !!n.range
+    ).range[offset < node.children.length ? 0 : 1];
+    return parentWithTag("SB-BLOCK").range[
+      offset < node.children.length ? 0 : 1
+    ];
+  }
+
   // combined operation to find the source string and cursor range
-  // in the dom. we combine this because it is most commonly needed
-  // after the user typed something, which changes both, and the
-  // way to find them is the same.
-  _extractSourceStringAndCursorRange() {
+  // in the dom. to be used after a DOM mutation has happened that
+  // we have not yet undone and reconciled with the model.
+  _extractSourceStringAndSelectionRangeAfterMutation() {
     const selection = getSelection();
     const hasSelection = selection.anchorNode && selection.focusNode;
     const cursorElements = hasSelection
       ? [selection.focusNode, selection.anchorNode]
       : [];
-    const visibleRanges = [];
 
     let start = null;
     let string = "";
@@ -271,50 +298,23 @@ export class Shard extends HTMLElement {
       if (cursorElements.includes(nested)) continue;
 
       if (nested) range.setEndBefore(nested);
-      else range.setEndAfter(this);
+      else range.setEndAfter(lastDeepChild(this));
 
-      const str = range.toString();
-      if (str.length > 0)
-        visibleRanges.push([
-          rangeStart + string.length,
-          rangeStart + string.length + str.length,
-        ]);
       start = nested;
-      string += str;
+      string += range.toString();
 
       if (nested) {
         string += nested.sourceString ?? "";
       }
     }
 
-    const selectionRange = [
-      this.range[0] + focusOffset,
-      this.range[0] + anchorOffset,
-    ].sort((a, b) => a - b);
-
-    this.visibleRanges = visibleRanges;
-
     return {
       sourceString: string,
-      selectionRange,
-      selected: this.findSelectedForRange(selectionRange),
+      selectionRange: [
+        this.range[0] + focusOffset,
+        this.range[0] + anchorOffset,
+      ].sort((a, b) => a - b),
     };
-  }
-
-  containsRange(range) {
-    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
-    return this.visibleRanges.some((r) => rangeContains(r, range));
-  }
-
-  rectsForRange(range) {
-    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
-    for (const visible of this.visibleRanges) {
-      if (rangeContains(visible, range)) {
-        const selection = this._cursorToRange(...range);
-        return selection.getClientRects();
-      }
-    }
-    return [];
   }
 
   // Recursively iterate over all elements within this shard.
@@ -347,11 +347,13 @@ export class Shard extends HTMLElement {
     if (!this.root) return null;
 
     allViewsDo(this, (child) => {
+      if (!child.node.isText) return;
+      if (child.shard !== this) return;
       const [start, end] = child.getRange();
       if (start <= range[0] && end >= range[1]) {
         if (
           !candidate ||
-          ((child.node.named || !candidate.node.named) &&
+          ((child.node.parent.named || !candidate.node.parent.named) &&
             candidate.getRange()[1] - candidate.getRange()[0] >= end - start)
         )
           candidate = child;
@@ -365,88 +367,66 @@ export class Shard extends HTMLElement {
     let startNode = this.root.findTextForCursor(start);
     let endNode = this.root.findTextForCursor(end);
     if (!startNode || !endNode) {
-      console.log("could not find text node for cursor", start, end);
-      startNode = endNode = this.root.anyTextForCursor();
-      start = clamp(start, ...startNode.range);
-      end = clamp(end, ...endNode.range);
+      return null;
     }
     range.setStart(...startNode.rangeParams(start));
     range.setEnd(...endNode.rangeParams(end));
     return range;
   }
 
-  _clampRange(start, end) {
-    const range = this.range;
-    return [clamp(start, ...range), clamp(end, ...range)];
+  ////////////////////////////////////
+  // Selection API
+  ////////////////////////////////////
+  sbPositionForRange(sourceRange) {
+    const selectionRange = this._cursorToRange(...sourceRange);
+    if (!selectionRange) return null;
+
+    const candidate = this.findSelectedForRange(sourceRange);
+    return {
+      sourceRange,
+      rect: candidate.getBoundingClientRect(),
+      selectionRange,
+    };
   }
+  sbCursorEntryPositions() {
+    const cursorPoints = [];
+    const nestedElements = this._getNestedContentElements(this, [], [], true);
+    let start = null;
+    for (const end of [...nestedElements, null]) {
+      const range = document.createRange();
 
-  selectRange(start, end) {
-    if (end === undefined) end = start;
+      if (start) range.setStartAfter(start);
+      else {
+        start = firstDeepChild(this);
+        range.setStartBefore(start);
+      }
 
-    this.editor.changeSelection((selection) => {
-      const range = this._cursorToRange(...this._clampRange(start, end));
-      selection.addRange(range);
-    });
-  }
+      if (end) range.setEndBefore(end);
+      else range.setEndAfter(lastDeepChild(this));
 
-  distanceToIndex(position, filter) {
-    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
-    let distance = this.editor.sourceString.length;
-    for (const range of this.visibleRanges.filter(filter)) {
-      if (range[0] <= position && range[1] >= position) return 0;
-      distance = Math.min(
-        distance,
-        Math.abs(position - range[0]),
-        Math.abs(position - range[1])
-      );
+      for (const atStart of [true, false])
+        cursorPoints.push({
+          rect: withDo(
+            range.getClientRects(),
+            (r) => new DOMRect(r[0][atStart ? "left" : "right"], r[0].top, 0, 0)
+          ),
+          selectionRange: withDo(
+            range.cloneRange(),
+            (r) => (r.collapse(atStart), r)
+          ),
+        });
+      start = end;
     }
-    return distance;
+    return cursorPoints;
   }
-
-  pixelDistanceToSelection(selection) {
-    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
-    const mine = this.containsRange(selection.range)
-      ? last(this.rectsForRange(selection.range))
-      : this.getBoundingClientRect();
-    return rectDistance(selection.rect, mine);
+  sbSelectPosition({ selectionRange: r }) {
+    this.editor.changeSelection((selection) => selection.addRange(r));
+    const { view, selectionRange } = this._rangeForSelection(r);
+    return { view, sourceRange: selectionRange };
   }
-
-  isMoveAtBoundary(position, delta) {
-    if (!this.visibleRanges) this._extractSourceStringAndCursorRange();
-    return this.visibleRanges.some(([start, end]) =>
-      delta > 0 ? position === end : position === start
+  sbIsMoveAtBoundary(delta) {
+    return !this.findSelectedForRange(
+      withDo(this.editor.selection.range[0] + delta, (p) => [p, p])
     );
-  }
-
-  // TODO handle shift-selection and ctrl move
-  handleMove(e, delta) {
-    const current = this.editor.selection.range[0];
-    if (this.isMoveAtBoundary(current, delta)) {
-      const { shard, position } = this.editor.shardAndPositionForMove(
-        current,
-        delta
-      );
-      shard.selectRange(position, position);
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
-
-  handleDelete(e) {
-    const current = this.editor.selection.range[0];
-    const isDelete = e.key === "Delete";
-    if (this.isMoveAtBoundary(current, isDelete ? 1 : -1)) {
-      const pos = isDelete ? current : current - 1;
-      this.editor.applyChanges([
-        {
-          from: current + (isDelete ? 0 : -1),
-          to: current + (isDelete ? 1 : 0),
-          text: "",
-          selectionRange: [pos, pos],
-        },
-      ]);
-      e.preventDefault();
-      e.stopPropagation();
-    }
   }
 }
