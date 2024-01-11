@@ -118,6 +118,9 @@ customElements.define(
   }
 );
 
+
+
+
 async function asyncEval(str) {
   // TODO need to analyze the resulting tree an insert a return stmt for the last expression
   // return await eval("(async () => {" + str + "})()");
@@ -161,6 +164,34 @@ export const smileys = new Extension().registerReplacement((e) => [
   (x) => x.type === "lexical_declaration",
   (x) => e.ensureReplacement(x, "sb-js-lexical-declaration-smiley"),
 ]);
+
+
+
+customElements.define(
+  "sb-js-colorstring",
+  class extends Replacement {
+    update(source) {
+      this.render([ 
+        h("div", { style: `
+            display: inline-block; 
+            background: ${source.children[1].text}; 
+            width: 20px; 
+            height: 20px; 
+            border: 1px solid red`, onclick: evt => { 
+              lively.notify("select color")
+            }}),
+        shard(source.children[1])
+      ])
+    }
+  }
+);
+
+export const colorstrings = new Extension().registerReplacement((e) => [
+  (x) => x.type === "string",
+  (x) => e.ensureReplacement(x, "sb-js-colorstring"),
+]);
+
+
 
 export const base = new Extension()
   .registerDoubleClick((e) => [
