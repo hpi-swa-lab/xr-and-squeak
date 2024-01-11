@@ -185,6 +185,7 @@ customElements.define(
               evt.target.appendChild(chooser)
               chooser.addEventListener("color-choosen", () => {
                 source.childBlock(0).replaceWith(chooser.value)
+                chooser.remove()
               })
               chooser.onChooseCustomColor()
               
