@@ -174,11 +174,20 @@ customElements.define(
       this.render([ 
         h("div", { style: `
             display: inline-block; 
-            background: ${source.children[1].text}; 
+            background: ${source.childBlock(0).text}; 
+            position: relative;
             width: 20px; 
+            white-space: wrap;
             height: 20px; 
-            border: 1px solid red`, onclick: evt => { 
-              lively.notify("select color")
+            border: 1px solid red`, onclick: async (evt) => { 
+              var chooser = await (<lively-crayoncolors></lively-crayoncolors>)
+              lively.setPosition(chooser, lively.pt(0,0))
+              evt.target.appendChild(chooser)
+              chooser.addEventListener("color-choosen", () => {
+                source.childBlock(0).replaceWith(chooser.value)
+              })
+              chooser.onChooseCustomColor()
+              
             }}),
         shard(source.children[1])
       ])
@@ -188,6 +197,8 @@ customElements.define(
 
 export const colorstrings = new Extension().registerReplacement((e) => [
   (x) => x.type === "string",
+  (x) => !!x.children[1].text.match(/rgba?\(.*\)/),
+  
   (x) => e.ensureReplacement(x, "sb-js-colorstring"),
 ]);
 

@@ -18,6 +18,8 @@ const b = a + 1
 
 var color = 'rgba(100,10,10,0.5)'
 
+var foo = 'not a color'
+
 function a() {
 }`}
     language="javascript"></sb-editor>)
