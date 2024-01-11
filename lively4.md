@@ -10,7 +10,7 @@
   Editor.init()
 
   var ui = await (<sb-editor
-    extensions="javascript:base javascript:smileys javascript:colorstrings base:base base:identifierSuggestions editorConfig:base"
+    extensions="javascript:base javascript:table javascript:smileys javascript:colorstrings base:base base:identifierSuggestions editorConfig:base"
     text={`console.log(sbWatch(hello, 12398482))
 
 let a = 3 + 4, c = 3
@@ -19,6 +19,8 @@ const b = a + 1
 var color = 'rgba(100,10,10,0.5)'
 
 var foo = 'not a color'
+
+var table = [[1,22],['x' + 4, 'hello']]
 
 function a() {
 }`}

@@ -196,6 +196,8 @@ customElements.define(
   }
 );
 
+
+
 export const colorstrings = new Extension().registerReplacement((e) => [
   (x) => x.type === "string",
   (x) => !!x.children[1].text.match(/rgba?\(.*\)/),
@@ -203,6 +205,29 @@ export const colorstrings = new Extension().registerReplacement((e) => [
   (x) => e.ensureReplacement(x, "sb-js-colorstring"),
 ]);
 
+
+
+customElements.define(
+  "sb-js-table",
+  class extends Replacement {
+    update(source) {
+      this.render( 
+        h("table", { style: `
+            display: inline-block;
+            border: 1px solid red`},
+          source.childBlocks.map((array) => 
+             h("tr", { style: "border: 2px solid blue"}, array.childBlocks.map(ea =>  
+                    h("td", { style: "border: 1px solid red" }, shard(ea)))))))
+    }
+  }
+);
+
+export const table = new Extension().registerReplacement((e) => [
+  (x) => x.type === "array",
+  (x) => x.type === "array",
+  (x) => x.childBlocks.reduce((acc, ea) => acc && ea.type == "array", true),
+  (x) => e.ensureReplacement(x, "sb-js-table"),
+]);
 
 
 export const base = new Extension()
