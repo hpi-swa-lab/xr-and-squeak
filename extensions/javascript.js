@@ -105,13 +105,8 @@ customElements.define(
         h(
           "span",
           { style: "border: 1px solid green" },
-          source.childNode(0).text === "let" ? "😀" : "😇",
-          true
-            ? shardList(source.children.slice(1))
-            : source.children
-                .slice(1)
-                .map((c) => shard(c))
-                .map((ea) => h("span", { style: "border: 1px solid red" }, ea))
+          h("span", {onclick: () => source.childNode(0).replaceWith(source.childNode(0).text === "let" ? "const" : "let")}, source.childNode(0).text === "let" ? "😀" : "😇"),
+          shardList(source.children.slice(1))
         )
       );
     }
@@ -165,6 +160,67 @@ export const smileys = new Extension().registerReplacement((e) => [
   (x) => e.ensureReplacement(x, "sb-js-lexical-declaration-smiley"),
 ]);
 
+export const highlightNode = new Extension()
+  .registerShortcut("highlightIt", (x, view, e) => {
+    // Demo: ephemeral vs stable
+    // e.ensureClass(x, "search-result")
+    x.wrapWith(`["sbHighlight",`, `][1]`)
+  }, [x => x.orParentCompatibleWith('expression')])
+  .registerReplacement((e) => [
+    x => x.type === 'subscript_expression',
+    x => x.childBlock(0).type === 'array',
+    x => x.childBlock(0).childBlock(0).sourceString === '"sbHighlight"',
+    x => e.ensureReplacement(x, "sb-js-highlight")
+  ])
+
+customElements.define("sb-js-highlight", class extends Replacement {
+  update(source) {
+    this.render(h("span", {style: {backgroundColor: '#ff0'}}, shard(source.childBlock(0).childBlock(1))))
+  }
+})
+
+customElements.define(
+  "sb-js-dataurl-image",
+  class extends Replacement {
+    update(source) {
+      this.render( 
+        h('div', {style: `
+            position: relative;
+            display: inline-block; 
+            white-space: wrap;
+            border: 1px solid gray
+          `}, 
+          h("img", { 
+            src: source.childBlock(0).text, 
+            style: ``, onclick: async (evt) => { 
+                var imageEditor = await lively.create("lively-image-editor")
+                var img = evt.target
+                var parent = img.parentElement
+                img.remove()
+                parent.appendChild(imageEditor)
+                imageEditor.style.minWidth = "200px"
+                lively.setPosition(imageEditor, lively.pt(0,-40))
+                imageEditor.addEventListener("saved-to-target", () => {
+                  parent.appendChild(img)
+                  imageEditor.remove()
+                  debugger
+                  // #TODO bug here... throws errror
+                  source.childBlock(0).replaceWith("" + img.src)
+                })
+                imageEditor.setTarget(img)
+          }})
+      ))
+    }
+  }
+);
+
+
+
+export const dataurlimage = new Extension().registerReplacement((e) => [
+  (x) => x.type === "string",
+  (x) => !!x.childBlock(0).text.match(/^data\:image\/png/),
+  (x) => e.ensureReplacement(x, "sb-js-dataurl-image"),
+]);
 
 
 customElements.define(
@@ -200,7 +256,7 @@ customElements.define(
 
 export const colorstrings = new Extension().registerReplacement((e) => [
   (x) => x.type === "string",
-  (x) => !!x.children[1].text.match(/rgba?\(.*\)/),
+  (x) => !!x.children[1].text.match(/^rgba?\(.*\)$/),
   
   (x) => e.ensureReplacement(x, "sb-js-colorstring"),
 ]);
@@ -224,8 +280,8 @@ customElements.define(
 
 export const table = new Extension().registerReplacement((e) => [
   (x) => x.type === "array",
-  (x) => x.type === "array",
-  (x) => x.childBlocks.reduce((acc, ea) => acc && ea.type == "array", true),
+  x => x.childBlocks.length > 0,
+  (x) => x.childBlocks.every(ea => ea.type == "array" && ea.childBlocks.length === x.childBlocks[0].childBlocks.length),
   (x) => e.ensureReplacement(x, "sb-js-table"),
 ]);
 

@@ -124,6 +124,7 @@ export class Editor extends HTMLElement {
       insertFourthArg: "Alt-4",
       insertFifthArg: "Alt-5",
 
+      highlightIt: "Ctrl-h",
       wrapWithWatch: "Ctrl-q",
       printIt: "Ctrl-p",
       browseIt: "Ctrl-b",

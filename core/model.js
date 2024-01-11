@@ -306,6 +306,11 @@ class SBNode {
     return this.language.compatibleType(this.type, type);
   }
 
+  orParentCompatibleWith(type) {
+    if (this.compatibleWith(type)) return this;
+    else return this.parent?.orParentCompatibleWith(type);
+  }
+
   insert(string, type, index) {
     const list = this.childBlocks.filter((child) => child.compatibleWith(type));
     // TODO handle empty list by finding any slot that takes the type
