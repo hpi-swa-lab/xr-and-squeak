@@ -134,6 +134,10 @@ class SBNode {
     return this.root._sourceString.slice(...this.range);
   }
 
+  get preferForSelection() {
+    return true;
+  }
+
   updateModelAndView(text) {
     return this.language.updateModelAndView(text, this);
   }
@@ -493,6 +497,10 @@ export class SBText extends SBNode {
 
   get isText() {
     return true;
+  }
+
+  get preferForSelection() {
+    return this.parent?.named && this.parent.children.length === 1;
   }
 
   isWhitespace() {

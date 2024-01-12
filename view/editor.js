@@ -419,7 +419,7 @@ export class Editor extends HTMLElement {
     if (shard?.editor !== this) return this.selection.deselect();
 
     const { selectionRange, view } = shard._extractSelectionRange() ?? {};
-    this.selection.informChange(view, selectionRange);
+    this.selection.informChange(view ?? shard, selectionRange);
   }
 
   selectRange(start, end, scrollIntoView = true) {

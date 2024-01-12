@@ -304,6 +304,16 @@ export function rangeContains(a, b) {
   return a[0] <= b[0] && a[1] >= b[1];
 }
 
+export function rangeDistance(a, b) {
+  if (a[0] > b[1]) return a[0] - b[1];
+  else if (b[0] > a[1]) return b[0] - a[1];
+  else return 0;
+}
+
+export function rangeShift(range, delta) {
+  return [range[0] + delta, range[1] + delta];
+}
+
 export function matchesKey(e, key) {
   const modifiers = key.split("-");
   const baseKey = modifiers.pop();

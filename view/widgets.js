@@ -3,6 +3,7 @@ import { nextHash, orParentThat, parentWithTag } from "../utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
+import { SandblocksExtensionInstance } from "./extension-instance.js";
 
 export { h, render } from "../external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
@@ -25,7 +26,9 @@ export const icon = (name) =>
 
 function _Editor({ inlineExtensions, editorRef, ...props }) {
   const i = useMemo(
-    () => inlineExtensions?.map((e) => e.instance()) ?? [],
+    () =>
+      inlineExtensions?.map((e) => e.instance(SandblocksExtensionInstance)) ??
+      [],
     // use array directly for content-compare
     inlineExtensions ?? []
   );

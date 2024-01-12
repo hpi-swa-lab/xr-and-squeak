@@ -57,9 +57,10 @@ class _EditableElement extends HTMLElement {
       if (["SB-TEXT", "SB-BLOCK"].includes(child.tagName)) {
         const [start, end] = child.node.range;
         if (start <= cursor && end >= cursor) {
-          if (child.tagName === "SB-BLOCK")
-            return child.findTextForCursor(cursor);
-          else return child;
+          if (child.tagName === "SB-BLOCK") {
+            const candidate = child.findTextForCursor(cursor);
+            if (candidate) return candidate;
+          } else return child;
         }
       }
     }

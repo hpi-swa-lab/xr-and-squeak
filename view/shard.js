@@ -15,6 +15,8 @@ import {
   withDo,
   parentWithTag,
   edgeForRange,
+  rangeDistance,
+  rangeEqual,
 } from "../utils.js";
 import { Block, Text } from "./elements.js";
 import { markAsEditableElement } from "../core/focus.js";
@@ -312,7 +314,6 @@ export class Shard extends HTMLElement {
       }
     }
 
-    console.log("EXTRACT", string, [focusOffset, anchorOffset]);
     return {
       sourceString: string,
       selectionRange: [
@@ -354,16 +355,35 @@ export class Shard extends HTMLElement {
     allViewsDo(this, (child) => {
       if (!child.node.isText) return;
       if (child.shard !== this) return;
-      const [start, end] = child.getRange();
+      const [start, end] = child.range;
       if (start <= range[0] && end >= range[1]) {
         if (
           !candidate ||
-          ((child.node.parent.named || !candidate.node.parent.named) &&
-            candidate.getRange()[1] - candidate.getRange()[0] >= end - start)
+          ((child.node.preferForSelection ||
+            !candidate.node.preferForSelection) &&
+            candidate.range[1] - candidate.range[0] >= end - start)
         )
           candidate = child;
       }
     });
+
+    return candidate;
+  }
+
+  closestElementForRange(range) {
+    let candidate = null;
+    let bestDistance = Infinity;
+
+    allViewsDo(this, (child) => {
+      if (!child.node.isText) return;
+      if (child.shard !== this) return;
+      let distance = rangeDistance(range, child.range);
+      if (distance < bestDistance) {
+        candidate = child;
+        bestDistance = distance;
+      }
+    });
+
     return candidate;
   }
 
@@ -404,7 +424,10 @@ export class Shard extends HTMLElement {
   sbSelectRange(range) {
     const selectionRange = this._cursorToRange(...range);
     if (!selectionRange) return null;
-    const view = this.findSelectedForRange(range);
+    let view = this.findSelectedForRange(range);
+
+    // if we are at the very start, there may be no view
+    if (!view && range[0] === this.range[0]) view = this;
     console.assert(view);
 
     this.editor.changeSelection((selection) =>
@@ -424,5 +447,12 @@ export class Shard extends HTMLElement {
     return !this.findSelectedForRange(
       withDo(this.editor.selection.range[0] + delta, (p) => [p, p])
     );
+  }
+  sbCandidateForRange(range) {
+    if (!rangeContains(this.range, range)) return null;
+
+    const view = this.closestElementForRange(range);
+    const rect = view?.getBoundingClientRect();
+    return view ? { view, rect, range: view.range } : null;
   }
 }
