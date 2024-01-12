@@ -3,6 +3,7 @@ import {
   parentWithTag,
   rangeEqual,
   rectDistance,
+  withDo,
 } from "../utils.js";
 
 // interface Position {
@@ -13,7 +14,6 @@ import {
 // sbCursorEntryPositions(): Position[]
 // sbSelectPosition(Position): {view: View, sourceRange}
 // sbIsMoveAtBoundary(delta): boolean
-// ??? sbCurrentPosition(): Position | null
 
 // Manages selection and caret position for an editor.
 // Both positions within the text buffer (range) and outside
@@ -27,6 +27,21 @@ export class SBSelection extends EventTarget {
   // encompasses exactly the full node
   get isExact() {
     return this.range && this.view && rangeEqual(this.range, this.view.range);
+  }
+
+  // check if the move is in the right direction and, if both positions have
+  // ranges, that we are advancing
+  _validMove(position, delta) {
+    return (
+      position &&
+      position.rect &&
+      (delta > 0 ? position.rect.right < this.rect.right : true) &&
+      (delta < 0 ? position.rect.left > this.rect.left : true) &&
+      (!this.range ||
+        !position.sourceRange ||
+        (delta > 0 ? position.sourceRange[0] > this.range[0] : true) ||
+        (delta < 0 ? position.sourceRange[1] < this.range[1] : true))
+    );
   }
 
   moveToRange(editor, targetRange, scrollIntoView = true) {
@@ -55,12 +70,18 @@ export class SBSelection extends EventTarget {
           delta > 0 ? position.rect.left : position.rect.right;
         if (
           Math.abs(position.rect.top - this.rect.top) <= verticalRange &&
-          (delta < 0
-            ? candidatePos < this.rect.left
-            : candidatePos > this.rect.left)
+          this._validMove(position, delta)
         ) {
           verticallyCloseElements.push([candidate, position]);
         }
+      }
+    }
+
+    _clearDebugRects();
+    for (const candidate of candidates) {
+      for (const { rect, sourceRange } of candidate.sbCursorEntryPositions()) {
+        console.log(sourceRange);
+        _debugRect(rect, "blue", sourceRange?.toString() ?? "--");
       }
     }
 
@@ -87,9 +108,14 @@ export class SBSelection extends EventTarget {
       selected?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
+  deselect() {
+    this.informChange(null, null, null);
+  }
+
   informChange(view, range, rect) {
     this.range = range;
-    if (!isNullRect(rect)) this.rect = rect;
+    if (range?.[0] === 0) debugger;
+    if (rect && !isNullRect(rect)) this.rect = rect;
 
     if (this.view !== view) {
       this.dispatchEvent(new CustomEvent("viewChange", { detail: view }));
@@ -107,31 +133,7 @@ export function markAsEditableElement(element) {
 
   switch (element.tagName) {
     case "INPUT":
-      element.sbCursorPoint = () => {};
-      element.sbIsMoveAtBoundary = (delta) => {
-        const position = element.selectionStart;
-        return delta > 0 ? position === element.value.length : position === 0;
-      };
-      element.sbFocus = (_rect, atEnd) => {
-        element.focus();
-        element.setSelectionRange(
-          atEnd ? element.value.length : 0,
-          atEnd ? element.value.length : 0
-        );
-      };
-      element.addEventListener("selectionchange", (e) => {
-        const rect = element.getBoundingClientRect();
-        parentWithTag(element, "SB-EDITOR").selection.informChange(
-          element,
-          null,
-          new DOMRect(
-            element.selectionStart === 0 ? rect.left : rect.right,
-            rect.top,
-            0,
-            rect.height
-          )
-        );
-      });
+      _markInput(element);
       break;
     case "SB-SHARD":
       // all implemented in the shard class
@@ -167,11 +169,12 @@ function handleMove(e, delta) {
 }
 
 function handleDelete(e) {
-  const current = this.editor.selection.range[0];
   const isDelete = e.key === "Delete";
-  if (this.sbIsMoveAtBoundary(current, isDelete ? 1 : -1)) {
+  if (this.sbIsMoveAtBoundary(isDelete ? 1 : -1)) {
+    const editor = parentWithTag(this, "SB-EDITOR");
+    const current = editor.selection.range[0];
     const pos = isDelete ? current : current - 1;
-    this.editor.applyChanges([
+    editor.applyChanges([
       {
         from: current + (isDelete ? 0 : -1),
         to: current + (isDelete ? 1 : 0),
@@ -184,6 +187,41 @@ function handleDelete(e) {
   e.stopPropagation();
 }
 
+function _markInput(element) {
+  element.sbPositionForRange = ([start, end]) => null;
+  element.sbCursorEntryPositions = () => {
+    const rect = element.getBoundingClientRect();
+    return [
+      { rect: new DOMRect(rect.left, rect.top, 0, 0), indices: [0, 0] },
+      {
+        rect: new DOMRect(rect.right, rect.top, 0, 0),
+        index: withDo(element.value.length, (p) => [p, p]),
+      },
+    ];
+  };
+  element.sbSelectPosition = (position) => {
+    element.focus();
+    element.selectionStart = position.indices;
+    element.selectionEnd = position.indices;
+    return { view: element };
+  };
+  element.sbIsMoveAtBoundary = (delta) => {
+    const position = element.selectionStart;
+    return delta > 0 ? position === element.value.length : position === 0;
+  };
+  element.addEventListener("selectionchange", (e) => {
+    // FIXME only works in FF
+    const rect = element.getBoundingClientRect();
+    const atStart = element.selectionStart === 0;
+    debugger;
+    parentWithTag(element, "SB-EDITOR").selection.informChange(
+      element,
+      null,
+      new DOMRect(atStart ? rect.left : rect.right, rect.top, 0, rect.height)
+    );
+  });
+}
+
 function _debugShowAllRects(editor, point) {
   for (const candidate of editor.allEditableElements) {
     const rects = candidate.sbRects();
@@ -193,13 +231,19 @@ function _debugShowAllRects(editor, point) {
   }
   _debugRect({ left: point[0], top: point[1], width: 10, height: 10 }, "green");
 }
-function _debugRect(rect, color) {
+function _debugRect(rect, color, t) {
   const r = document.createElement("div");
+  r.className = "sb-debug-rect";
   r.style.position = "absolute";
   r.style.left = rect.left + "px";
   r.style.top = rect.top + "px";
   r.style.width = rect.width + "px";
   r.style.height = rect.height + "px";
+  r.style.fontSize = "4px";
   r.style.border = `1px solid ${color}`;
+  r.textContent = t ?? "";
   document.body.appendChild(r);
+}
+function _clearDebugRects() {
+  for (const r of [...document.querySelectorAll(".sb-debug-rect")]) r.remove();
 }

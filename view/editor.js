@@ -405,13 +405,15 @@ export class Editor extends HTMLElement {
   }
 
   onSelectionChange() {
-    const target = getSelection().anchorNode;
-    if (!orParentThat(target, (p) => p === this)) return;
+    if (document.activeElement.tagName !== "SB-SHARD")
+      return this.selection.deselect();
 
     const selection = getSelection();
+    // no deselect -- this typically means that we are currently changing
+    if (selection.type === "None") return;
+
     const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
-    // not ours
-    if (shard?.editor !== this) return;
+    if (shard?.editor !== this) return this.selection.deselect();
 
     const { selectionRange, view, rect } = shard._extractSelectionRange() ?? {};
     this.selection.informChange(view, selectionRange, rect);
