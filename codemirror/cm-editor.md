@@ -17,8 +17,8 @@
 
 <script>
 
-import {} from './cm-editor.js';
+import {} from './scm-editor.js';
 
-await (<cm-dc-editor text="asd" language="javascript" extensions="javascript:base javascript:workspace"></cm-dc-editor>)
+await (<scm-editor text="let a = 231" language="javascript" extensions="javascript:base javascript:smileys"></scm-editor>)
 
 </script>

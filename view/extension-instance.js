@@ -112,4 +112,8 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
   addSuggestions(node, suggestions) {
     node.editor.addSuggestions(suggestions);
   }
+        
+  destroyReplacement(r) {
+    r.replaceWith(r.source.toHTML());
+  }
 }
