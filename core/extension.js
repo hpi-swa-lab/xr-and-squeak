@@ -365,12 +365,13 @@ class ExtensionInstance {
           this.runQueries(trigger, node);
           break;
         case "selection":
-          node.root.allNodesDo((nested) => {
-            // pass in all nodes that share the same range. this is important
-            // for a stack of nodes such as (expr_stmt (identifier (#text)))
-            if (rangeEqual(nested.range, node.range))
-              this.runQueries(trigger, nested);
-          });
+          if (node)
+            node.root.allNodesDo((nested) => {
+              // pass in all nodes that share the same range. this is important
+              // for a stack of nodes such as (expr_stmt (identifier (#text)))
+              if (rangeEqual(nested.range, node.range))
+                this.runQueries(trigger, nested);
+            });
           break;
         default:
           console.assert(false, "invalid type");

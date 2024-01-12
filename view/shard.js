@@ -231,6 +231,10 @@ export class Shard extends HTMLElement {
     return this.editor.sourceString.slice(...this.range);
   }
 
+  get node() {
+    return this.source;
+  }
+
   // extract the current DOM selection.
   // to be used only after DOM changes have been reconciled with the model.
   _extractSelectionRange() {
@@ -242,18 +246,19 @@ export class Shard extends HTMLElement {
       this._indexForSelection(range.startContainer, range.startOffset),
       this._indexForSelection(range.endContainer, range.endOffset),
     ].sort((a, b) => a - b);
-    if (selectionRange[0] === selectionRange[1] && selectionRange[0] === 0)
-      debugger;
-    return {
-      selectionRange,
-      rect: range.getBoundingClientRect(),
-      view: this.findSelectedForRange(selectionRange),
-    };
+    return { selectionRange, view: this.findSelectedForRange(selectionRange) };
   }
 
   _indexForSelection(node, offset) {
     if (node instanceof window.Text)
       return parentWithTag(node, "SB-TEXT").range[0] + offset;
+
+    if (node.children.length < 1) {
+      console.assert(offset === 0);
+      console.assert(node.tagName === "SB-TEXT");
+      return node.range[0];
+    }
+
     return orParentThat(
       node.children[clamp(offset, 0, node.children.length - 1)],
       (n) => !!n.range
@@ -280,7 +285,6 @@ export class Shard extends HTMLElement {
     );
     let focusOffset = null;
     let anchorOffset = null;
-    const rangeStart = this.range[0];
     for (const nested of [...nestedElements, null]) {
       const range = document.createRange();
 
@@ -308,6 +312,7 @@ export class Shard extends HTMLElement {
       }
     }
 
+    console.log("EXTRACT", string, [focusOffset, anchorOffset]);
     return {
       sourceString: string,
       selectionRange: [
@@ -396,63 +401,28 @@ export class Shard extends HTMLElement {
   ////////////////////////////////////
   // Selection API
   ////////////////////////////////////
-  sbPositionForRange(sourceRange) {
-    const selectionRange = this._cursorToRange(...sourceRange);
+  sbSelectRange(range) {
+    const selectionRange = this._cursorToRange(...range);
     if (!selectionRange) return null;
+    const view = this.findSelectedForRange(range);
+    console.assert(view);
 
+    this.editor.changeSelection((selection) =>
+      selection.addRange(selectionRange)
+    );
+    return view;
+  }
+  sbSelectAtBoundary(part, atStart) {
+    const node = part ? part.node : this.source;
+    const range = withDo(node.range[atStart ? 0 : 1], (p) => [p, p]);
     return {
-      sourceRange,
-      rect: edgeForRange(selectionRange, true),
-      selectionRange,
+      view: this.sbSelectRange(range),
+      range,
     };
-  }
-  sbCursorEntryPositions() {
-    const cursorPoints = [];
-    const nestedElements = this._getNestedContentElements(this, [], [], true);
-    let start = null;
-    let rangeStart = this.range[0];
-    for (const end of [...nestedElements, null]) {
-      const range = document.createRange();
-
-      if (start) range.setStartAfter(start);
-      else {
-        start = this.deepChild(this, true);
-        range.setStartBefore(start);
-      }
-
-      if (end) range.setEndBefore(end);
-      else range.setEndAfter(this.deepChild(this, false));
-
-      let rangeEnd = rangeStart + range.toString().length;
-
-      for (const atStart of [true, false]) {
-        const r = range.cloneRange();
-        r.collapse(atStart);
-        cursorPoints.push({
-          rect: edgeForRange(r, atStart),
-          selectionRange: r,
-          sourceRange: withDo(atStart ? rangeStart : rangeEnd, (p) => [p, p]),
-        });
-      }
-
-      start = end;
-      rangeStart = rangeEnd;
-      // if we have a nested element, skip over it
-      if (end) rangeStart += end.sourceString?.length ?? 0;
-    }
-    return cursorPoints;
-  }
-  sbSelectPosition({ selectionRange: r, sourceRange }) {
-    this.editor.changeSelection((selection) => selection.addRange(r));
-    const { view, sourceRange: computed } = this._rangeForSelection(r);
-    return { view, sourceRange: sourceRange ?? computed };
   }
   sbIsMoveAtBoundary(delta) {
     return !this.findSelectedForRange(
       withDo(this.editor.selection.range[0] + delta, (p) => [p, p])
     );
-  }
-  sbCurrentPositionRect() {
-    return edgeForRange(getSelection(), true);
   }
 }

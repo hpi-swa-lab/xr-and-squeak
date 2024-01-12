@@ -409,14 +409,14 @@ export class Editor extends HTMLElement {
       return this.selection.deselect();
 
     const selection = getSelection();
-    // no deselect -- this typically means that we are currently changing
+    // no selection -- this typically means that we are in the process of changing selections
     if (selection.type === "None") return;
 
     const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
     if (shard?.editor !== this) return this.selection.deselect();
 
-    const { selectionRange, view, rect } = shard._extractSelectionRange() ?? {};
-    this.selection.informChange(view, selectionRange, rect);
+    const { selectionRange, view } = shard._extractSelectionRange() ?? {};
+    this.selection.informChange(view, selectionRange);
   }
 
   selectRange(start, end, scrollIntoView = true) {
