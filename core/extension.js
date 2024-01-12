@@ -1,6 +1,6 @@
 import { exec, rangeEqual, sequenceMatch } from "../utils.js";
 
-class StickyReplacementRemoved extends Error {}
+export class StickyReplacementRemoved extends Error {}
 
 // An extension groups a set of functionality, such as syntax highlighting,
 // shortcuts, or key modifiers. Extensions are only instantiated once. They
@@ -143,18 +143,12 @@ export class Extension {
     return this;
   }
 
-  instance() {
-    return new ExtensionInstance(this);
+  instance(concreteClass) {
+    return new concreteClass(this);
   }
 }
 
-// An "instance" of an Extension that holds all data of an extension that
-// is needed per editor.
-class ExtensionInstance {
-  attachedDataPerTrigger = new Map();
-  queuedUpdates = [];
-  widgets = [];
-
+export class ExtensionInstance {
   constructor(extension) {
     this.extension = extension;
   }
@@ -193,63 +187,6 @@ class ExtensionInstance {
     this.ensureReplacement(node, "sb-hidden");
   }
 
-  ensureReplacement(node, tag, props) {
-    console.assert(this.processingTrigger === "replacement");
-
-    node.viewsDo((view) => {
-      // FIXME does this make sense? it prevents creation of replacements
-      // for nodes whose weakrefs have not been collected yet
-      if (!view.isConnected) return;
-
-      if (!view.isReplacementAllowed(tag)) return;
-
-      if (this._recordReplacementsOnly) {
-        if (view.tagName.toLowerCase() === tag) {
-          this.newReplacements.add(view);
-        } else {
-          const replacement = [...this.currentReplacements].find(
-            (r) => r.source === node && !r.isConnected
-          );
-          if (replacement) this.newReplacements.add(replacement);
-        }
-        return;
-      }
-
-      let replacement;
-      if (view.tagName.toLowerCase() === tag) {
-        // already exists, update
-        view.source = node;
-        replacement = view;
-        Object.assign(replacement, props ?? {});
-        view.update(node);
-      } else {
-        replacement = [...this.currentReplacements].find(
-          (r) => r.source === node && !r.isConnected
-        );
-        if (replacement) {
-          // existed just now but got unmounted, remount
-          view.replaceWith(replacement);
-          Object.assign(replacement, props ?? {});
-          replacement.update(node);
-          node._views.remove(view);
-          console.assert(node._views.includes(replacement));
-        } else {
-          // does not exist yet, create
-          replacement = document.createElement(tag);
-          replacement.source = node;
-          Object.assign(replacement, props ?? {});
-          replacement.init(node);
-          replacement.update(node);
-          view.replaceWith(replacement);
-          node._views.remove(view);
-          node._views.push(replacement);
-        }
-      }
-
-      this.newReplacements.add(replacement);
-    });
-  }
-
   applySyntaxHighlighting(node, ...cls) {
     this.ensureClass(node, ...cls);
   }
@@ -265,24 +202,6 @@ class ExtensionInstance {
         for (const c of cls) v.classList.remove(c);
       }
     );
-  }
-
-  attachData(node, identifier, add, remove, update = null) {
-    node.viewsDo((view) => {
-      const hash = `${view.hash}:${identifier}`;
-      if (!this.currentAttachedData.has(hash)) {
-        const customData = add(view);
-        update?.(view, node, customData);
-        this.newAttachedData.set(hash, {
-          remove: (data) => remove(view, data),
-          customData,
-        });
-      } else {
-        const current = this.currentAttachedData.get(hash);
-        this.newAttachedData.set(hash, current);
-        update?.(view, node, current.customData);
-      }
-    });
   }
 
   get currentlyProcessingTrigger() {
@@ -411,32 +330,6 @@ class ExtensionInstance {
     }
   }
 
-  _recordReplacementsOnly = false;
-
-  _processStickyReplacements(node) {
-    try {
-      this.processingTrigger = "replacement";
-      this._recordReplacementsOnly = true;
-      node.root.allNodesDo((node) => this.runQueries("replacement", node));
-
-      for (const view of this.currentReplacements) {
-        if (!this.newReplacements.has(view) && view.isSticky) {
-          throw new StickyReplacementRemoved();
-        }
-      }
-    } catch (e) {
-      if (e instanceof StickyReplacementRemoved) {
-        return false;
-      } else {
-        throw e;
-      }
-    } finally {
-      this._recordReplacementsOnly = false;
-      this.processingTrigger = null;
-    }
-    return true;
-  }
-
   registerShortcut(node, identifier, callback) {
     if (identifier === this.currentShortcut) {
       callback(node, this.currentShortcutView, this);
@@ -465,10 +358,6 @@ class ExtensionInstance {
     }
   }
 
-  addSuggestions(node, suggestions) {
-    node.editor.addSuggestions(suggestions);
-  }
-
   addSuggestionsAndFilter(node, candidates) {
     const query = node.text.toLowerCase();
     const exactMatches = candidates
@@ -494,4 +383,10 @@ class ExtensionInstance {
   setData(key, value) {
     this._data.set(key, value);
   }
+
+  // subclassResponsibility
+  ensureReplacement(node, tag, props) {}
+  attachData(node, identifier, add, remove, update = null) {}
+  processStickyReplacements(node) {}
+  addSuggestions(node, suggestions) {}
 }

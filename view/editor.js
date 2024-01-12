@@ -14,6 +14,7 @@ import { Shard } from "./shard.js";
 import { languageFor } from "../core/languages.js";
 import {} from "./suggestions.js";
 import { SBSelection } from "../core/focus.js";
+import { SandblocksExtensionInstance } from "./extension-instance.js";
 
 // An Editor manages the view for a single model.
 //
@@ -239,8 +240,7 @@ export class Editor extends HTMLElement {
 
     let mayCommit = true;
     this.extensionsDo(
-      (e) =>
-        (mayCommit = mayCommit && e._processStickyReplacements(this.source))
+      (e) => (mayCommit = mayCommit && e.processStickyReplacements(this.source))
     );
     if (!mayCommit) {
       tx.rollback();
@@ -384,7 +384,9 @@ export class Editor extends HTMLElement {
 
     this.appendChild(this.createShardFor(root));
 
-    this.extensionInstances = extensions.map((e) => e.instance());
+    this.extensionInstances = extensions.map((e) =>
+      e.instance(SandblocksExtensionInstance)
+    );
     this.extensionsDo((e) => e.process(["extensionConnected"], this.source));
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     this.extensionsDo((e) => e.process(["always"], this.source));

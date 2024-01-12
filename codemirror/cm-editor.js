@@ -34,6 +34,10 @@ customElements.define(
     lastExtensions = null;
     initializing = false;
 
+    createShardFor(node) {
+      // TODO
+    }
+
     attributeChangedCallback(name, oldValue, newValue) {
       const text = this.getAttribute("text");
       const language = this.getAttribute("language");
