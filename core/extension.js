@@ -308,7 +308,7 @@ export class ExtensionInstance {
     if (trigger === "replacement") {
       for (const view of this.currentReplacements) {
         if (!this.newReplacements.has(view)) {
-          view.destroy();
+          view.destroy(this);
         }
       }
       this.currentReplacements = this.newReplacements;

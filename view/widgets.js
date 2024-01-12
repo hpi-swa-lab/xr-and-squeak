@@ -15,10 +15,10 @@ export const button = (label, onclick, autofocus) =>
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
 export const shard = (node) =>
-  h("sb-shard", { initNode: [node], key: node.id });
+  h(node.editor.shardTag, { initNode: [node], key: node.id });
 export const shardList = (list) => {
   const node = new SBList(list);
-  return h("sb-shard", { initNode: [node], key: node.id });
+  return h(node.editor.shardTag, { initNode: [node], key: node.id });
 };
 export const icon = (name) =>
   h("span", { class: "material-symbols-outlined" }, name);
@@ -156,10 +156,10 @@ export class Replacement extends Widget {
     // subclasses may perform initialization here, such as creating shards
   }
 
-  destroy() {
+  destroy(e) {
     // TODO reuse shards instead of re-creating the entire subtree by
     // passing a map of node=>view to toHTML
-    this.replaceWith(this.source.toHTML());
+    e.destroyReplacement(this)
   }
 
   createShard(locator) {

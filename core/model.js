@@ -162,6 +162,7 @@ class SBNode {
   }
 
   get editor() {
+    if (this.root._editor) return this.root._editor;
     let editor = null;
     this.root.viewsDo((view) => !editor && (editor = view.editor));
     return editor;
