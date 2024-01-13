@@ -186,7 +186,64 @@ export class Replacement extends Widget {
   insertNode(node, index) {}
 }
 
-customElements.define("sb-hidden", class extends Replacement {});
+// Define a replacement by providing a Preact component
+// instead of just the name of a custom element. Note that
+// this function will define a custom element for you.
+//
+// The component receives the node and the replacement as props.
+export function ensureReplacementPreact(
+  extension,
+  node,
+  tag,
+  component,
+  props
+) {
+  if (!customElements.get(tag)) {
+    customElements.define(
+      tag,
+      class extends Replacement {
+        update(node) {
+          this.render(
+            h(this.component, { node, replacement: this, ...this.props })
+          );
+        }
+      }
+    );
+  }
+  extension.ensureReplacement(node, tag, { ...props, component });
+}
+
+// Define a widget by providing a Preact component.
+// You may either provide a shouldReRender function that is called
+// whenever a trigger is processed and should return true, if we should
+// re-render. Alternatively, if you do not provide a shouldReRender function,
+// the component will only be rendered once, when it is first connected.
+export function createWidgetPreact(
+  extension,
+  tag,
+  component,
+  shouldReRender = null
+) {
+  if (!customElements.get(tag)) {
+    customElements.define(
+      tag,
+      class extends Widget {
+        connectedCallback() {
+          super.connectedCallback();
+          if (!shouldReRender) this.updateView({});
+        }
+        noteProcessed(trigger, node) {
+          if (shouldReRender?.(trigger, node))
+            this.updateView({ trigger, node });
+        }
+        updateView(props) {
+          this.render(h(component, { ...props, widget: this }));
+        }
+      }
+    );
+  }
+  return extension.createWidget(tag);
+}
 
 // An alternative to https://github.com/preactjs/preact-custom-element
 // PreactCustomElement works by copying slotted nodes into the VDOM.
@@ -215,3 +272,6 @@ export function registerPreactElement(name, preactComponent) {
     }
   );
 }
+
+// an empty replacement that can we use to hide elements
+customElements.define("sb-hidden", class extends Replacement {});
