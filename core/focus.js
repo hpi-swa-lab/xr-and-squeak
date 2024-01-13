@@ -30,7 +30,7 @@ function nodeEditableForPart(node) {
   return orParentThat(node, (p) => nodeIsEditable(p));
 }
 
-function followingEditablePart(node, direction) {
+export function followingEditablePart(node, direction) {
   const currentEditable = nodeEditableForPart(node);
   do {
     node = direction > 0 ? nextNodePreOrder(node) : previousNodePreOrder(node);
@@ -120,13 +120,15 @@ export class SBSelection extends EventTarget {
       if (best) return best;
     }
 
-    debugger;
-    return best;
+    console.assert(false, "no view found for range, return any?", newRange);
   }
 
   moveToNext(editor, delta) {
     let node = followingEditablePart(
-      this.viewForMove(editor, rangeShift(this.range, delta)),
+      this.viewForMove(
+        editor,
+        this.range ? rangeShift(this.range, delta) : null
+      ),
       delta
     );
     if (!node) return;
@@ -162,7 +164,10 @@ export class SBSelection extends EventTarget {
 
 // mark this element as editable and subscribe to key events to check
 // whether a requested cursor move hit the element's boundary.
+// For preact, use with `h("input", { ref: markAsEditableElement })`.
 export function markAsEditableElement(element) {
+  if (element.getAttribute("sb-editable")) return;
+
   element.setAttribute("sb-editable", "true");
   element.addEventListener("keydown", handleKeyDown.bind(element));
 
@@ -237,4 +242,7 @@ function _markInput(element) {
     const position = element.selectionStart;
     return delta > 0 ? position === element.value.length : position === 0;
   };
+  element.addEventListener("focus", () =>
+    parentWithTag(element, "SB-EDITOR").selection.informChange(element, null)
+  );
 }

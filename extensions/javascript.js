@@ -128,13 +128,9 @@ customElements.define(
 customElements.define(
   "sb-text-entry-test",
   class extends Widget {
-    ranges = [[0, 0]];
     connectedCallback() {
       super.connectedCallback();
-      const input = document.createElement("input");
-      markAsEditableElement(input);
-      this.appendChild(input);
-      // this.render( h("input", { "sb-editable": true, ref: (e) => (e.sbRanges = this.ranges) }));
+      this.render(h("input", { ref: markAsEditableElement }));
     }
   }
 );

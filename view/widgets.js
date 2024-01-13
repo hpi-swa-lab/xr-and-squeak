@@ -155,6 +155,10 @@ export class Replacement extends Widget {
     return this.source.range;
   }
 
+  get node() {
+    return this.source;
+  }
+
   init(source) {
     // subclasses may perform initialization here, such as creating shards
   }
@@ -162,7 +166,7 @@ export class Replacement extends Widget {
   destroy(e) {
     // TODO reuse shards instead of re-creating the entire subtree by
     // passing a map of node=>view to toHTML
-    e.destroyReplacement(this)
+    e.destroyReplacement(this);
   }
 
   createShard(locator) {

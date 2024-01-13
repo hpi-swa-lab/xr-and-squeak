@@ -4,10 +4,7 @@ import {
   findChange,
   getSelection,
   last,
-  orParentThat,
   parentWithTag,
-  rangeEqual,
-  rectDistance,
 } from "../utils.js";
 import { Block, Text, ViewList } from "./elements.js";
 import { Shard } from "./shard.js";
@@ -75,6 +72,10 @@ export class Editor extends HTMLElement {
   // may be set by external parties to provide e.g. a file path or similar to
   // extensions that are coded specifically against that external party
   context = null;
+
+  get shardTag() {
+    return "sb-shard";
+  }
 
   extensionInstances = [];
 
@@ -158,6 +159,8 @@ export class Editor extends HTMLElement {
       text,
       this.selectionRange[1] - range[0]
     );
+    if (!change) return;
+
     change.from += range[0];
     change.to += range[0];
     change.selectionRange = selectionRange;
@@ -417,6 +420,15 @@ export class Editor extends HTMLElement {
 
     const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
     if (shard?.editor !== this) return this.selection.deselect();
+
+    // is our selection an element that is neither a view itself nor has any
+    // child views?
+    if (
+      !selection.anchorNode.range &&
+      selection.anchorNode instanceof window.Element &&
+      [...selection.anchorNode.children].every((c) => !c.range)
+    )
+      return this.selection.deselect();
 
     const { selectionRange, view } = shard._extractSelectionRange() ?? {};
     this.selection.informChange(view ?? shard, selectionRange);
