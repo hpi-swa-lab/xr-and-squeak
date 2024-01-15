@@ -2,7 +2,7 @@ import { Extension } from "../core/extension.js";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { mapSeparated } from "../utils.js";
 import { button, ensureReplacementPreact, h, shard } from "../view/widgets.js";
-import { complete } from "./copilot.js";
+import { chat, complete } from "./copilot.js";
 
 function selectorAndArgs(node) {
   return {
@@ -210,6 +210,7 @@ export const RAGApp = () => {
   });
 
   const [generated, setGenerated] = useState([]);
+  const [useCompleteAPI, setUseCompleteAPI] = useState(false);
 
   // save in localstorage
   useEffect(() => {
@@ -229,13 +230,20 @@ export const RAGApp = () => {
 
       setGenerated(
         await Promise.all(
-          all.map((permutation) => {
+          all.map(async (permutation) => {
             const prompt = permutation.map((p) => p.text).join("\n\n");
             const title = permutation.map((p) => p.title).join(" - ");
-            return complete(prompt, "").then((r) => ({
-              title,
-              response: r.choices[0].text,
-            }));
+            if (!useCompleteAPI)
+              return {
+                title,
+                response: (await chat([{ role: "user", content: prompt }]))
+                  .choices[0].message.content,
+              };
+            else
+              return {
+                title,
+                response: (await complete(prompt, "")).choices[0].text,
+              };
           })
         )
       );

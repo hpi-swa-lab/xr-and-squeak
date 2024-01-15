@@ -141,7 +141,6 @@ export class Shard extends HTMLElement {
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
       if (mutations.some((m) => m.type === "attributes")) return;
-      console.assert(!mutations.some((m) => m.type === "attributes"));
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
       ToggleableMutationObserver.ignoreMutation(() => {
