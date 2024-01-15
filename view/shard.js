@@ -289,7 +289,10 @@ export class Shard extends HTMLElement {
       atStart = false;
     }
     if (offset >= node.children.length) atStart = false;
-    console.assert(child, "cursor is between two children that are not views");
+    console.assert(
+      child.range,
+      "cursor is between two children that are not views"
+    );
     return [child, atStart ? child.range[0] : child.range[1]];
   }
 

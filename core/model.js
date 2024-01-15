@@ -464,6 +464,16 @@ class SBNode {
       child.cleanDiffData();
     }
   }
+
+  // queries
+  query(string, extract = null) {
+    const res = this.language.query(this, string, extract);
+    return res ? Object.fromEntries(res) : null;
+  }
+
+  matches(string, extract = null) {
+    return this.query(string, extract) !== null;
+  }
 }
 
 const structureHashText = hash("text");

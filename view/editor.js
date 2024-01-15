@@ -12,6 +12,7 @@ import { languageFor } from "../core/languages.js";
 import {} from "./suggestions.js";
 import { SBSelection } from "../core/focus.js";
 import { SandblocksExtensionInstance } from "./extension-instance.js";
+import { setConfig } from "../core/config.js";
 
 // An Editor manages the view for a single model.
 //
@@ -25,7 +26,10 @@ export class Editor extends HTMLElement {
     this.keyMap = map;
   }
 
-  static init() {
+  static init(baseUrl = null) {
+    baseUrl ??= new URL(".", location.href).toString();
+    setConfig({ baseUrl });
+
     Extension.clearRegistry();
 
     this.registerKeyMap({
@@ -427,6 +431,11 @@ export class Editor extends HTMLElement {
       !selection.anchorNode.range &&
       selection.anchorNode instanceof window.Element &&
       [...selection.anchorNode.children].every((c) => !c.range)
+    )
+      return this.selection.deselect();
+    if (
+      selection.anchorNode instanceof window.Text &&
+      !selection.anchorNode.parentNode.range
     )
       return this.selection.deselect();
 

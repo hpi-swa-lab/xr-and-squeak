@@ -14,7 +14,15 @@ export class TreeSitterLanguage extends SBLanguage {
   _readyPromise = null;
   tsLanguage = null;
 
-  constructor({ repo, branch, path, extensions, name, defaultExtensions }) {
+  constructor({
+    repo,
+    branch,
+    path,
+    extensions,
+    name,
+    defaultExtensions,
+    parseConfig,
+  }) {
     super({
       name: name ?? repo.match(/.+\/tree-sitter-(.+)/)[1],
       extensions,
@@ -24,6 +32,13 @@ export class TreeSitterLanguage extends SBLanguage {
     this.repo = repo;
     this.branch = branch ?? "master";
     this.path = path ?? "/";
+    this.parseConfig = Object.assign(parseConfig ?? {}, {
+      matchPrefix: parseConfig?.matchPrefix ?? "$",
+      unwrapExpression:
+        parseConfig?.unwrapExpression ?? ((n) => n.childBlock(0)),
+      parseExpressionPrefix: parseConfig?.parseExpressionPrefix ?? "",
+      parseExpressionSuffix: parseConfig?.parseExpressionSuffix ?? "",
+    });
   }
 
   // init API
@@ -106,6 +121,17 @@ export class TreeSitterLanguage extends SBLanguage {
   destroyRoot(root) {
     root._tree.delete();
     delete root._tree;
+  }
+
+  query(node, string, extract = null) {
+    return TSQuery.get(string, this, extract).match(node);
+  }
+
+  parseExpression(string) {
+    const source = `${this.parseConfig.parseExpressionPrefix}${string}${this.parseConfig.parseExpressionSuffix}`;
+    const root = this.parse(source);
+    this.destroyRoot(root);
+    return this.parseConfig.unwrapExpression(root);
   }
 
   // node construction
@@ -534,5 +560,82 @@ export class TreeSitterComposedLanguage extends SBLanguage {
     }
 
     return newRoot;
+  }
+}
+
+export class TSQuery {
+  static cache = new Map();
+  static get(template, language, extract = null) {
+    const key = `${template}::${language.name}`;
+    if (!this.cache.has(key))
+      this.cache.set(key, new TSQuery(template, language, extract));
+    return this.cache.get(key);
+  }
+
+  constructor(template, language, extract = null) {
+    this.text = template.replace(/\$/g, language.parseConfig.matchPrefix);
+    const root = language.parseExpression(this.text);
+    this.template = extract?.(root) ?? root;
+    this.language = language;
+  }
+
+  match(node) {
+    const captures = [];
+    if (this._match(this.template, node, captures)) return captures;
+    return null;
+  }
+
+  get multiPrefix() {
+    return this.prefix.repeat(3);
+  }
+
+  get prefix() {
+    return this.language.parseConfig.matchPrefix;
+  }
+
+  _match(a, b, captures) {
+    const isTemplate = a.text.startsWith(this.prefix);
+    if (isTemplate) {
+      captures.push([a.text.slice(1), b]);
+      return true;
+    }
+    if (!a.isText && !b.isText && a.type === b.type) {
+      const leading = a.childNodes.findIndex((c) =>
+        c.text.startsWith(this.multiPrefix)
+      );
+      // if we have a multi match for children, match the prefix and suffix
+      // of the template (if any), then collect the remaining children
+      if (leading >= 0) {
+        for (let i = 0; i < leading; i++) {
+          if (!this._match(a.childNodes[i], b.childNodes[i], captures))
+            return false;
+        }
+        let trailing = a.childNodes.length - leading - 1;
+        for (let i = 0; i < trailing; i++) {
+          if (
+            !this._match(
+              a.childNodes[a.childNodes.length - i - 1],
+              b.childNodes[b.childNodes.length - i - 1],
+              captures
+            )
+          )
+            return false;
+        }
+        captures.push([
+          a.childNodes[leading].text.slice(this.multiPrefix.length),
+          b.childNodes.slice(leading, -trailing).filter((n) => n.named),
+        ]);
+        return true;
+      }
+
+      if (a.childNodes.length !== b.childNodes.length) return false;
+      for (let i = 0; i < a.childNodes.length; i++) {
+        if (!this._match(a.childNodes[i], b.childNodes[i], captures))
+          return false;
+      }
+      return true;
+    }
+    if (a.isText && b.isText && a.text === b.text) return true;
+    return false;
   }
 }

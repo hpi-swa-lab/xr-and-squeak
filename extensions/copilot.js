@@ -26,7 +26,7 @@ async function chat(messages) {
   return parsed;
 }
 
-async function complete(prefix, suffix) {
+export async function complete(prefix, suffix) {
   const key = localStorage.openAIKey ?? window.prompt("Key?");
   localStorage.openAIKey = key;
 

@@ -5,7 +5,7 @@
 - [ ] typeover detection: wrap {} with {
 - [ ] proceed with save, even if formatting fails (but notify)
 - [ ] editor.selectionRange in the presence of a watch
-- [ ] shard focus and caret movement
+- [x] shard focus and caret movement
 - [ ] don't error on malformed replacement source
 - [ ] clear search field when refocusing
 
