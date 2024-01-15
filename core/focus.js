@@ -11,7 +11,6 @@ import {
 // sbSelectAtBoundary(part?, atStart): {view: View, range}
 // sbIsMoveAtBoundary(delta): boolean
 // sbCandidateForRange(range): {view, rect} | null
-// [?] sbCursorPositionForGapBetween(a, b)
 
 function nodeIsEditablePart(node) {
   return (
@@ -94,7 +93,7 @@ export class SBSelection extends EventTarget {
     if (this.view && this.view.isConnected) return this.view;
     console.assert(newRange);
 
-    for (const editable of editor.allEditableElements) {
+    for (const editable of getAllEditableElements(editor)) {
       if (editable.sbSelectRange(newRange)) return editable;
     }
 
@@ -102,7 +101,7 @@ export class SBSelection extends EventTarget {
       let best = null;
       let bestPixelDist = Infinity;
       let bestIndexDist = Infinity;
-      for (const editable of editor.allEditableElements) {
+      for (const editable of getAllEditableElements(editor)) {
         const info = editable.sbCandidateForRange(newRange);
         if (info) {
           const pixelDist = rectDistance(info.rect, this.lastRect);
@@ -198,10 +197,18 @@ function handleKeyDown(e) {
   }
 }
 
+function getEditor(el) {
+  return orParentThat(el, e => e.sbIsEditor)
+}
+
+function getAllEditableElements(el) {
+  return getEditor(el).querySelectorAll("[sb-editable]")
+}
+
 // TODO handle shift-selection and ctrl move
 function handleMove(e, delta) {
   if (this.sbIsMoveAtBoundary(delta)) {
-    const editor = parentWithTag(this, "SB-EDITOR");
+    const editor = getEditor(this);
     editor.selection.moveToNext(editor, delta);
     e.preventDefault();
   }
@@ -211,7 +218,7 @@ function handleMove(e, delta) {
 function handleDelete(e) {
   const isDelete = e.key === "Delete";
   if (this.sbIsMoveAtBoundary(isDelete ? 1 : -1)) {
-    const editor = parentWithTag(this, "SB-EDITOR");
+    const editor = getEditor(this);
     const current = editor.selection.range[0];
     const pos = isDelete ? current : current - 1;
     if (pos < 0) return;
@@ -243,6 +250,6 @@ function _markInput(element) {
     return delta > 0 ? position === element.value.length : position === 0;
   };
   element.addEventListener("focus", () =>
-    parentWithTag(element, "SB-EDITOR").selection.informChange(element, null)
+    getEditor(element).selection.informChange(element, null)
   );
 }

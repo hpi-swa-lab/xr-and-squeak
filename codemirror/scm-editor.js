@@ -1,5 +1,6 @@
 import { Extension, ExtensionInstance } from "../core/extension.js";
 import { languageFor } from "../core/languages.js";
+import { markAsEditableElement, SBSelection } from "../core/focus.js";
 
 import {
   parentWithTag,
@@ -73,6 +74,9 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
 
 
 export class SCMShard extends HTMLElement {
+  connectedCallback() {
+    markAsEditableElement(this)
+  }
   
   get editor() {
     return parentWithTag(this, "SCM-EDITOR");
@@ -97,7 +101,6 @@ export class SCMShard extends HTMLElement {
         this.livelyCM.style.height = "100%"
       }
       
-      
       this.livelyCM.addEventListener("change", (e) => {
         if (!this.editor || this.nextSource === this.livelyCM.value) return;
         this.editor.replaceTextFromTyping({
@@ -113,6 +116,21 @@ export class SCMShard extends HTMLElement {
     this.livelyCM.value = node.sourceString
   }  
   
+  sbIsMoveAtBoundary(delta) {
+    throw "todo"
+  }
+  sbSelectRange([start, end]){
+    throw ": View | null"
+  }
+  sbSelectAtBoundary(part, atStart){throw ": {view: View, range}"}
+  sbIsMoveAtBoundary(delta){
+    const cm = this.livelyCM.editor
+    // is the next (delta>0) or previous (delta<0) a marker widget?
+    return cm.findMarksAt(cm.posFromIndex(cm.indexFromPos(cm.getCursor("from")) + delta)).some(m => !!m.replacedWith)
+  }
+  sbCandidateForRange(range) {
+    throw ": {view, rect} | null"
+  }
 }
 
 customElements.define("scm-shard", SCMShard);
@@ -128,15 +146,17 @@ export class SCMEditor extends HTMLElement {
 
       this.extensions = [];
 
-     
       this.lastText = null;
       this.lastLanguage = null;
       this.lastExtensions = null;
       this.initializing = false;
+      this.selection = new SBSelection()
     }
 
     static observedAttributes = ["text", "language", "extensions"];
 
+    get sbIsEditor() { return true }
+    
     get shardTag() {
       return "scm-shard"
     }
