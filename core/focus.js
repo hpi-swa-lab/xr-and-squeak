@@ -17,6 +17,7 @@ function nodeIsEditablePart(node) {
     node instanceof Element &&
     (node.tagName === "SB-TEXT" ||
       // nodeIsEditable(node) ||
+      !!node.getAttribute("role") === "presentation" ||
       !!node.getAttribute("sb-editable-part"))
   );
 }
@@ -89,6 +90,14 @@ export class SBSelection extends EventTarget {
 
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
+      
+      const cm = this.view.livelyCM.editor
+    const cursor = cm.getCursor("from")
+    const el = CodeMirror.posToDOM(cm, cursor)
+    // lively.showElement(el.node.parentNode)
+      const view = el.node.parentNode
+      console.log(view)
+      return view;
 
     if (this.view && this.view.isConnected) return this.view;
     console.assert(newRange);
@@ -144,7 +153,7 @@ export class SBSelection extends EventTarget {
   }
 
   deselect() {
-    // this.informChange(null, null, null);
+    // this.informChange(null, null);
   }
 
   informChange(view, range) {
@@ -168,14 +177,15 @@ export function markAsEditableElement(element) {
   if (element.getAttribute("sb-editable")) return;
 
   element.setAttribute("sb-editable", "true");
-  element.addEventListener("keydown", handleKeyDown.bind(element));
-
+  
   switch (element.tagName) {
     case "INPUT":
+      element.addEventListener("keydown", handleKeyDown.bind(element));
       _markInput(element);
       break;
     case "SB-SHARD":
       // all implemented in the shard class
+      element.addEventListener("keydown", handleKeyDown.bind(element));
       break;
     default:
       break;

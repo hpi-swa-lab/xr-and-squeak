@@ -107,7 +107,20 @@ export class SCMShard extends HTMLElement {
           range: this.range,
           text: this.livelyCM.value,
         });
-      });      
+      });
+
+      this.livelyCM.editor.on("beforeSelectionChange", (cm, e) => {
+        if (!this.editor || e.origin !== '+move') return;
+        const delta = Math.sign(cm.indexFromPos(e.ranges[0].head) - cm.indexFromPos(cm.getCursor("from")))
+        if (this.sbIsMoveAtBoundary(delta)) {
+          this.editor.selection.moveToNext(this.editor, delta);
+        } else {
+          console.log(this)
+          this.editor.selection.informChange(this, 
+                                             [cm.indexFromPos(cm.getCursor("from")), cm.indexFromPos(cm.getCursor("to"))]);
+        }
+      });
+      
       this.appendChild(this.livelyCM)
     }
     lively.showElement(this.livelyCM).innnerHTML = "update"
@@ -116,18 +129,56 @@ export class SCMShard extends HTMLElement {
     this.livelyCM.value = node.sourceString
   }  
   
-  sbIsMoveAtBoundary(delta) {
-    throw "todo"
+  sbCurrentFocusView() {
+    const cm = this.livelyCM.editor
+    const cursor = cm.getCursor("from")
+    const el = CodeMirror.posToDOM(cm, cursor)
+    return el.node.parentNode
+    
+    // here we use CodeMirror4 internals
+    const lineView = cm.display.view[cursor.line]
+    if (!lineView) return null;
+    const map = lineView.measure.map
+    for(let i=0; i < map.length; i += 3 ) {
+      let from = map[i + 0]
+      let to = map[i + 1]
+      let node = map[i + 2]
+      
+      if (cursor.ch >= from  && cursor.ch <= to) {
+        return node.parentElement
+      } 
+    }
+    return null
   }
+  
   sbSelectRange([start, end]){
-    throw ": View | null"
+    // #TODO currently we are ignoring end 
+    const cm = this.livelyCM.editor
+    const markWithWidget = cm.findMarksAt(cm.posFromIndex(start)).some(m => !!m.replacedWith)
+    if (markWithWidget) {
+      return null  // we cannot select ourself 
+    }
+    return this
   }
-  sbSelectAtBoundary(part, atStart){throw ": {view: View, range}"}
+  
+  sbSelectAtBoundary(part, atStart){
+    debugger
+    throw ": {view: View, range}"
+  
+  }
+  
   sbIsMoveAtBoundary(delta){
     const cm = this.livelyCM.editor
     // is the next (delta>0) or previous (delta<0) a marker widget?
-    return cm.findMarksAt(cm.posFromIndex(cm.indexFromPos(cm.getCursor("from")) + delta)).some(m => !!m.replacedWith)
+    let cursorPos = cm.indexFromPos(cm.getCursor("from"))
+    let isMoveAtBoundary = cm.findMarksAt(cm.posFromIndex(cursorPos + delta)).some(m => !!m.replacedWith)
+    console.log(isMoveAtBoundary, cm.posFromIndex(cursorPos + delta), delta)
+    if (isMoveAtBoundary) {
+      lively.showElement(this).innerHTML = "MoveBound"
+    }
+    return !!isMoveAtBoundary
   }
+  
   sbCandidateForRange(range) {
     throw ": {view, rect} | null"
   }
