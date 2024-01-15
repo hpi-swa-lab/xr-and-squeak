@@ -10,9 +10,10 @@ import {
   editor,
   h,
   shardList,
+  ensureReplacementPreact,
+  createWidgetPreact,
 } from "../view/widgets.js";
 import {} from "../view/widget-utils.js";
-import { SBList } from "../core/model.js";
 import { markAsEditableElement } from "../core/focus.js";
 
 customElements.define(
@@ -92,60 +93,14 @@ customElements.define(
   }
 );
 
-customElements.define(
-  "sb-js-lexical-declaration-smiley",
-  class extends Replacement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `<slot></slot>`;
-    }
-
-    update(source) {
-      this.render(
-        h(
-          "span",
-          { style: "border: 1px solid green" },
-          h(
-            "span",
-            {
-              onclick: () =>
-                source
-                  .childNode(0)
-                  .replaceWith(
-                    source.childNode(0).text === "let" ? "const" : "let"
-                  ),
-            },
-            source.childNode(0).text === "let" ? "😀" : "😇"
-          ),
-          shardList(source.children.slice(1))
-        )
-      );
-    }
-  }
-);
-
-customElements.define(
-  "sb-text-entry-test",
-  class extends Widget {
-    ranges = [[0, 0]];
-    connectedCallback() {
-      super.connectedCallback();
-      const input = document.createElement("input");
-      markAsEditableElement(input);
-      this.appendChild(input);
-      // this.render( h("input", { "sb-editable": true, ref: (e) => (e.sbRanges = this.ranges) }));
-    }
-  }
-);
 export const textEntryTest = new Extension().registerShortcut(
   "browseIt",
   (x, view, e) => {
-    console.log("browse");
-    const widget = e.createWidget("sb-text-entry-test");
-    widget.ranges = [[x.range[1], x.range[1]]];
+    const widget = createWidgetPreact(e, "sb-text-entry-test", () =>
+      h("input", { ref: markAsEditableElement })
+    );
     view.after(widget);
-    widget.focus();
+    widget.childNodes[0].focus();
   }
 );
 
@@ -190,7 +145,28 @@ export const alwaysTrue = new Extension().registerType((e) => [
 
 export const smileys = new Extension().registerReplacement((e) => [
   (x) => x.type === "lexical_declaration",
-  (x) => e.ensureReplacement(x, "sb-js-lexical-declaration-smiley"),
+  (x) =>
+    ensureReplacementPreact(
+      e,
+      x,
+      "sb-js-lexical-declaration-smiley",
+      ({ node }) => {
+        let type = node.childNode(0);
+        return h(
+          "span",
+          { style: "border: 1px solid green" },
+          h(
+            "span",
+            {
+              onclick: () =>
+                type.replaceWith(type.text === "let" ? "const" : "let"),
+            },
+            type.text === "let" ? "😀" : "😇"
+          ),
+          shardList(node.children.slice(1))
+        );
+      }
+    ),
 ]);
 
 export const highlightNode = new Extension()

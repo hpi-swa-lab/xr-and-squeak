@@ -7,22 +7,13 @@
   <body>
     <h3>Simple Javascript Demo</h3>
     <sb-editor
-      extensions="javascript:base base:base  base:identifierSuggestions editorConfig:base javascript:smileys javascript:table  javascript:colorstrings"
+      extensions="javascript:base base:base base:identifierSuggestions editorConfig:base javascript:smileys javascript:table javascript:colorstrings javascript:textEntryTest"
       text="let abc = 123
 var c = 'rgb(0,100,0)'
 var table = [[1,2],[3 + 4, 'hello']]"
       language="javascript"
     ></sb-editor>
 
-    <link href="view/editor-style.css" rel="stylesheet" />
-    <script type="module">
-      import { setConfig } from "./core/config.js";
-      import { Editor } from "./view/editor.js";
-      import { languageFor } from "./core/languages.js";
-
-      var baseDir = new URL(".", location.href).toString();
-      setConfig({ baseURL: baseDir });
-      Editor.init();
-    </script>
+    <script type="module" src="./view/init.js"></script>
   </body>
 </html>

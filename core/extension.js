@@ -170,15 +170,6 @@ export class ExtensionInstance {
     );
   }
 
-  createWidget(tag) {
-    const widget = document.createElement(tag);
-    widget.addEventListener("disconnect", (e) => {
-      this.widgets.splice(this.widgets.indexOf(widget), 1);
-    });
-    this.widgets.push(widget);
-    return widget;
-  }
-
   destroy() {
     this.widgets.forEach((w) => w.remove());
   }
@@ -382,6 +373,15 @@ export class ExtensionInstance {
 
   setData(key, value) {
     this._data.set(key, value);
+  }
+
+  createWidget(tag) {
+    const widget = document.createElement(tag);
+    widget.addEventListener("disconnect", (e) => {
+      this.widgets.splice(this.widgets.indexOf(widget), 1);
+    });
+    this.widgets.push(widget);
+    return widget;
   }
 
   // subclassResponsibility

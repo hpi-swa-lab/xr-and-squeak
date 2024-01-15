@@ -290,10 +290,15 @@ export function exec(arg, ...script) {
   for (const predicate of script) {
     let next = predicate(current);
     if (!next) return null;
+    if (_isEmptyObject(next)) return null;
     if (Array.isArray(next) && next.length < 1) return null;
     if (next !== true) current = next;
   }
   return current;
+}
+
+function _isEmptyObject(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
 }
 
 export function rangeEqual(a, b) {
@@ -302,6 +307,16 @@ export function rangeEqual(a, b) {
 
 export function rangeContains(a, b) {
   return a[0] <= b[0] && a[1] >= b[1];
+}
+
+export function rangeDistance(a, b) {
+  if (a[0] > b[1]) return a[0] - b[1];
+  else if (b[0] > a[1]) return b[0] - a[1];
+  else return 0;
+}
+
+export function rangeShift(range, delta) {
+  return [range[0] + delta, range[1] + delta];
 }
 
 export function matchesKey(e, key) {

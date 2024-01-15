@@ -8,16 +8,13 @@ import {
   rangeContains,
   orParentThat,
   matchesKey,
-  last,
-  rectDistance,
   lastDeepChild,
-  firstDeepChild,
   withDo,
   parentWithTag,
-  edgeForRange,
+  rangeDistance,
 } from "../utils.js";
-import { Block, Text } from "./elements.js";
-import { markAsEditableElement } from "../core/focus.js";
+import { Block } from "./elements.js";
+import { followingEditablePart, markAsEditableElement } from "../core/focus.js";
 
 // A Shard is a self-contained editable element.
 //
@@ -144,7 +141,6 @@ export class Shard extends HTMLElement {
     this.observer = new ToggleableMutationObserver(this, (mutations) => {
       mutations = [...mutations, ...this.observer.takeRecords()].reverse();
       if (mutations.some((m) => m.type === "attributes")) return;
-      console.assert(!mutations.some((m) => m.type === "attributes"));
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
       ToggleableMutationObserver.ignoreMutation(() => {
@@ -242,27 +238,61 @@ export class Shard extends HTMLElement {
   }
 
   _rangeForSelection(range) {
-    const selectionRange = [
-      this._indexForSelection(range.startContainer, range.startOffset),
-      this._indexForSelection(range.endContainer, range.endOffset),
-    ].sort((a, b) => a - b);
-    return { selectionRange, view: this.findSelectedForRange(selectionRange) };
+    const [view, start] = this._nodeAndIndexForSelection(
+      range.startContainer,
+      range.startOffset
+    );
+    const [_, end] = this._nodeAndIndexForSelection(
+      range.endContainer,
+      range.endOffset
+    );
+
+    const selectionRange = [start, end].sort((a, b) => a - b);
+    if (!view.node.preferForSelection) {
+      // look left and right if we got a better one that's also valid
+      for (const index of [-1, 1]) {
+        let candidate = followingEditablePart(view, index);
+        if (
+          candidate &&
+          candidate.node?.preferForSelection &&
+          candidate.shard === this &&
+          (candidate.range[0] === selectionRange[0] ||
+            candidate.range[1] === selectionRange[1])
+        ) {
+          return { selectionRange, view: candidate };
+        }
+      }
+    }
+    return { selectionRange, view };
   }
 
-  _indexForSelection(node, offset) {
-    if (node instanceof window.Text)
-      return parentWithTag(node, "SB-TEXT").range[0] + offset;
-
-    if (node.children.length < 1) {
-      console.assert(offset === 0);
-      console.assert(node.tagName === "SB-TEXT");
-      return node.range[0];
+  _nodeAndIndexForSelection(node, offset) {
+    let child;
+    // cursor in text node, return the corresponding range and offset
+    if (node instanceof window.Text) {
+      child = parentWithTag(node, "SB-TEXT");
+      return [child, child.range[0] + offset];
     }
 
-    return orParentThat(
-      node.children[clamp(offset, 0, node.children.length - 1)],
-      (n) => !!n.range
-    ).range[offset < node.children.length ? 0 : 1];
+    // cursor in an empty block or text, just return its start
+    if (node.children.length < 1) {
+      console.assert(offset === 0);
+      return [node, node.range[0]];
+    }
+
+    // cursor between two children
+    child = node.children[clamp(offset, 0, node.children.length - 1)];
+    let atStart = true;
+    if (!child.range && offset > 0) {
+      child = node.children[offset - 1];
+      atStart = false;
+    }
+    if (offset >= node.children.length) atStart = false;
+    console.assert(
+      child.range,
+      "cursor is between two children that are not views"
+    );
+    return [child, atStart ? child.range[0] : child.range[1]];
   }
 
   // combined operation to find the source string and cursor range
@@ -312,7 +342,6 @@ export class Shard extends HTMLElement {
       }
     }
 
-    console.log("EXTRACT", string, [focusOffset, anchorOffset]);
     return {
       sourceString: string,
       selectionRange: [
@@ -354,16 +383,35 @@ export class Shard extends HTMLElement {
     allViewsDo(this, (child) => {
       if (!child.node.isText) return;
       if (child.shard !== this) return;
-      const [start, end] = child.getRange();
+      const [start, end] = child.range;
       if (start <= range[0] && end >= range[1]) {
         if (
           !candidate ||
-          ((child.node.parent.named || !candidate.node.parent.named) &&
-            candidate.getRange()[1] - candidate.getRange()[0] >= end - start)
+          ((child.node.preferForSelection ||
+            !candidate.node.preferForSelection) &&
+            candidate.range[1] - candidate.range[0] >= end - start)
         )
           candidate = child;
       }
     });
+
+    return candidate;
+  }
+
+  closestElementForRange(range) {
+    let candidate = null;
+    let bestDistance = Infinity;
+
+    allViewsDo(this, (child) => {
+      if (!child.node.isText) return;
+      if (child.shard !== this) return;
+      let distance = rangeDistance(range, child.range);
+      if (distance < bestDistance) {
+        candidate = child;
+        bestDistance = distance;
+      }
+    });
+
     return candidate;
   }
 
@@ -385,26 +433,16 @@ export class Shard extends HTMLElement {
     return range;
   }
 
-  deepChild(node, first) {
-    const c = node.childNodes;
-    for (
-      let i = first ? 0 : c.length - 1;
-      first ? i < c.length : i >= 0;
-      i += first ? 1 : -1
-    ) {
-      const child = c[i];
-      if (child instanceof Text) return child;
-      if (child.isNodeView) return this.deepChild(child, first);
-    }
-  }
-
   ////////////////////////////////////
   // Selection API
   ////////////////////////////////////
   sbSelectRange(range) {
     const selectionRange = this._cursorToRange(...range);
     if (!selectionRange) return null;
-    const view = this.findSelectedForRange(range);
+    let view = this.findSelectedForRange(range);
+
+    // if we are at the very start, there may be no view
+    if (!view && range[0] === this.range[0]) view = this;
     console.assert(view);
 
     this.editor.changeSelection((selection) =>
@@ -415,14 +453,27 @@ export class Shard extends HTMLElement {
   sbSelectAtBoundary(part, atStart) {
     const node = part ? part.node : this.source;
     const range = withDo(node.range[atStart ? 0 : 1], (p) => [p, p]);
-    return {
-      view: this.sbSelectRange(range),
-      range,
-    };
+
+    const sel = document.createRange();
+    atStart ? sel.setStartBefore(part) : sel.setStartAfter(part);
+    sel.collapse(true);
+    this.editor.changeSelection((selection) => selection.addRange(sel));
+
+    return { view: part, range };
   }
   sbIsMoveAtBoundary(delta) {
-    return !this.findSelectedForRange(
-      withDo(this.editor.selection.range[0] + delta, (p) => [p, p])
-    );
+    const me = this.editor.selection.view;
+    const myRange = me.range;
+    const newPos = this.editor.selection.range[0] + delta;
+    if (rangeContains(myRange, [newPos, newPos])) return false;
+    const following = followingEditablePart(me, delta);
+    return following?.shard !== me.shard;
+  }
+  sbCandidateForRange(range) {
+    if (!rangeContains(this.range, range)) return null;
+
+    const view = this.closestElementForRange(range);
+    const rect = view?.getBoundingClientRect();
+    return view ? { view, rect, range: view.range } : null;
   }
 }

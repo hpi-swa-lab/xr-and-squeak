@@ -134,6 +134,10 @@ class SBNode {
     return this.root._sourceString.slice(...this.range);
   }
 
+  get preferForSelection() {
+    return true;
+  }
+
   updateModelAndView(text) {
     return this.language.updateModelAndView(text, this);
   }
@@ -460,6 +464,16 @@ class SBNode {
       child.cleanDiffData();
     }
   }
+
+  // queries
+  query(string, extract = null) {
+    const res = this.language.query(this, string, extract);
+    return res ? Object.fromEntries(res) : null;
+  }
+
+  matches(string, extract = null) {
+    return this.query(string, extract) !== null;
+  }
 }
 
 const structureHashText = hash("text");
@@ -494,6 +508,10 @@ export class SBText extends SBNode {
 
   get isText() {
     return true;
+  }
+
+  get preferForSelection() {
+    return this.parent?.named && this.parent.children.length === 1;
   }
 
   isWhitespace() {

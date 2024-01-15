@@ -91,6 +91,11 @@ registerLanguage(
     branch: "fd6a5a256f831f0882b435d976c9baab04fb9e2b",
     extensions: ["st"],
     defaultExtensions: ["base:identifierSuggestions"],
+    parseConfig: {
+      unwrapExpression: (n) => n.childBlock(1).childBlock(0),
+      parseExpressionPrefix: "doIt ",
+      matchPrefix: "_",
+    },
   })
 );
 

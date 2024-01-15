@@ -6,6 +6,7 @@ import { Workspace } from "./workspace.js";
 import { matchesKey } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
 import {} from "./file-project/search.js";
+import { RAGApp } from "../extensions/ragPrototype.js";
 
 const PROJECT_TYPES = {
   FileProject: {
@@ -126,6 +127,7 @@ function Sandblocks() {
         await project.open();
         setOpenProjects((p) => [...p, project]);
       }),
+      button("RAG", () => openComponentInWindow(RAGApp)),
       openProjects.map((project) =>
         project.renderItem({
           onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),

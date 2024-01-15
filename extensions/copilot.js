@@ -6,7 +6,7 @@ function getKey() {
   return key;
 }
 
-async function chat(messages) {
+export async function chat(messages) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -14,7 +14,7 @@ async function chat(messages) {
       Authorization: `Bearer ${getKey()}`,
     },
     body: JSON.stringify({
-      response_format: { type: "json_object" },
+      // response_format: { type: "json_object" },
       model: "gpt-3.5-turbo-1106",
       messages,
     }),
@@ -22,14 +22,12 @@ async function chat(messages) {
 
   const data = await res.json();
   console.log(data);
-  const parsed = JSON.parse(data.choices[0].message.content);
-  return parsed;
+  // const parsed = JSON.parse(data.choices[0].message.content);
+  // return parsed;
+  return data;
 }
 
-async function complete(prefix, suffix) {
-  const key = localStorage.openAIKey ?? window.prompt("Key?");
-  localStorage.openAIKey = key;
-
+export async function complete(prefix, suffix) {
   const res = await fetch("https://api.openai.com/v1/completions ", {
     method: "POST",
     headers: {

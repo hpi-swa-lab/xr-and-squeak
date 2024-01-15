@@ -1,8 +1,16 @@
-import { orParentThat, parentWithTag, rangeEqual } from "../utils.js";
+import {
+  orParentThat,
+  parentWithTag,
+  rangeDistance,
+  rangeEqual,
+  rangeShift,
+  rectDistance,
+} from "../utils.js";
 
 // sbSelectRange([start, end]): View | null
 // sbSelectAtBoundary(part?, atStart): {view: View, range}
 // sbIsMoveAtBoundary(delta): boolean
+// sbCandidateForRange(range): {view, rect} | null
 // [?] sbCursorPositionForGapBetween(a, b)
 
 function nodeIsEditablePart(node) {
@@ -22,10 +30,11 @@ function nodeEditableForPart(node) {
   return orParentThat(node, (p) => nodeIsEditable(p));
 }
 
-function followingEditablePart(node, direction) {
+export function followingEditablePart(node, direction) {
+  const currentEditable = nodeEditableForPart(node);
   do {
     node = direction > 0 ? nextNodePreOrder(node) : previousNodePreOrder(node);
-    if (nodeIsEditablePart(node)) return node;
+    if (nodeIsEditablePart(node) && node !== currentEditable) return node;
   } while (node);
 }
 
@@ -56,14 +65,17 @@ function previousNodePreOrder(node) {
 export class SBSelection extends EventTarget {
   range = [0, 0];
   view = null;
+  lastRect = null;
 
   // encompasses exactly the full node
   get isExact() {
-    return this.range && this.view && rangeEqual(this.range, this.view.range);
+    return (
+      this.range && this.view?.range && rangeEqual(this.range, this.view.range)
+    );
   }
 
   moveToRange(editor, targetRange, scrollIntoView = true) {
-    let node = this.viewForMove(editor);
+    let node = this.viewForMove(editor, targetRange);
     do {
       let view = nodeEditableForPart(node).sbSelectRange(targetRange);
       if (view) {
@@ -76,18 +88,49 @@ export class SBSelection extends EventTarget {
     } while (node);
   }
 
-  viewForMove(editor) {
+  viewForMove(editor, newRange = null) {
+    newRange ??= this.range;
+
     if (this.view && this.view.isConnected) return this.view;
-    console.assert(this.range);
+    console.assert(newRange);
 
     for (const editable of editor.allEditableElements) {
-      if (editable.sbSelectRange(this.range)) return editable;
+      if (editable.sbSelectRange(newRange)) return editable;
     }
-    console.assert(false);
+
+    if (this.lastRect) {
+      let best = null;
+      let bestPixelDist = Infinity;
+      let bestIndexDist = Infinity;
+      for (const editable of editor.allEditableElements) {
+        const info = editable.sbCandidateForRange(newRange);
+        if (info) {
+          const pixelDist = rectDistance(info.rect, this.lastRect);
+          const indexDist = rangeDistance(info.range, newRange);
+          if (
+            indexDist < bestIndexDist ||
+            (indexDist === bestIndexDist && pixelDist < bestPixelDist)
+          ) {
+            best = info.view;
+            bestPixelDist = pixelDist;
+            bestIndexDist = indexDist;
+          }
+        }
+      }
+      if (best) return best;
+    }
+
+    console.assert(false, "no view found for range, return any?", newRange);
   }
 
   moveToNext(editor, delta) {
-    let node = followingEditablePart(this.viewForMove(editor), delta);
+    let node = followingEditablePart(
+      this.viewForMove(
+        editor,
+        this.range ? rangeShift(this.range, delta) : null
+      ),
+      delta
+    );
     if (!node) return;
 
     let info = nodeEditableForPart(node).sbSelectAtBoundary(node, delta > 0);
@@ -110,6 +153,8 @@ export class SBSelection extends EventTarget {
     this.range = range;
 
     if (this.view !== view) {
+      this.lastRect = this.view?.getBoundingClientRect();
+
       this.dispatchEvent(new CustomEvent("viewChange", { detail: view }));
       this.view = view;
     }
@@ -119,7 +164,10 @@ export class SBSelection extends EventTarget {
 
 // mark this element as editable and subscribe to key events to check
 // whether a requested cursor move hit the element's boundary.
+// For preact, use with `h("input", { ref: markAsEditableElement })`.
 export function markAsEditableElement(element) {
+  if (element.getAttribute("sb-editable")) return;
+
   element.setAttribute("sb-editable", "true");
   element.addEventListener("keydown", handleKeyDown.bind(element));
 
@@ -166,6 +214,7 @@ function handleDelete(e) {
     const editor = parentWithTag(this, "SB-EDITOR");
     const current = editor.selection.range[0];
     const pos = isDelete ? current : current - 1;
+    if (pos < 0) return;
     editor.applyChanges([
       {
         from: current + (isDelete ? 0 : -1),
@@ -193,4 +242,7 @@ function _markInput(element) {
     const position = element.selectionStart;
     return delta > 0 ? position === element.value.length : position === 0;
   };
+  element.addEventListener("focus", () =>
+    parentWithTag(element, "SB-EDITOR").selection.informChange(element, null)
+  );
 }
