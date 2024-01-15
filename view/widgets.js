@@ -185,7 +185,7 @@ export class Replacement extends Widget {
   // see AttachOp>>apply()
   insertNode(node, index) {}
 }
-
+    
 // Define a replacement by providing a Preact component
 // instead of just the name of a custom element. Note that
 // this function will define a custom element for you.

@@ -26,8 +26,10 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
     }
   }
 
+
   ensureReplacement(node, tag, props) {
     console.log(node)
+    
     this.shardsForNodeDo(node, async shard => {
       const pos = [shard.livelyCM.posFromIndex(node.range[0]), 
           shard.livelyCM.posFromIndex(node.range[1])]
@@ -39,7 +41,7 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
       if (currentMarks.length > 0) {
         const currentReplacement = currentMarks[0].replacedWith.childNodes[0]
         console.assert(currentReplacement.tagName === tag.toUpperCase());
-        currentReplacement.props = props
+        Object.assign(currentReplacement, props ?? {});
         currentReplacement.update(node);
         this.newReplacements.add(currentReplacement)
         return;
@@ -48,9 +50,10 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
       let replacement
       if (!replacement) {
         replacement = shard.livelyCM.wrapWidgetSync(tag, ...pos)
-        replacement.props = props
+        Object.assign(replacement, props ?? {});
         replacement.init()
       }
+      Object.assign(replacement, props ?? {});
      replacement.update(node)
       this.newReplacements.add(replacement);
    })
