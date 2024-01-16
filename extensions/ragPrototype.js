@@ -1,5 +1,5 @@
 import { Extension } from "../core/extension.js";
-import { useEffect, useState } from "../external/preact-hooks.mjs";
+import { useEffect, useMemo, useState } from "../external/preact-hooks.mjs";
 import { mapSeparated } from "../utils.js";
 import { button, ensureReplacementPreact, h, shard } from "../view/widgets.js";
 import { chat, complete } from "./copilot.js";
@@ -94,7 +94,7 @@ export const base = new Extension()
 
 let id = 0;
 
-const Module = ({ title, text, onUpdate, id }) =>
+const Module = ({ title, text, disable, onUpdate, id }) =>
   h(
     "div",
     {
@@ -112,13 +112,24 @@ const Module = ({ title, text, onUpdate, id }) =>
       placeholder: "Module Title",
       type: "text",
       value: title,
-      onInput: (e) => onUpdate({ title: e.target.value, text, id }),
+      onInput: (e) => onUpdate({ title: e.target.value, disable, text, id }),
     }),
     h("textarea", {
       placeholder: "Text",
       value: text,
-      onInput: (e) => onUpdate({ title, text: e.target.value, id }),
-    })
+      onInput: (e) => onUpdate({ title, text: e.target.value, disable, id }),
+    }),
+    h(
+      "div",
+      { style: { display: "flex" } },
+      h("input", {
+        type: "checkbox",
+        onChange: (e) =>
+          onUpdate({ title, text, disable: e.target.checked, id }),
+      }),
+      "Disable ",
+      button("Delete", () => onUpdate(null))
+    )
   );
 
 const Alternative = ({ modules, onUpdate }) =>
@@ -129,10 +140,13 @@ const Alternative = ({ modules, onUpdate }) =>
       h(Module, {
         key: module.id,
         ...module,
-        onUpdate: (newModule) =>
-          onUpdate({
+        onUpdate: (newModule) => {
+          if (!newModule)
+            return onUpdate({ modules: modules.filter((_, mi) => mi !== i) });
+          return onUpdate({
             modules: modules.map((m, mi) => (mi === i ? newModule : m)),
-          }),
+          });
+        },
       })
     ),
     h(
@@ -144,6 +158,13 @@ const Alternative = ({ modules, onUpdate }) =>
           }),
       },
       "+ Module"
+    ),
+    h(
+      "button",
+      {
+        onClick: () => onUpdate(null),
+      },
+      "Delete"
     )
   );
 
@@ -161,13 +182,20 @@ const Lane = ({ title, alternatives, onUpdate }) =>
       h(Alternative, {
         key: i,
         ...alternative,
-        onUpdate: (newAlternatives) =>
-          onUpdate({
-            title,
-            alternatives: alternatives.map((a, ai) =>
-              ai === i ? newAlternatives : a
-            ),
-          }),
+        onUpdate: (newAlternatives) => {
+          if (!newAlternatives)
+            return onUpdate({
+              title,
+              alternatives: alternatives.filter((_, ai) => ai !== i),
+            });
+          else
+            return onUpdate({
+              title,
+              alternatives: alternatives.map((a, ai) =>
+                ai === i ? newAlternatives : a
+              ),
+            });
+        },
       }),
     ]),
     h("hr"),
@@ -209,8 +237,24 @@ export const RAGApp = () => {
         };
   });
 
-  const [generated, setGenerated] = useState([]);
+  const [generated, setGenerated] = useState({});
   const [useCompleteAPI, setUseCompleteAPI] = useState(false);
+  const model = [
+    {
+      name: "gpt-3.5-turbo-1106",
+      maxTokens: 16385,
+    },
+    {
+      name: "gpt-4",
+      maxTokens: 8192,
+    },
+  ][1];
+
+  const permutations = useMemo(() => {
+    const all = [];
+    generateCombinations(data.lanes[0].alternatives, all);
+    return all;
+  }, [data.lanes[0].alternatives]);
 
   // save in localstorage
   useEffect(() => {
@@ -225,41 +269,61 @@ export const RAGApp = () => {
       },
     }),
     button("Generate all", async () => {
-      const all = [];
-      generateCombinations(data.lanes[0].alternatives, all);
-
       setGenerated(
-        await Promise.all(
-          all.map(async (permutation) => {
-            const prompt = permutation.map((p) => p.text).join("\n\n");
-            const title = permutation.map((p) => p.title).join(" - ");
-            if (!useCompleteAPI)
-              return {
-                title,
-                response: (await chat([{ role: "user", content: prompt }]))
-                  .choices[0].message.content,
-              };
-            else
-              return {
-                title,
-                response: (await complete(prompt, "")).choices[0].text,
-              };
-          })
+        Object.fromEntries(
+          await Promise.all(
+            permutations.map(async (permutation) => {
+              const prompt = permutation.map((p) => p.text).join("\n\n");
+              if (!useCompleteAPI)
+                return [
+                  permutation,
+                  (await chat([{ role: "user", content: prompt }], model.name))
+                    .choices[0].message.content,
+                ];
+              else
+                return [
+                  permutation,
+                  (await complete(prompt, "")).choices[0].text,
+                ];
+            })
+          )
         )
       );
     }),
     h(
       "table",
       {},
-      generated.map((g) =>
+      h(
+        "tr",
+        {},
+        h("td", {}, "Name"),
+        h("td", {}, "Tokens"),
+        h("td", {}, "Response")
+      ),
+      permutations.map((g) =>
         h(
           "tr",
           {},
-          h("td", {}, g.title),
           h(
             "td",
             {},
-            h("pre", { style: { whiteSpace: "pre-wrap" } }, g.response)
+            mapSeparated(
+              g,
+              (g) => g.title,
+              () => " - "
+            )
+          ),
+          h(
+            "td",
+            {},
+            `${Math.floor(g.map((g) => g.text).join("\n\n").length / 3)} / ${
+              model.maxTokens
+            }`
+          ),
+          h(
+            "td",
+            {},
+            h("pre", { style: { whiteSpace: "pre-wrap" } }, generated[g] ?? "")
           )
         )
       )
@@ -279,6 +343,7 @@ function generateCombinations(
   }
 
   for (let i = 0; i < rows[currentIndex].modules.length; i++) {
+    if (rows[currentIndex].modules[i].disable) continue;
     currentCombination.push(rows[currentIndex].modules[i]);
     generateCombinations(rows, all, currentIndex + 1, currentCombination);
     currentCombination.pop();

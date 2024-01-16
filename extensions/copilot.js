@@ -6,7 +6,7 @@ function getKey() {
   return key;
 }
 
-export async function chat(messages) {
+export async function chat(messages, model = "gpt-3.5-turbo-1106") {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -15,7 +15,7 @@ export async function chat(messages) {
     },
     body: JSON.stringify({
       // response_format: { type: "json_object" },
-      model: "gpt-3.5-turbo-1106",
+      model,
       messages,
     }),
   });
