@@ -4,7 +4,6 @@ from first 20 google scholar results...
 
 
 - [@Conlen2021ISS]M Conlen 2021. <a href="https://dl.acm.org/doi/abs/10.1145/3472749.3474731">Idyll studio: A structured editor for authoring interactive &amp; data-driven articles</a>
-- [@Omar2012ACC] C Omar 2012. <a href="https://ieeexplore.ieee.org/abstract/document/6227133/">Active code completion</a>
 - C Omar 2017. <a href="https://dl.acm.org/doi/abs/10.1145/3093333.3009900">Hazelnut: a bidirectionally typed structure editor calculus</a>
 -  C Gobert 2022. <a href="https://dl.acm.org/doi/abs/10.1145/3491102.3517494">i-LaTeX: Manipulating Transitional Representations between LaTeX Code and Generated Documents</a>
 - AM Mcnutt 2023. <a href="https://dl.acm.org/doi/abs/10.1145/3544548.3580683">A Study of Editor Features in a Creative Coding Classroom</a>
@@ -21,6 +20,7 @@ from first 20 google scholar results...
 
 ### Not relevant
 
+- [@Omar2012ACC] C Omar 2012. <a href="https://ieeexplore.ieee.org/abstract/document/6227133/">Active code completion</a>
 - [@Ko2011SAE] Ko 2011. <a href="https://dl.acm.org/doi/abs/10.1145/1922649.1922658">The state of the art in end-user software engineering</a>
 - [@Feng2022GAR] S Feng 2022. <a href="https://dl.acm.org/doi/abs/10.1145/3510003.3510048">GIFdroid: automated replay of visual bug reports for Android apps</a>
 - YS Yoon 2012 . <a href="https://ieeexplore.ieee.org/abstract/document/6223012/">An exploratory study of backtracking strategies used by developers</a>
