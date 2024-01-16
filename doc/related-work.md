@@ -9,6 +9,8 @@
 
 ## Dubroy 2014, Moonchild
 
+![](media/moonchild.png){width=400}
+
   "Moonchild is a toolkit for experimenting with new kinds of programming interfaces, based on a text editor written in HTML and JavaScript. This is video is a 5-minute highlight reel prepared for the Future Programming Workshop at SPLASH 2014 in Portland, Oregon."
 
 - [full video](https://vimeo.com/106498564), [highlights](https://vimeo.com/106578509)
