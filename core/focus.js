@@ -11,13 +11,13 @@ import {
 // sbSelectAtBoundary(part?, atStart): {view: View, range}
 // sbIsMoveAtBoundary(delta): boolean
 // sbCandidateForRange(range): {view, rect} | null
-// [?] sbCursorPositionForGapBetween(a, b)
 
 function nodeIsEditablePart(node) {
   return (
     node instanceof Element &&
     (node.tagName === "SB-TEXT" ||
       // nodeIsEditable(node) ||
+      !!node.getAttribute("role") === "presentation" ||
       !!node.getAttribute("sb-editable-part"))
   );
 }
@@ -90,11 +90,19 @@ export class SBSelection extends EventTarget {
 
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
+      
+      const cm = this.view.livelyCM.editor
+    const cursor = cm.getCursor("from")
+    const el = CodeMirror.posToDOM(cm, cursor)
+    // lively.showElement(el.node.parentNode)
+      const view = el.node.parentNode
+      console.log(view)
+      return view;
 
     if (this.view && this.view.isConnected) return this.view;
     console.assert(newRange);
 
-    for (const editable of editor.allEditableElements) {
+    for (const editable of getAllEditableElements(editor)) {
       if (editable.sbSelectRange(newRange)) return editable;
     }
 
@@ -102,7 +110,7 @@ export class SBSelection extends EventTarget {
       let best = null;
       let bestPixelDist = Infinity;
       let bestIndexDist = Infinity;
-      for (const editable of editor.allEditableElements) {
+      for (const editable of getAllEditableElements(editor)) {
         const info = editable.sbCandidateForRange(newRange);
         if (info) {
           const pixelDist = rectDistance(info.rect, this.lastRect);
@@ -145,7 +153,7 @@ export class SBSelection extends EventTarget {
   }
 
   deselect() {
-    // this.informChange(null, null, null);
+    // this.informChange(null, null);
   }
 
   informChange(view, range) {
@@ -169,14 +177,15 @@ export function markAsEditableElement(element) {
   if (element.getAttribute("sb-editable")) return;
 
   element.setAttribute("sb-editable", "true");
-  element.addEventListener("keydown", handleKeyDown.bind(element));
-
+  
   switch (element.tagName) {
     case "INPUT":
+      element.addEventListener("keydown", handleKeyDown.bind(element));
       _markInput(element);
       break;
     case "SB-SHARD":
       // all implemented in the shard class
+      element.addEventListener("keydown", handleKeyDown.bind(element));
       break;
     default:
       break;
@@ -198,10 +207,18 @@ function handleKeyDown(e) {
   }
 }
 
+function getEditor(el) {
+  return orParentThat(el, e => e.sbIsEditor)
+}
+
+function getAllEditableElements(el) {
+  return getEditor(el).querySelectorAll("[sb-editable]")
+}
+
 // TODO handle shift-selection and ctrl move
 function handleMove(e, delta) {
   if (this.sbIsMoveAtBoundary(delta)) {
-    const editor = parentWithTag(this, "SB-EDITOR");
+    const editor = getEditor(this);
     editor.selection.moveToNext(editor, delta);
     e.preventDefault();
   }
@@ -211,7 +228,7 @@ function handleMove(e, delta) {
 function handleDelete(e) {
   const isDelete = e.key === "Delete";
   if (this.sbIsMoveAtBoundary(isDelete ? 1 : -1)) {
-    const editor = parentWithTag(this, "SB-EDITOR");
+    const editor = getEditor(this);
     const current = editor.selection.range[0];
     const pos = isDelete ? current : current - 1;
     if (pos < 0) return;
@@ -243,6 +260,6 @@ function _markInput(element) {
     return delta > 0 ? position === element.value.length : position === 0;
   };
   element.addEventListener("focus", () =>
-    parentWithTag(element, "SB-EDITOR").selection.informChange(element, null)
+    getEditor(element).selection.informChange(element, null)
   );
 }

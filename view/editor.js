@@ -482,10 +482,6 @@ export class Editor extends HTMLElement {
     return this._shards;
   }
 
-  get allEditableElements() {
-    return this.querySelectorAll("[sb-editable]");
-  }
-
   get selectedShard() {
     const selection = getSelection();
     const shard = parentWithTag(selection.anchorNode, "SB-SHARD");

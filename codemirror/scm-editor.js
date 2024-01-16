@@ -1,5 +1,6 @@
 import { Extension, ExtensionInstance } from "../core/extension.js";
 import { languageFor } from "../core/languages.js";
+import { markAsEditableElement, SBSelection } from "../core/focus.js";
 
 import {
   parentWithTag,
@@ -26,8 +27,10 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
     }
   }
 
+
   ensureReplacement(node, tag, props) {
     console.log(node)
+    
     this.shardsForNodeDo(node, async shard => {
       const pos = [shard.livelyCM.posFromIndex(node.range[0]), 
           shard.livelyCM.posFromIndex(node.range[1])]
@@ -39,7 +42,7 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
       if (currentMarks.length > 0) {
         const currentReplacement = currentMarks[0].replacedWith.childNodes[0]
         console.assert(currentReplacement.tagName === tag.toUpperCase());
-        currentReplacement.props = props
+        Object.assign(currentReplacement, props ?? {});
         currentReplacement.update(node);
         this.newReplacements.add(currentReplacement)
         return;
@@ -48,9 +51,10 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
       let replacement
       if (!replacement) {
         replacement = shard.livelyCM.wrapWidgetSync(tag, ...pos)
-        replacement.props = props
+        Object.assign(replacement, props ?? {});
         replacement.init()
       }
+      Object.assign(replacement, props ?? {});
      replacement.update(node)
       this.newReplacements.add(replacement);
    })
@@ -70,6 +74,9 @@ export class CodeMirrorExtensionInstance extends ExtensionInstance {
 
 
 export class SCMShard extends HTMLElement {
+  connectedCallback() {
+    markAsEditableElement(this)
+  }
   
   get editor() {
     return parentWithTag(this, "SCM-EDITOR");
@@ -94,14 +101,26 @@ export class SCMShard extends HTMLElement {
         this.livelyCM.style.height = "100%"
       }
       
-      
       this.livelyCM.addEventListener("change", (e) => {
         if (!this.editor || this.nextSource === this.livelyCM.value) return;
         this.editor.replaceTextFromTyping({
           range: this.range,
           text: this.livelyCM.value,
         });
-      });      
+      });
+
+      this.livelyCM.editor.on("beforeSelectionChange", (cm, e) => {
+        if (!this.editor || e.origin !== '+move') return;
+        const delta = Math.sign(cm.indexFromPos(e.ranges[0].head) - cm.indexFromPos(cm.getCursor("from")))
+        if (this.sbIsMoveAtBoundary(delta)) {
+          this.editor.selection.moveToNext(this.editor, delta);
+        } else {
+          console.log(this)
+          this.editor.selection.informChange(this, 
+                                             [cm.indexFromPos(cm.getCursor("from")), cm.indexFromPos(cm.getCursor("to"))]);
+        }
+      });
+      
       this.appendChild(this.livelyCM)
     }
     lively.showElement(this.livelyCM).innnerHTML = "update"
@@ -110,6 +129,59 @@ export class SCMShard extends HTMLElement {
     this.livelyCM.value = node.sourceString
   }  
   
+  sbCurrentFocusView() {
+    const cm = this.livelyCM.editor
+    const cursor = cm.getCursor("from")
+    const el = CodeMirror.posToDOM(cm, cursor)
+    return el.node.parentNode
+    
+    // here we use CodeMirror4 internals
+    const lineView = cm.display.view[cursor.line]
+    if (!lineView) return null;
+    const map = lineView.measure.map
+    for(let i=0; i < map.length; i += 3 ) {
+      let from = map[i + 0]
+      let to = map[i + 1]
+      let node = map[i + 2]
+      
+      if (cursor.ch >= from  && cursor.ch <= to) {
+        return node.parentElement
+      } 
+    }
+    return null
+  }
+  
+  sbSelectRange([start, end]){
+    // #TODO currently we are ignoring end 
+    const cm = this.livelyCM.editor
+    const markWithWidget = cm.findMarksAt(cm.posFromIndex(start)).some(m => !!m.replacedWith)
+    if (markWithWidget) {
+      return null  // we cannot select ourself 
+    }
+    return this
+  }
+  
+  sbSelectAtBoundary(part, atStart){
+    debugger
+    throw ": {view: View, range}"
+  
+  }
+  
+  sbIsMoveAtBoundary(delta){
+    const cm = this.livelyCM.editor
+    // is the next (delta>0) or previous (delta<0) a marker widget?
+    let cursorPos = cm.indexFromPos(cm.getCursor("from"))
+    let isMoveAtBoundary = cm.findMarksAt(cm.posFromIndex(cursorPos + delta)).some(m => !!m.replacedWith)
+    console.log(isMoveAtBoundary, cm.posFromIndex(cursorPos + delta), delta)
+    if (isMoveAtBoundary) {
+      lively.showElement(this).innerHTML = "MoveBound"
+    }
+    return !!isMoveAtBoundary
+  }
+  
+  sbCandidateForRange(range) {
+    throw ": {view, rect} | null"
+  }
 }
 
 customElements.define("scm-shard", SCMShard);
@@ -125,15 +197,17 @@ export class SCMEditor extends HTMLElement {
 
       this.extensions = [];
 
-     
       this.lastText = null;
       this.lastLanguage = null;
       this.lastExtensions = null;
       this.initializing = false;
+      this.selection = new SBSelection()
     }
 
     static observedAttributes = ["text", "language", "extensions"];
 
+    get sbIsEditor() { return true }
+    
     get shardTag() {
       return "scm-shard"
     }
