@@ -60,9 +60,15 @@
 - based on CodeMirror annotations and widgets
 - [github](https://github.com/harc/moonchild)
 - References:
-  - Ko, A. J. and Myers, B. A. (2006), Barista: An Implementation Framework for Enabling New Tools, Interaction Techniques and Views in Code Editors, CHI 2006. Project page
+  - Ko, A. J. and Myers, B. A. (2006), Barista: An Implementation Framework for Enabling New Tools, Interaction Techniques and Views in Code Editors, CHI 2006. Project page [@Ko2006BIF]
   - Baecker, R. and Marcus, A., Design Principles for the Enhanced Presentation of Computer Program Source Text, CHI (1986), 51-58.
   - McDirmid, Sean, Experiments in Code Typography, August 2014. [BLOG](https://web.archive.org/web/20151210183742/http://research.microsoft.com/en-us/projects/liveprogramming/typography.aspx)
   - Eisenberg, A. D. and Kiczales, G., Expressive programs through presentation extension. In Proc. of 6th Int’l Conf. on Aspect-Oriented Software Development (AOSD 2007), pages 73–84. ACM, 2007.
   
+### Barista
+
+Barista: An Implementation Framework for Enabling New Tools [@Ko2006BIF]
+
+### CitedBy
+
 
