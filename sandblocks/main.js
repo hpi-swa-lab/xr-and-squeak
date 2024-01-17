@@ -44,6 +44,20 @@ function projectEqual(a, b) {
 
 Editor.init();
 
+const startUpOptions = {
+  rag: () => {
+    openComponentInWindow(
+      RAGApp,
+      {},
+      {
+        doNotStartAttached: true,
+        initialPosition: { x: 10, y: 10 },
+        initialSize: { x: 1000, y: 1000 },
+      }
+    );
+  },
+};
+
 function Sandblocks() {
   const [openProjects, setOpenProjects] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
@@ -57,6 +71,12 @@ function Sandblocks() {
   //     e.replaceFullTextFromCommand("b");
   //   }, 1000);
   // }, []);
+
+  useEffect(() => {
+    if (location.hash) {
+      startUpOptions[location.hash.slice(1)]?.();
+    }
+  }, []);
 
   useAsyncEffect(async () => {
     const lastProjects = JSON.parse(localStorage.lastProjects ?? "[]");
