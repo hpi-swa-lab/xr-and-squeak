@@ -478,7 +478,7 @@ export class Shard extends HTMLElement {
   }
   sbSelectedEditablePart() {
     const part = this.editor.selection.sbLastPart;
-    console.assert(part.isConnected && part.shard === this);
+    if (!(part.isConnected && part.shard === this)) return null;
     return part;
   }
 }
