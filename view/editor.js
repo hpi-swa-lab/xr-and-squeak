@@ -103,7 +103,7 @@ export class Editor extends HTMLElement {
   }
 
   get selected() {
-    return this.selection.view;
+    return this.selection.lastEditable.sbSelectedEditablePart();
   }
   set selected(node) {
     throw new Error("FIXME set selected");
@@ -133,10 +133,13 @@ export class Editor extends HTMLElement {
 
     this.selection = new SBSelection();
 
-    this.selection.addEventListener("viewChange", ({ detail: view }) => {
-      this.suggestions.onSelected(view);
-      if (view) this.extensionsDo((e) => e.process(["selection"], view.node));
-    });
+    this.selection.addEventListener(
+      "viewChange",
+      ({ detail: { view, node } }) => {
+        this.suggestions.onSelected(view);
+        if (node) this.extensionsDo((e) => e.process(["selection"], node));
+      }
+    );
     this.selection.addEventListener("caretChange", () => {
       this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
 
@@ -472,6 +475,10 @@ export class Editor extends HTMLElement {
 
   get source() {
     return this.shard.source;
+  }
+
+  get sbIsEditor() {
+    return true;
   }
 
   get shard() {

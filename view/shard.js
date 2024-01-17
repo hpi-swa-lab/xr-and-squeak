@@ -462,7 +462,7 @@ export class Shard extends HTMLElement {
     return { view: part, range };
   }
   sbIsMoveAtBoundary(delta) {
-    const me = this.editor.selection.view;
+    const me = this.sbSelectedEditablePart();
     const myRange = me.range;
     const newPos = this.editor.selection.range[0] + delta;
     if (rangeContains(myRange, [newPos, newPos])) return false;
@@ -475,5 +475,10 @@ export class Shard extends HTMLElement {
     const view = this.closestElementForRange(range);
     const rect = view?.getBoundingClientRect();
     return view ? { view, rect, range: view.range } : null;
+  }
+  sbSelectedEditablePart() {
+    const part = this.editor.selection.sbLastPart;
+    console.assert(part.isConnected && part.shard === this);
+    return part;
   }
 }

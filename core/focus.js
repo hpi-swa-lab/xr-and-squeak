@@ -1,6 +1,5 @@
 import {
   orParentThat,
-  parentWithTag,
   rangeDistance,
   rangeEqual,
   rangeShift,
@@ -11,6 +10,7 @@ import {
 // sbSelectAtBoundary(part?, atStart): {view: View, range}
 // sbIsMoveAtBoundary(delta): boolean
 // sbCandidateForRange(range): {view, rect} | null
+// sbSelectedEditablePart(): Element | null
 
 function nodeIsEditablePart(node) {
   return (
@@ -65,12 +65,23 @@ function previousNodePreOrder(node) {
 export class SBSelection extends EventTarget {
   range = [0, 0];
   view = null;
+  lastEditable = null;
   lastRect = null;
+  lastNode = null;
+
+  // if parts remain stable throughout selection changes, clients
+  // may use this field to access the current part as set by informChange.
+  // when accessing it, clients must make sure that it is still valid.
+  // SBSelection will never read from this field, instead deferring to
+  // lastEditable.sbSelectedEditablePart()
+  sbLastPart = null;
 
   // encompasses exactly the full node
   get isExact() {
     return (
-      this.range && this.view?.range && rangeEqual(this.range, this.view.range)
+      this.range &&
+      this.lastNode?.range &&
+      rangeEqual(this.range, this.lastNode.range)
     );
   }
 
@@ -90,24 +101,23 @@ export class SBSelection extends EventTarget {
 
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
-      
-      const cm = this.view.livelyCM.editor
-    const cursor = cm.getCursor("from")
-    const el = CodeMirror.posToDOM(cm, cursor)
-    // lively.showElement(el.node.parentNode)
-      const view = el.node.parentNode
-      console.log(view)
-      return view;
 
-    if (this.view && this.view.isConnected) return this.view;
-    console.assert(newRange);
+    // const cm = this.view.livelyCM.editor;
+    // const cursor = cm.getCursor("from");
+    // const el = CodeMirror.posToDOM(cm, cursor);
+    // // lively.showElement(el.node.parentNode)
+    // const view = el.node.parentNode;
+    // console.log(view);
+    // return view;
+
+    let best = this.lastEditable?.sbSelectedEditablePart();
+    if (best) return best;
 
     for (const editable of getAllEditableElements(editor)) {
       if (editable.sbSelectRange(newRange)) return editable;
     }
 
     if (this.lastRect) {
-      let best = null;
       let bestPixelDist = Infinity;
       let bestIndexDist = Infinity;
       for (const editable of getAllEditableElements(editor)) {
@@ -157,14 +167,20 @@ export class SBSelection extends EventTarget {
   }
 
   informChange(view, range) {
-    if (!view) debugger;
+    const editor = getEditor(view);
+
     this.range = range;
+    this.sbLastPart = view;
+    this.lastEditable = nodeEditableForPart(view);
+    const node = range && editor.source.childEncompassingRange(range);
 
-    if (this.view !== view) {
-      this.lastRect = this.view?.getBoundingClientRect();
+    if (this.lastNode !== node) {
+      this.lastRect = view?.getBoundingClientRect();
 
-      this.dispatchEvent(new CustomEvent("viewChange", { detail: view }));
-      this.view = view;
+      this.dispatchEvent(
+        new CustomEvent("viewChange", { detail: { view, node } })
+      );
+      this.lastNode = node;
     }
     this.dispatchEvent(new CustomEvent("caretChange"));
   }
@@ -177,7 +193,7 @@ export function markAsEditableElement(element) {
   if (element.getAttribute("sb-editable")) return;
 
   element.setAttribute("sb-editable", "true");
-  
+
   switch (element.tagName) {
     case "INPUT":
       element.addEventListener("keydown", handleKeyDown.bind(element));
@@ -208,11 +224,11 @@ function handleKeyDown(e) {
 }
 
 function getEditor(el) {
-  return orParentThat(el, e => e.sbIsEditor)
+  return orParentThat(el, (e) => e.sbIsEditor);
 }
 
 function getAllEditableElements(el) {
-  return getEditor(el).querySelectorAll("[sb-editable]")
+  return getEditor(el).querySelectorAll("[sb-editable]");
 }
 
 // TODO handle shift-selection and ctrl move
@@ -262,4 +278,5 @@ function _markInput(element) {
   element.addEventListener("focus", () =>
     getEditor(element).selection.informChange(element, null)
   );
+  element.sbSelectedEditablePart = () => element;
 }

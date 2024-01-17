@@ -128,8 +128,8 @@ export class SCMShard extends HTMLElement {
     this.nextSource = node.sourceString
     this.livelyCM.value = node.sourceString
   }  
-  
-  sbCurrentFocusView() {
+
+  sbSelectedEditablePart() {
     const cm = this.livelyCM.editor
     const cursor = cm.getCursor("from")
     const el = CodeMirror.posToDOM(cm, cursor)
