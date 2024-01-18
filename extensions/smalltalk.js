@@ -193,7 +193,7 @@ export const base = new Extension()
   ])
   .registerAlways((e) => [
     (x) => ["string", "symbol", "character"].includes(x.type),
-    (x) => e.applySyntaxHighlighting(x, "number"),
+    (x) => e.applySyntaxHighlighting(x, "string"),
   ])
   .registerAlways((e) => [
     (x) => x.type === "comment",

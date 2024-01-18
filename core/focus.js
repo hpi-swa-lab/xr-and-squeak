@@ -100,6 +100,10 @@ export class SBSelection extends EventTarget {
   }
 
   focusEditable(editable) {
+    if (editable === this.lastEditable) {
+      editable.focus();
+      return;
+    }
     let info = editable.sbSelectAtBoundary(null, true);
     this._moveTo(info.view, info.range, false);
   }

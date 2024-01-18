@@ -12,6 +12,7 @@ import {
   withDo,
   parentWithTag,
   rangeDistance,
+  rangeEqual,
 } from "../utils.js";
 import { Block } from "./elements.js";
 import { followingEditablePart, markAsEditableElement } from "../core/focus.js";
@@ -195,7 +196,9 @@ export class Shard extends HTMLElement {
   }
 
   focus() {
-    this.editor.focusShard(this);
+    // FIXME necessary? if so, creates a loop with the selection's focus logic
+    // this.editor.focusShard(this);
+    super.focus();
   }
 
   isMyMutation(mutation) {
@@ -248,7 +251,7 @@ export class Shard extends HTMLElement {
     );
 
     const selectionRange = [start, end].sort((a, b) => a - b);
-    if (!view.node.preferForSelection) {
+    /*if (!view.node.preferForSelection) {
       // look left and right if we got a better one that's also valid
       for (const index of [-1, 1]) {
         let candidate = followingEditablePart(view, index);
@@ -259,11 +262,12 @@ export class Shard extends HTMLElement {
           (candidate.range[0] === selectionRange[0] ||
             candidate.range[1] === selectionRange[1])
         ) {
-          return { selectionRange, view: candidate };
+          return { selectionRange, view: this._viewForSelection(candidate) };
         }
       }
-    }
-    return { selectionRange, view };
+    }*/
+    // select the furthest view up the chain that shares the exact same range
+    return { selectionRange, view: this.findSelectedForRange(selectionRange) };
   }
 
   _nodeAndIndexForSelection(node, offset) {
@@ -274,20 +278,25 @@ export class Shard extends HTMLElement {
       return [child, child.range[0] + offset];
     }
 
+    if (node.tagName === "SB-TEXT") {
+      console.assert(offset <= 1);
+      return [node, offset === 0 ? node.range[0] : node.range[1]];
+    }
+
     // cursor in an empty block or text, just return its start
-    if (node.children.length < 1) {
+    if (node.childNodes.length < 1) {
       console.assert(offset === 0);
       return [node, node.range[0]];
     }
 
     // cursor between two children
-    child = node.children[clamp(offset, 0, node.children.length - 1)];
+    child = node.childNodes[clamp(offset, 0, node.childNodes.length - 1)];
     let atStart = true;
     if (!child.range && offset > 0) {
-      child = node.children[offset - 1];
+      child = node.childNodes[offset - 1];
       atStart = false;
     }
-    if (offset >= node.children.length) atStart = false;
+    if (offset >= node.childNodes.length) atStart = false;
     console.assert(
       child.range,
       "cursor is between two children that are not views"
@@ -381,7 +390,7 @@ export class Shard extends HTMLElement {
     if (!this.root) return null;
 
     allViewsDo(this, (child) => {
-      if (!child.node.isText) return;
+      // if (!child.node.isText) return;
       if (child.shard !== this) return;
       const [start, end] = child.range;
       if (start <= range[0] && end >= range[1]) {
@@ -394,6 +403,14 @@ export class Shard extends HTMLElement {
           candidate = child;
       }
     });
+
+    while (
+      candidate.parentElement?.range &&
+      candidate.parentElement.tagName !== "SB-SHARD" &&
+      rangeEqual(candidate.range, candidate.parentElement.range)
+    ) {
+      candidate = candidate.parentElement;
+    }
 
     return candidate;
   }

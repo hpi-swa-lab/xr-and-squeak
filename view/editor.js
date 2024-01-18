@@ -523,7 +523,7 @@ export class Editor extends HTMLElement {
 }
 
 function findNode(element, node) {
-  if (element.node === node) return element;
+  if (element.node === node && element.tagName !== "SB-SHARD") return element;
   for (const child of element.children) {
     const found = findNode(child, node);
     if (found) return found;

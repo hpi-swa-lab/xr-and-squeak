@@ -1,5 +1,6 @@
 import { LoadOp, RemoveOp, UpdateOp } from "../core/diff.js";
 import { Extension } from "../core/extension.js";
+import { rangeEqual } from "../utils.js";
 import { Widget } from "../view/widgets.js";
 
 class DetachedShard extends Widget {
@@ -57,6 +58,8 @@ export const base = new Extension()
   .registerShortcut("selectNodeUp", (x, view, e) => {
     if (view.isFullySelected()) {
       if (!x.isRoot) {
+        // we need to select the furthest ancestor that has the same range
+        // for our selection-down clearing logic to work
         x.parent.select(view);
         e.data("selectionDownList", () => []).push(x);
       }
@@ -77,7 +80,13 @@ export const base = new Extension()
   })
   .registerSelection((e) => [
     (x) => {
-      if (!x.children.some((c) => e.data("selectionDownList")?.includes(c))) {
+      if (
+        // if we just walked up, we don't want to clear the list
+        !x.children.some((c) => e.data("selectionDownList")?.includes(c)) &&
+        // in particular, if we are triggering multiple times for the same
+        // range, we want to ignore anything but the first time
+        (!x.children[0] || !rangeEqual(x.range, x.children[0].range))
+      ) {
         e.setData("selectionDownList", []);
       }
     },

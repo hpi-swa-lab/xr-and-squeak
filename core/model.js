@@ -319,8 +319,12 @@ class SBNode {
   }
 
   orParentCompatibleWith(type) {
-    if (this.compatibleWith(type)) return this;
-    else return this.parent?.orParentCompatibleWith(type);
+    return this.orParentThat((x) => x.compatibleWith(type));
+  }
+
+  orParentThat(predicate) {
+    if (predicate(this)) return this;
+    else return this.parent?.orParentThat(predicate);
   }
 
   insert(string, type, index) {
