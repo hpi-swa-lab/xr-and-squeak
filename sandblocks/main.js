@@ -5,8 +5,9 @@ import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
 import { matchesKey } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
-import {} from "./file-project/search.js";
+import { } from "./file-project/search.js";
 import { RAGApp } from "../extensions/ragPrototype.js";
+import { SequenceDiagram } from "../extensions/tlaSequenceDiagram.js";
 
 const PROJECT_TYPES = {
   FileProject: {
@@ -53,6 +54,17 @@ const startUpOptions = {
         doNotStartAttached: true,
         initialPosition: { x: 10, y: 10 },
         initialSize: { x: 1000, y: 1000 },
+      }
+    );
+  },
+  tla: () => {
+    openComponentInWindow(
+      SequenceDiagram,
+      {},
+      {
+        doNotStartAttached: true,
+        initialPosition: { x: 10, y: 10 },
+        initialSize: { x: 1000, y: 600 },
       }
     );
   },
@@ -148,6 +160,12 @@ function Sandblocks() {
         setOpenProjects((p) => [...p, project]);
       }),
       button("RAG", () => openComponentInWindow(RAGApp)),
+      openProjects.map((project) =>
+        project.renderItem({
+          onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),
+        })
+      ),
+      button("TLA Sequence Diagram", () => openComponentInWindow(SequenceDiagram)),
       openProjects.map((project) =>
         project.renderItem({
           onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),
