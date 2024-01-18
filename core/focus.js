@@ -99,6 +99,11 @@ export class SBSelection extends EventTarget {
     } while (node);
   }
 
+  focusEditable(editable) {
+    let info = editable.sbSelectAtBoundary(null, true);
+    this._moveTo(info.view, info.range, false);
+  }
+
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
 
@@ -138,7 +143,16 @@ export class SBSelection extends EventTarget {
       if (best) return best;
     }
 
-    console.assert(false, "no view found for range, return any?", newRange);
+    for (const editable of getAllEditableElements(editor)) {
+      const info = editable.sbCandidateForRange(newRange);
+      if (info) return info.view;
+    }
+
+    for (const editable of getAllEditableElements(editor)) {
+      return editable;
+    }
+
+    throw new Error("no editables in editor");
   }
 
   moveToNext(editor, delta) {
@@ -190,6 +204,7 @@ export class SBSelection extends EventTarget {
 // whether a requested cursor move hit the element's boundary.
 // For preact, use with `h("input", { ref: markAsEditableElement })`.
 export function markAsEditableElement(element) {
+  if (!element) return;
   if (element.getAttribute("sb-editable")) return;
 
   element.setAttribute("sb-editable", "true");

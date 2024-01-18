@@ -324,11 +324,16 @@ class SBNode {
   }
 
   insert(string, type, index) {
-    const list = this.childBlocks.filter((child) => child.compatibleWith(type));
+    const list = this.childBlocks.filter(
+      (child) =>
+        child.compatibleWith(type) && this.language.separatorContextFor(child)
+    );
     // TODO handle empty list by finding any slot that takes the type
 
     const ref = list[Math.min(index, list.length - 1)];
     const sep = this.language.separatorContextFor(ref);
+    console.assert(!!sep);
+
     if (index < list.length)
       this.editor.insertTextFromCommand(ref.range[0], string + sep);
     else this.editor.insertTextFromCommand(ref.range[1], sep + string);

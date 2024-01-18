@@ -4,6 +4,7 @@ import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
 import { SandblocksExtensionInstance } from "./extension-instance.js";
+import { markAsEditableElement } from "../core/focus.js";
 
 export { h, render } from "../external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
@@ -136,9 +137,13 @@ export class Replacement extends Widget {
   }
 
   uninstallAndMark() {
+    this.uninstall().setAllowReplacement(this.tagName, false);
+  }
+
+  uninstall() {
     const source = this.source.toHTML();
-    source.setAllowReplacement(this.tagName, false);
     this.editor.changeDOM(() => this.replaceWith(source));
+    return source;
   }
 
   update(source) {
@@ -185,19 +190,8 @@ export class Replacement extends Widget {
   // see AttachOp>>apply()
   insertNode(node, index) {}
 }
-    
-// Define a replacement by providing a Preact component
-// instead of just the name of a custom element. Note that
-// this function will define a custom element for you.
-//
-// The component receives the node and the replacement as props.
-export function ensureReplacementPreact(
-  extension,
-  node,
-  tag,
-  component,
-  props
-) {
+
+function ensureReplacementTagDefined(tag) {
   if (!customElements.get(tag)) {
     customElements.define(
       tag,
@@ -210,7 +204,51 @@ export function ensureReplacementPreact(
       }
     );
   }
-  extension.ensureReplacement(node, tag, { ...props, component });
+}
+
+// can be used in place of a shard. provide a callback that will be called
+// once the user starts typing in the field, in which the callback should
+// add the necessary code to the source.
+export function ExpandToShard({ prefix, suffix, placeholder, expandCallback }) {
+  return h(
+    "span",
+    {},
+    prefix,
+    h("input", {
+      style: { border: "none" },
+      placeholder,
+      ref: markAsEditableElement,
+      oninput: (e) => expandCallback(`${prefix}${e.target.value}${suffix}`),
+    }),
+    suffix
+  );
+}
+
+// Define a replacement by providing a Preact component
+// instead of just the name of a custom element. Note that
+// this function will define a custom element for you.
+//
+// The component receives the node and the replacement as props.
+export function ensureReplacementPreact(
+  extension,
+  node,
+  tag,
+  component,
+  props
+) {
+  ensureReplacementTagDefined(tag);
+  extension.ensureReplacement(node, tag, { props, component });
+}
+
+export function installReplacementPreact(
+  extension,
+  node,
+  tag,
+  component,
+  props
+) {
+  ensureReplacementTagDefined(tag);
+  extension.installReplacement(node, tag, { props, component });
 }
 
 // Define a widget by providing a Preact component.

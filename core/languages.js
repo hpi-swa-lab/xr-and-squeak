@@ -90,7 +90,11 @@ registerLanguage(
     repo: "tom95/tree-sitter-smalltalk",
     branch: "fd6a5a256f831f0882b435d976c9baab04fb9e2b",
     extensions: ["st"],
-    defaultExtensions: ["base:identifierSuggestions"],
+    defaultExtensions: [
+      "base:identifierSuggestions",
+      "smalltalk:base",
+      "ragPrototype:base",
+    ],
     parseConfig: {
       unwrapExpression: (n) => n.childBlock(1).childBlock(0),
       parseExpressionPrefix: "doIt ",

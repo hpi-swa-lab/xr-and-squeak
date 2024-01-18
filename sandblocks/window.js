@@ -36,7 +36,11 @@ function updateFocus(target) {
   }
 
   const f = orParentThat(target, wantsMouseOverFocus);
-  if (f && !orParentThat(active, (p) => p === f)) {
+  if (
+    f &&
+    f !== active
+    //  !orParentThat(active, (p) => p === f)
+  ) {
     f?.focus();
   }
 }

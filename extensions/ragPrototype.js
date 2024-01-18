@@ -1,94 +1,86 @@
 import { Extension } from "../core/extension.js";
 import { useEffect, useMemo, useState } from "../external/preact-hooks.mjs";
-import { mapSeparated } from "../utils.js";
-import { button, ensureReplacementPreact, h, shard } from "../view/widgets.js";
+import { mapSeparated, withDo } from "../utils.js";
+import {
+  button,
+  ensureReplacementPreact,
+  h,
+  installReplacementPreact,
+} from "../view/widgets.js";
 import { chat, complete } from "./copilot.js";
-
-function selectorAndArgs(node) {
-  return {
-    selector: node.childBlocks
-      .filter((s) =>
-        ["keyword", "binary_operator", "unary_identifier"].includes(s.type)
-      )
-      .map((s) => s.sourceString)
-      .join(""),
-    arguments: node.childBlocks.filter(
-      (s) => s.compatibleWith("expression") && s.field !== "receiver"
-    ),
-  };
-}
-
-function cascadedMessages(cascade) {
-  return [cascade.childBlock(0), ...cascade.childBlocks.slice(1)].map(
-    selectorAndArgs
-  );
-}
-
-// assumes cascade of unique one-arg messages
-function cascadeToMap(cascade) {
-  return cascadedMessages(cascade).reduce(
-    (acc, { selector, arguments: [arg] }) => {
-      acc[selector.replace(":", "")] = arg;
-      return acc;
-    },
-    {}
-  );
-}
+import { cascadedConstructorShardsFor } from "./smalltalk.js";
 
 export const base = new Extension()
-  .registerReplacement((e) => [
-    (x) => x.query("$name := $constructor"),
-    ({ constructor }) => constructor.type === "cascade",
-    ({ constructor }) =>
-      constructor.childBlock(0).childBlock(0).matches("Lane new"),
-    ({ name }) =>
-      ensureReplacementPreact(e, name.parent, "sb-rag-lane", ({ node }) =>
-        h(
-          "span",
-          {
-            style: {
-              display: "inline-block",
-              border: "2px solid #333",
-              borderRadius: "2px",
-              padding: "0.25rem",
+  .registerDoubleClick((e) => [
+    (x) => true,
+    (x) => x.named,
+    (x) => {
+      x.viewsDo((v) =>
+        // TODO: should only replace the view that was clicked on
+        installReplacementPreact(e, v, "sb-collapse", ({ replacement }) =>
+          h(
+            "span",
+            {
+              onClick: () => replacement.uninstall(),
+              style: {
+                background: "#eee",
+                border: "1px solid #ccc",
+                borderRadius: "6px",
+                padding: "0 0.5rem",
+              },
             },
-          },
-          shard(node.childBlock(0)),
-          h("hr"),
-          mapSeparated(
-            cascadedMessages(node.childBlock(1)),
-            ({ arguments: [arg] }) => shard(arg),
-            () => h("br")
+            "…"
           )
         )
+      );
+      e.stopPropagation();
+    },
+  ])
+  .registerReplacement((e) => [
+    (x) =>
+      withDo(
+        cascadedConstructorShardsFor(x, "Module", {
+          disabled: { default: "false", noShard: true },
+          title: { prefix: "'", placeholder: "title", suffix: "'" },
+          text: { prefix: "'", placeholder: "text", suffix: "'" },
+        }),
+        (c) => (c ? [x, c] : c)
       ),
-  ])
-  .registerReplacement((e) => [
-    (x) => x.matches("Module new"),
-    (x) => x.orParentCompatibleWith("cascade"),
-    (x) =>
-      ensureReplacementPreact(e, x, "sb-rag-module", ({ node }) => {
-        const module = cascadeToMap(node);
-        return h(
-          "span",
-          {
-            style: {
-              display: "inline-block",
-              border: "2px solid #333",
-              borderRadius: "2px",
+    ([x, data]) =>
+      ensureReplacementPreact(
+        e,
+        x,
+        "rag-module",
+        ({ title, text, disabled, replacement }) =>
+          h(
+            "div",
+            {
+              style: {
+                display: "inline-flex",
+                border: "2px solid #333",
+                borderRadius: "2px",
+                minWidth: "200px",
+                flexDirection: "column",
+                padding: "0.25rem",
+                gap: "0.25rem",
+              },
             },
-          },
-          shard(module.title),
-          h("hr"),
-          shard(module.text)
-        );
-      }),
-  ])
-  .registerReplacement((e) => [
-    (x) => x.type === "dynamic_array",
-    (x) =>
-      ensureReplacementPreact(e, x, "sb-rag-array", ({ node }) =>
-        node.childBlocks.map(shard)
+            title,
+            h("hr"),
+            text,
+            h(
+              "div",
+              { style: { display: "flex" } },
+              h("input", {
+                type: "checkbox",
+                checked: disabled.get() === "true",
+                onChange: (e) => disabled.set(e.target.checked.toString()),
+              }),
+              "Disable ",
+              button("Delete", () => replacement.node.replaceWith(""))
+            )
+          ),
+        data
       ),
   ]);
 

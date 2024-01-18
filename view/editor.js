@@ -1,6 +1,7 @@
 import { Extension } from "../core/extension.js";
 import {
   ToggleableMutationObserver,
+  clampRange,
   findChange,
   getSelection,
   last,
@@ -88,7 +89,7 @@ export class Editor extends HTMLElement {
   }
 
   focusShard(shard) {
-    this.selectRange(...(this.selectionRange ?? [0, 0]), shard, false);
+    this.selection.focusEditable(shard);
   }
 
   get sourceString() {

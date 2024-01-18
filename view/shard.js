@@ -455,11 +455,17 @@ export class Shard extends HTMLElement {
     const range = withDo(node.range[atStart ? 0 : 1], (p) => [p, p]);
 
     const sel = document.createRange();
-    atStart ? sel.setStartBefore(part) : sel.setStartAfter(part);
+    if (atStart) {
+      if (part) sel.setStartBefore(part);
+      else sel.setStart(this, 0);
+    } else {
+      if (part) sel.setStartAfter(part);
+      else sel.setStart(this, this.childNodes.length);
+    }
     sel.collapse(true);
     this.editor.changeSelection((selection) => selection.addRange(sel));
 
-    return { view: part, range };
+    return { view: part ?? this.closestElementForRange(range), range };
   }
   sbIsMoveAtBoundary(delta) {
     const me = this.sbSelectedEditablePart();
@@ -478,7 +484,7 @@ export class Shard extends HTMLElement {
   }
   sbSelectedEditablePart() {
     const part = this.editor.selection.sbLastPart;
-    if (!(part.isConnected && part.shard === this)) return null;
+    if (!part || !part.isConnected || part.shard !== this) return null;
     return part;
   }
 }

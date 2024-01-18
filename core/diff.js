@@ -448,7 +448,7 @@ export class AttachOp extends DiffOp {
     if (this.parent) tx.insertNodeChild(this.parent, this.node, this.index);
 
     // FIXME do we still need detachedRootShards?
-    if (this.attachingToRoot && buffer.detachedRootShards.length > 0) {
+    if (this.attachingToRoot && buffer.detachedRootShards.size > 0) {
       buffer.detachedRootShards.forEach((shard) => {
         tx.set(shard, "source", this.node);
         tx.appendDOMChild(

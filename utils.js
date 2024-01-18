@@ -419,3 +419,7 @@ export function edgeForRange(range, start) {
     ? new DOMRect(rect.left, rect.top, 0, 0)
     : new DOMRect(rect.right, rect.top, 0, 0);
 }
+
+export function clampRange(range, [min, max]) {
+  return [clamp(range[0], min, max), clamp(range[1], min, max)];
+}
