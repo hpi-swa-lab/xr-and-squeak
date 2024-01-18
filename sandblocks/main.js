@@ -7,7 +7,7 @@ import { matchesKey } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
 import { } from "./file-project/search.js";
 import { RAGApp } from "../extensions/ragPrototype.js";
-import { SequenceDiagram } from "../extensions/tlaSequenceDiagram.js";
+import { SequenceDiagram } from "../extensions/tla/tlaSequenceDiagram.js";
 
 const PROJECT_TYPES = {
   FileProject: {
