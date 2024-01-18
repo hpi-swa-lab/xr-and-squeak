@@ -1,8 +1,8 @@
 import { h } from "../view/widgets.js";
 import specExport from "../assets/tla2PCExport.json" assert {type: "json"}
 import { useState } from "../external/preact-hooks.mjs";
+// TODO install via npm?
 import htm from 'https://esm.sh/htm';
-
 const html = htm.bind(h);
 
 /** succesively applies the list of keys to obj
@@ -107,50 +107,35 @@ const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
     }
     const actors = ["Transaction Manager", "messages", "RM 1", "RM 2"]
 
-    return [
-        h(
-            "table",
-            {
-                style: {
-                    tableLayout: "fixed",
-                    width: "100%"
-                }
-            },
-            h("tr", {}, actors.map(a => h("th", {}, a))),
-            prevEdges
-                .map(e => edgeToVizData(e, varToActor))
-                .map(({ label, actor, msgs }) =>
-                    h("tr", {},
-                        actors.map(a =>
-                            h("td", {}, a === actor ? label : "")
-                        )
-                    )
-                )
-        )
-    ]
+    const vizData = prevEdges.map(e => edgeToVizData(e, varToActor))
+
+    return html`
+    <table style=${{ tableLayout: "fixed", width: "100%" }}>
+        <tr>${actors.map(a => html`<th>${a}</th>`)}</tr>
+        ${vizData.map(({ label, actor, msgs }) => html`
+            <tr>${actors.map(a => html`<td>${a === actor ? label : ""}</td>`)}</tr>`)}
+    </table>`
 }
 
 const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges }) => {
     const nextEdges = Object.entries(graph.outgoingEdges.get(currNode.id))
 
-    return [
-        h("div",
-            {},
-            nextEdges.map(([to, e]) => h(
-                "button",
-                {
-                    onClick: () => {
-                        setCurrNode(graph.nodes.get(to))
-                        setPrevEdges([...prevEdges, e])
-                    },
-                    style: {
-                        padding: "4px",
-                        margin: "4px"
-                    }
-                },
-                `${e.label + e.parameters}`))
-        )
-    ]
+    const buttonStyle = {
+        padding: "4px",
+        margin: "4px"
+    }
+
+    return html`
+        <div>
+            ${nextEdges.map(([to, e]) => html`
+                <button style=${buttonStyle}
+                    onClick=${() => {
+            setCurrNode(graph.nodes.get(to))
+            setPrevEdges([...prevEdges, e])
+        }}>
+                    ${e.label + e.parameters}
+                </button>`)}
+        </div>`
 }
 
 const State = ({ graph, initNode }) => {
@@ -158,8 +143,8 @@ const State = ({ graph, initNode }) => {
     const [prevEdges, setPrevEdges] = useState([])
 
     return [
-        h(Diagram, { graph, prevEdges, setPrevEdges }),
-        h(EdgePicker, { graph, currNode, setCurrNode, prevEdges, setPrevEdges })
+        html`<${Diagram} ...${{ graph, prevEdges, setPrevEdges }} />`,
+        html`<${EdgePicker} ...${{ graph, currNode, setCurrNode, prevEdges, setPrevEdges }} />`
     ]
 }
 
@@ -190,14 +175,10 @@ const GraphProvider = () => {
 
     const graph = { nodes, edges, outgoingEdges }
 
-    return [
-        h(State, { graph, initNode })
-    ]
+    return html`<${State} graph=${graph} initNode=${initNode}/>`
 }
 
 export const SequenceDiagram = () => {
 
-    return [
-        h(GraphProvider, {}),
-    ];
+    return html`<${GraphProvider} />`
 }
