@@ -3,9 +3,9 @@ import { button, useAsyncEffect } from "../view/widgets.js";
 import { render, h } from "../view/widgets.js";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
-import { matchesKey } from "../utils.js";
+import { matchesKey, withDo } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
-import { } from "./file-project/search.js";
+import {} from "./file-project/search.js";
 import { RAGApp } from "../extensions/ragPrototype.js";
 import { SequenceDiagram } from "../extensions/tla/tlaSequenceDiagram.js";
 
@@ -20,7 +20,15 @@ const PROJECT_TYPES = {
     path: "./squeak-project/main.js",
     name: "SqueakProject",
     label: "Squeak Image",
-    createArgs: () => [],
+    createArgs: async () => {
+      const type = await choose(["browser", "rpc"]);
+      return [
+        type,
+        type === "rpc"
+          ? withDo(prompt("Port? (9823)"), (p) => (p ? parseInt(p) : 9823))
+          : prompt("Path?"),
+      ];
+    },
   },
 };
 
@@ -160,12 +168,9 @@ function Sandblocks() {
         setOpenProjects((p) => [...p, project]);
       }),
       button("RAG", () => openComponentInWindow(RAGApp)),
-      openProjects.map((project) =>
-        project.renderItem({
-          onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),
-        })
+      button("TLA Sequence Diagram", () =>
+        openComponentInWindow(SequenceDiagram)
       ),
-      button("TLA Sequence Diagram", () => openComponentInWindow(SequenceDiagram)),
       openProjects.map((project) =>
         project.renderItem({
           onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),

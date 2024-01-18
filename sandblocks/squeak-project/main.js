@@ -15,18 +15,54 @@ import { List } from "../list.js";
 import { openComponentInWindow } from "../window.js";
 import {} from "../../view/widget-utils.js";
 
+// Use RPC with:
+/*
+  server := WebServer new
+ 	  listenOn: 9823;
+ 	  addService: '/sbEval' action: [:req |
+ 	  	req
+ 	  		send200Response: (Compiler evaluate: req content)
+ 	  		contentType: 'text/plain'
+ 	  		do: [:res | res headerAt: 'Access-Control-Allow-Origin' put: '*']];
+ 	  errorHandler: [:err :request | ToolSet debugException: err];
+ 	  yourself.
+  "server destroy"
+*/
+
 export class SqueakProject extends Project {
-  static deserialize(data) {
-    return new SqueakProject();
+  static deserialize({ sqType, portOrPath }) {
+    return new SqueakProject(sqType, portOrPath);
+  }
+
+  serialize() {
+    return { sqType: this.type, portOrPath: this.port ?? this.path };
+  }
+
+  constructor(type, portOrPath) {
+    super();
+
+    this.type = type;
+    if (this.type === "rpc") this.port = portOrPath;
+    else this.path = portOrPath;
   }
 
   get name() {
-    return "squeak-minimal";
+    return this.type === "rpc" ? `Squeak RPC ${this.port}` : this.path;
   }
 
   async open() {
-    await runHeadless(config.baseURL + "external/squeak-minimal.image");
-    await wait(1000);
+    if (this.type === "rpc") {
+      window.sqEval = async (x) => {
+        const res = await fetch(`http://localhost:${this.port}/sbEval`, {
+          method: "POST",
+          body: x,
+        });
+        return await res.text();
+      };
+    } else {
+      await runHeadless(config.baseURL + "external/squeak-minimal.image");
+      await wait(1000);
+    }
   }
 
   renderBackground() {
@@ -62,35 +98,42 @@ let systemChangeCallbackInit = false;
 async function ensureSystemChangeCallback() {
   if (!systemChangeCallbackInit) {
     systemChangeCallbackInit = true;
-    await sqCompile(
-      "Behavior",
-      `asJSArgument
+
+    await sqEval(`SystemChangeNotifier uniqueInstance
+      notify: JS window
+      ofAllSystemChangesUsing: #sqSystemChangeCallback:`);
+
+    const SQUEAK_JS_HACKS = false;
+    if (SQUEAK_JS_HACKS) {
+      await sqCompile(
+        "Behavior",
+        `asJSArgument
         ^ {#name -> self name}`
-    );
-    await sqCompile(
-      "AbstractEvent",
-      `asJSArgument
+      );
+      await sqCompile(
+        "AbstractEvent",
+        `asJSArgument
         ^ (self class allInstVarNames collect: [:n | n asJSArgument -> (self instVarNamed: n) asJSArgument]),
           {#class -> self className}`
-    );
-    await sqCompile(
-      "Character",
-      // in this version, we are unloading the charset
-      `canBeGlobalVarInitial ^ self isUppercase`
-    );
-    await sqCompile(
-      "CompiledMethod",
-      `asJSArgument
+      );
+      await sqCompile(
+        "Character",
+        // in this version, we are unloading the charset
+        `canBeGlobalVarInitial ^ self isUppercase`
+      );
+      await sqCompile(
+        "CompiledMethod",
+        `asJSArgument
         ^ {#selector -> self selector. #class -> self methodClass asJSArgument}`
-    );
-    // FIXME hacks to better understand what errors are triggering
-    await sqCompile(
-      "Parser",
-      `notify: string at: location self error: string, '' '', source contents`
-    );
-    await sqCompile(
-      "JSObjectProxy class",
-      `handleCallback
+      );
+      // FIXME hacks to better understand what errors are triggering
+      await sqCompile(
+        "Parser",
+        `notify: string at: location self error: string, '' '', source contents`
+      );
+      await sqCompile(
+        "JSObjectProxy class",
+        `handleCallback
 	| block args result |
 	block := self primGetActiveCallbackBlock.
 	args := self primGetActiveCallbackArgs.
@@ -108,11 +151,8 @@ async function ensureSystemChangeCallback() {
 				ctx := ctx sender].
 			result := JS Error: "err asString" messageStream contents withUnixLineEndings squeakToUtf8].
 	self primReturnFromCallback: result.`
-    );
-
-    await sqEval(`SystemChangeNotifier uniqueInstance
-      notify: JS window
-      ofAllSystemChangesUsing: #sqSystemChangeCallback:`);
+      );
+    }
   }
 }
 window.sqSystemChangeCallback = function (e) {
@@ -196,7 +236,7 @@ function SqueakBrowserComponent({ initialClass }) {
   useEffect(async () => {
     if (selectedSelector) {
       const source = await evJson(
-        `((Smalltalk at: #${selectedClass}) sourceCodeAt: #${selectedSelector}) withUnixLineEndings asJsonString`
+        `((Smalltalk at: #${selectedClass}) sourceCodeAt: #${selectedSelector}) string withUnixLineEndings asJsonString`
       );
       setSourceString(source);
     } else if (selectedClass) {
