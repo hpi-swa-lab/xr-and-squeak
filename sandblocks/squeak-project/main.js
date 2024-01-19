@@ -274,7 +274,7 @@ function SqueakBrowserComponent({ initialClass }) {
   };
   return h(
     "div",
-    { style: { display: "flex", flexDirection: "column", flex: 1 } },
+    { style: { display: "flex", flexDirection: "column", flex: "1 1" } },
     h(
       "div",
       { style: { display: "flex" } },
@@ -320,7 +320,7 @@ function SqueakBrowserComponent({ initialClass }) {
     ),
     h(
       "div",
-      { style: { overflowY: "auto", flex: 1 } },
+      { style: { overflowY: "auto", flexGrow: 1, height: 0 } },
       editor({
         style: { minHeight: "100%" },
         extensions: ["smalltalk:base", "base:base"],
