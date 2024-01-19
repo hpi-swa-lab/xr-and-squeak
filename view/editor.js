@@ -419,8 +419,7 @@ export class Editor extends HTMLElement {
   }
 
   onSelectionChange() {
-    if (document.activeElement.tagName !== "SB-SHARD")
-      return this.selection.deselect();
+    if (document.activeElement.tagName !== "SB-SHARD") return;
 
     const selection = getSelection();
     // no selection -- this typically means that we are in the process of changing selections
