@@ -1,6 +1,7 @@
 import { Extension } from "../core/extension.js";
 import {
   ToggleableMutationObserver,
+  clampRange,
   findChange,
   getSelection,
   last,
@@ -88,7 +89,7 @@ export class Editor extends HTMLElement {
   }
 
   focusShard(shard) {
-    this.selectRange(...(this.selectionRange ?? [0, 0]), shard, false);
+    this.selection.focusEditable(shard);
   }
 
   get sourceString() {
@@ -273,6 +274,19 @@ export class Editor extends HTMLElement {
     });
   }
 
+  async addExtension(extension) {
+    this.inlineExtensions ??= [];
+    if (typeof extension === "string")
+      extension = await Extension.get(extension);
+    if (extension instanceof Extension)
+      extension = extension.instance(SandblocksExtensionInstance);
+    this.inlineExtensions.push(extension);
+
+    extension.process(["extensionConnected"], this.source);
+    extension.process(["replacement"], this.source);
+    extension.process(["always"], this.source);
+  }
+
   set inlineExtensions(extensions) {
     this._inlineExtensions = extensions;
   }
@@ -418,29 +432,14 @@ export class Editor extends HTMLElement {
   }
 
   onSelectionChange() {
-    if (document.activeElement.tagName !== "SB-SHARD")
-      return this.selection.deselect();
+    if (document.activeElement.tagName !== "SB-SHARD") return;
 
     const selection = getSelection();
     // no selection -- this typically means that we are in the process of changing selections
     if (selection.type === "None") return;
 
     const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
-    if (shard?.editor !== this) return this.selection.deselect();
-
-    // is our selection an element that is neither a view itself nor has any
-    // child views?
-    if (
-      !selection.anchorNode.range &&
-      selection.anchorNode instanceof window.Element &&
-      [...selection.anchorNode.children].every((c) => !c.range)
-    )
-      return this.selection.deselect();
-    if (
-      selection.anchorNode instanceof window.Text &&
-      !selection.anchorNode.parentNode.range
-    )
-      return this.selection.deselect();
+    if (shard?.editor !== this) return;
 
     const { selectionRange, view } = shard._extractSelectionRange() ?? {};
     this.selection.informChange(view ?? shard, selectionRange);
@@ -522,7 +521,7 @@ export class Editor extends HTMLElement {
 }
 
 function findNode(element, node) {
-  if (element.node === node) return element;
+  if (element.node === node && element.tagName !== "SB-SHARD") return element;
   for (const child of element.children) {
     const found = findNode(child, node);
     if (found) return found;

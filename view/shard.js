@@ -12,9 +12,14 @@ import {
   withDo,
   parentWithTag,
   rangeDistance,
+  rangeEqual,
 } from "../utils.js";
 import { Block } from "./elements.js";
-import { followingEditablePart, markAsEditableElement } from "../core/focus.js";
+import {
+  followingEditablePart,
+  followingElementThat,
+  markAsEditableElement,
+} from "../core/focus.js";
 
 // A Shard is a self-contained editable element.
 //
@@ -194,8 +199,16 @@ export class Shard extends HTMLElement {
     this.parentElement?.removeChild(this);
   }
 
+  _lastSelectionRange = null;
   focus() {
-    this.editor.focusShard(this);
+    // FIXME necessary? if so, creates a loop with the selection's focus logic
+    // this.editor.focusShard(this);
+    // super.focus();
+    if (this._lastSelectionRange) {
+      this.editor.changeSelection((selection) => {
+        selection.addRange(this._lastSelectionRange);
+      });
+    } else super.focus();
   }
 
   isMyMutation(mutation) {
@@ -234,65 +247,26 @@ export class Shard extends HTMLElement {
   // extract the current DOM selection.
   // to be used only after DOM changes have been reconciled with the model.
   _extractSelectionRange() {
-    return this._rangeForSelection(getSelection().getRangeAt(0));
+    const range = getSelection().getRangeAt(0);
+    this._lastSelectionRange = range;
+    return this._rangeForSelection(range);
   }
 
   _rangeForSelection(range) {
-    const [view, start] = this._nodeAndIndexForSelection(
+    const start = this._indexForSelection(
       range.startContainer,
       range.startOffset
     );
-    const [_, end] = this._nodeAndIndexForSelection(
-      range.endContainer,
-      range.endOffset
-    );
-
+    const end = this._indexForSelection(range.endContainer, range.endOffset);
     const selectionRange = [start, end].sort((a, b) => a - b);
-    if (!view.node.preferForSelection) {
-      // look left and right if we got a better one that's also valid
-      for (const index of [-1, 1]) {
-        let candidate = followingEditablePart(view, index);
-        if (
-          candidate &&
-          candidate.node?.preferForSelection &&
-          candidate.shard === this &&
-          (candidate.range[0] === selectionRange[0] ||
-            candidate.range[1] === selectionRange[1])
-        ) {
-          return { selectionRange, view: candidate };
-        }
-      }
-    }
-    return { selectionRange, view };
+    return { selectionRange, view: this.findSelectedForRange(selectionRange) };
   }
 
-  _nodeAndIndexForSelection(node, offset) {
-    let child;
-    // cursor in text node, return the corresponding range and offset
-    if (node instanceof window.Text) {
-      child = parentWithTag(node, "SB-TEXT");
-      return [child, child.range[0] + offset];
-    }
-
-    // cursor in an empty block or text, just return its start
-    if (node.children.length < 1) {
-      console.assert(offset === 0);
-      return [node, node.range[0]];
-    }
-
-    // cursor between two children
-    child = node.children[clamp(offset, 0, node.children.length - 1)];
-    let atStart = true;
-    if (!child.range && offset > 0) {
-      child = node.children[offset - 1];
-      atStart = false;
-    }
-    if (offset >= node.children.length) atStart = false;
-    console.assert(
-      child.range,
-      "cursor is between two children that are not views"
-    );
-    return [child, atStart ? child.range[0] : child.range[1]];
+  _indexForSelection(node, offset) {
+    const parent = followingElementThat(node, -1, (n) => !!n.range);
+    if (node.parentElement === parent && node instanceof window.Text)
+      return parent.range[0] + offset;
+    else return parent.range[offset >= parent.childNodes.length ? 1 : 0];
   }
 
   // combined operation to find the source string and cursor range
@@ -381,7 +355,7 @@ export class Shard extends HTMLElement {
     if (!this.root) return null;
 
     allViewsDo(this, (child) => {
-      if (!child.node.isText) return;
+      // if (!child.node.isText) return;
       if (child.shard !== this) return;
       const [start, end] = child.range;
       if (start <= range[0] && end >= range[1]) {
@@ -394,6 +368,14 @@ export class Shard extends HTMLElement {
           candidate = child;
       }
     });
+
+    while (
+      candidate.parentElement?.range &&
+      candidate.parentElement.tagName !== "SB-SHARD" &&
+      rangeEqual(candidate.range, candidate.parentElement.range)
+    ) {
+      candidate = candidate.parentElement;
+    }
 
     return candidate;
   }
@@ -455,11 +437,17 @@ export class Shard extends HTMLElement {
     const range = withDo(node.range[atStart ? 0 : 1], (p) => [p, p]);
 
     const sel = document.createRange();
-    atStart ? sel.setStartBefore(part) : sel.setStartAfter(part);
+    if (atStart) {
+      if (part) sel.setStartBefore(part);
+      else sel.setStart(this, 0);
+    } else {
+      if (part) sel.setStartAfter(part);
+      else sel.setStart(this, this.childNodes.length);
+    }
     sel.collapse(true);
     this.editor.changeSelection((selection) => selection.addRange(sel));
 
-    return { view: part, range };
+    return { view: part ?? this.closestElementForRange(range), range };
   }
   sbIsMoveAtBoundary(delta) {
     const me = this.sbSelectedEditablePart();
@@ -478,7 +466,7 @@ export class Shard extends HTMLElement {
   }
   sbSelectedEditablePart() {
     const part = this.editor.selection.sbLastPart;
-    if (!(part.isConnected && part.shard === this)) return null;
+    if (!part || !part.isConnected || part.shard !== this) return null;
     return part;
   }
 }

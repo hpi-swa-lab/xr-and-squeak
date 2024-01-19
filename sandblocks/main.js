@@ -3,10 +3,11 @@ import { button, useAsyncEffect } from "../view/widgets.js";
 import { render, h } from "../view/widgets.js";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
-import { matchesKey } from "../utils.js";
+import { matchesKey, withDo } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
 import {} from "./file-project/search.js";
-import { RAGApp } from "../extensions/ragPrototype.js";
+import { RAGApp } from "./oRAGle/ragPrototype.js";
+import { SequenceDiagram } from "../extensions/tla/tlaSequenceDiagram.js";
 
 const PROJECT_TYPES = {
   FileProject: {
@@ -19,7 +20,15 @@ const PROJECT_TYPES = {
     path: "./squeak-project/main.js",
     name: "SqueakProject",
     label: "Squeak Image",
-    createArgs: () => [],
+    createArgs: async () => {
+      const type = await choose(["browser", "rpc"]);
+      return [
+        type,
+        type === "rpc"
+          ? withDo(prompt("Port? (9823)"), (p) => (p ? parseInt(p) : 9823))
+          : prompt("Path?"),
+      ];
+    },
   },
 };
 
@@ -44,6 +53,31 @@ function projectEqual(a, b) {
 
 Editor.init();
 
+const startUpOptions = {
+  rag: () => {
+    openComponentInWindow(
+      RAGApp,
+      {},
+      {
+        doNotStartAttached: true,
+        initialPosition: { x: 10, y: 10 },
+        initialSize: { x: 1000, y: 1000 },
+      }
+    );
+  },
+  tla: () => {
+    openComponentInWindow(
+      SequenceDiagram,
+      {},
+      {
+        doNotStartAttached: true,
+        initialPosition: { x: 10, y: 10 },
+        initialSize: { x: 1000, y: 600 },
+      }
+    );
+  },
+};
+
 function Sandblocks() {
   const [openProjects, setOpenProjects] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
@@ -57,6 +91,12 @@ function Sandblocks() {
   //     e.replaceFullTextFromCommand("b");
   //   }, 1000);
   // }, []);
+
+  useEffect(() => {
+    if (location.hash) {
+      startUpOptions[location.hash.slice(1)]?.();
+    }
+  }, []);
 
   useAsyncEffect(async () => {
     const lastProjects = JSON.parse(localStorage.lastProjects ?? "[]");
@@ -103,6 +143,21 @@ function Sandblocks() {
       recentProjects.map((p) => p.fullSerialize())
     );
   }, [recentProjects]);
+  useEffect(() => {
+    const handler = (e) => {
+      if (openProjects.some((p) => p.unsavedChanges)) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+
+      localStorage.lastProjects = JSON.stringify(
+        openProjects.map((p) => p.fullSerialize())
+      );
+    };
+    window.addEventListener("beforeunload", handler);
+
+    return () => window.removeEventListener("beforeunload", (e) => handler);
+  }, [openProjects]);
 
   return [
     h(
@@ -128,6 +183,9 @@ function Sandblocks() {
         setOpenProjects((p) => [...p, project]);
       }),
       button("RAG", () => openComponentInWindow(RAGApp)),
+      button("TLA Sequence Diagram", () =>
+        openComponentInWindow(SequenceDiagram)
+      ),
       openProjects.map((project) =>
         project.renderItem({
           onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),

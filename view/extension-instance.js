@@ -8,6 +8,17 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
   queuedUpdates = [];
   widgets = [];
 
+  installReplacement(view, tag, props) {
+    const replacement = document.createElement(tag);
+    replacement.source = view.node;
+    Object.assign(replacement, props ?? {});
+    replacement.init(view.node);
+    replacement.update(view.node);
+    view.replaceWith(replacement);
+    view.node._views.remove(view);
+    view.node._views.push(replacement);
+  }
+
   ensureReplacement(node, tag, props) {
     console.assert(this.processingTrigger === "replacement");
 
@@ -112,7 +123,7 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
   addSuggestions(node, suggestions) {
     node.editor.addSuggestions(suggestions);
   }
-        
+
   destroyReplacement(r) {
     r.replaceWith(r.source.toHTML());
   }

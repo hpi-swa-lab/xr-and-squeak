@@ -222,9 +222,14 @@ export class ExtensionInstance {
     );
   }
 
+  continuePropagation = false;
+
   queryShouldStillPropagate(trigger) {
-    if (trigger === "shortcut") return !!this.currentShortcut;
-    return true;
+    return this.continuePropagation;
+  }
+
+  stopPropagation() {
+    this.continuePropagation = false;
   }
 
   process(triggers, node) {
@@ -255,6 +260,8 @@ export class ExtensionInstance {
     this.currentAttachedData =
       this.attachedDataPerTrigger.get(trigger) ?? new Map();
     this.newAttachedData = new Map();
+
+    this.continuePropagation = true;
 
     if (this.extension.queries.has(trigger)) {
       switch (this.propagationType(trigger)) {
@@ -385,6 +392,7 @@ export class ExtensionInstance {
   }
 
   // subclassResponsibility
+  installReplacement(node, tag, props) {}
   ensureReplacement(node, tag, props) {}
   attachData(node, identifier, add, remove, update = null) {}
   processStickyReplacements(node) {}

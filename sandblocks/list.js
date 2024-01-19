@@ -50,7 +50,7 @@ export function List({
   }, [items, filterString]);
 
   useEffect(() => {
-    if (!selected || !visibleItems.includes(selected))
+    if ((!selected || !visibleItems.includes(selected)) && visibleItems[0])
       setSelected(visibleItems[0]);
   }, [visibleItems, filterString]);
 

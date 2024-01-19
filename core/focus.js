@@ -32,10 +32,19 @@ function nodeEditableForPart(node) {
 
 export function followingEditablePart(node, direction) {
   const currentEditable = nodeEditableForPart(node);
+  return followingElementThat(
+    node,
+    direction,
+    (n) => nodeIsEditablePart(n) && n !== currentEditable
+  );
+}
+
+export function followingElementThat(node, direction, predicate) {
   do {
     node = direction > 0 ? nextNodePreOrder(node) : previousNodePreOrder(node);
-    if (nodeIsEditablePart(node) && node !== currentEditable) return node;
+    if (predicate(node)) return node;
   } while (node);
+  return null;
 }
 
 function nextNodePreOrder(node) {
@@ -99,6 +108,15 @@ export class SBSelection extends EventTarget {
     } while (node);
   }
 
+  focusEditable(editable) {
+    if (editable === this.lastEditable) {
+      editable.focus();
+      return;
+    }
+    let info = editable.sbSelectAtBoundary(null, true);
+    this._moveTo(info.view, info.range, false);
+  }
+
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
 
@@ -138,7 +156,16 @@ export class SBSelection extends EventTarget {
       if (best) return best;
     }
 
-    console.assert(false, "no view found for range, return any?", newRange);
+    for (const editable of getAllEditableElements(editor)) {
+      const info = editable.sbCandidateForRange(newRange);
+      if (info) return info.view;
+    }
+
+    for (const editable of getAllEditableElements(editor)) {
+      return editable;
+    }
+
+    throw new Error("no editables in editor");
   }
 
   moveToNext(editor, delta) {
@@ -160,10 +187,6 @@ export class SBSelection extends EventTarget {
     this.informChange(view, range);
     if (scrollIntoView)
       view.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }
-
-  deselect() {
-    // this.informChange(null, null);
   }
 
   informChange(view, range) {
@@ -190,6 +213,7 @@ export class SBSelection extends EventTarget {
 // whether a requested cursor move hit the element's boundary.
 // For preact, use with `h("input", { ref: markAsEditableElement })`.
 export function markAsEditableElement(element) {
+  if (!element) return;
   if (element.getAttribute("sb-editable")) return;
 
   element.setAttribute("sb-editable", "true");

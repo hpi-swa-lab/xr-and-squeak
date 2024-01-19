@@ -1,6 +1,6 @@
 import { Extension } from "../core/extension.js";
-import { exec, mapSeparated } from "../utils.js";
-import { Replacement, shard } from "../view/widgets.js";
+import { exec, mapSeparated, withDo } from "../utils.js";
+import { ExpandToShard, Replacement, h, shard } from "../view/widgets.js";
 
 customElements.define(
   "sb-watch",
@@ -18,7 +18,7 @@ customElements.define(
   }
 );
 
-const smalltalkMethodSelector = [
+export const smalltalkMethodSelector = [
   (x) => x.orAnyParent((y) => y.type === "method"),
   (x) =>
     x.children.find((y) =>
@@ -26,10 +26,125 @@ const smalltalkMethodSelector = [
     ),
 ];
 
-const smalltalkMethodArguments = [
+export const smalltalkMethodArguments = [
   ...smalltalkMethodSelector,
   (x) => x.children.filter((y) => y.type === "identifier"),
 ];
+
+export function selectorAndArgs(node) {
+  return {
+    selector: node.childBlocks
+      .filter((s) =>
+        ["keyword", "binary_operator", "unary_identifier"].includes(s.type)
+      )
+      .map((s) => s.sourceString)
+      .join(""),
+    arguments: node.childBlocks.filter(
+      (s) => s.compatibleWith("expression") && s.field !== "receiver"
+    ),
+  };
+}
+
+export function cascadedMessages(cascade) {
+  return [cascade.childBlock(0), ...cascade.childBlocks.slice(1)].map(
+    selectorAndArgs
+  );
+}
+
+// assume unique one-arg messages
+export function cascadedConstructorFor(node, name) {
+  const c = `${name} new`;
+
+  if (node.matches(c)) return { receiver: node, messages: [] };
+
+  if (node.type === "cascade" && node.childBlock(0).childBlock(0).matches(c)) {
+    return {
+      receiver: node.childBlock(0).childBlock(0),
+      messages: cascadeToMap(node),
+    };
+  }
+
+  if (node.type === "keyword_message" && node.childBlock(0).matches(c)) {
+    return {
+      receiver: node.childBlock(0),
+      messages: Object.fromEntries([
+        withDo(selectorAndArgs(node), (x) => [
+          x.selector.replace(":", ""),
+          x.arguments[0],
+        ]),
+      ]),
+    };
+  }
+
+  return null;
+}
+
+export function cascadedConstructorShardsFor(node, name, defaults) {
+  const d = cascadedConstructorFor(node, name);
+  if (d === null) return null;
+
+  const { receiver, messages: fields } = d;
+  return [
+    node,
+    Object.fromEntries(
+      Object.entries(defaults).map(([field, v]) => {
+        if (!(field in fields))
+          return [
+            field,
+            v.noShard
+              ? {
+                  get: () => v.default,
+                  set: (value) => addCascadedMessageTo(receiver, field, value),
+                }
+              : h(ExpandToShard, {
+                  field: field,
+                  expandCallback: (input) =>
+                    addCascadedMessageTo(receiver, field, input),
+                  ...v,
+                }),
+          ];
+        else
+          return [
+            field,
+            v.noShard
+              ? {
+                  get: () => fields[field].sourceString,
+                  set: (v) => fields[field].replaceWith(v),
+                }
+              : shard(fields[field]),
+          ];
+      })
+    ),
+  ];
+}
+
+// assumes cascade of unique one-arg messages
+function cascadeToMap(cascade) {
+  return cascadedMessages(cascade).reduce(
+    (acc, { selector, arguments: [arg] }) => {
+      acc[selector.replace(":", "")] = arg;
+      return acc;
+    },
+    {}
+  );
+}
+
+// FIXME limited to one-arg messages
+function addCascadedMessageTo(node, message, arg) {
+  if (node.parent.parent.type === "cascade") {
+    node.parent.parent.wrapWith("", `; ${message}: ${arg}`);
+    return;
+  }
+  if (
+    ["keyword_message", "binary_message", "unary_message"].includes(
+      node.parent.type
+    )
+  ) {
+    node.parent.wrapWith("", `; ${message}: ${arg}`);
+    return;
+  }
+  node.wrapWith("", ` ${message}: ${arg}`);
+}
 
 export const base = new Extension()
   .registerReplacement((e) => [
@@ -57,6 +172,11 @@ export const base = new Extension()
     },
   ])
 
+  .registerExtensionConnected((e) => [
+    (x) => x.query("<sandblocksExtensions: #($$$extensions)>"),
+    (x) => x.extensions.forEach((e) => e.editor.addExtension(e.text)),
+  ])
+
   // syntax highlighting
   .registerAlways((e) => [
     (x) => ["identifier", "block_argument"].includes(x.type),
@@ -81,7 +201,7 @@ export const base = new Extension()
   ])
   .registerAlways((e) => [
     (x) => ["string", "symbol", "character"].includes(x.type),
-    (x) => e.applySyntaxHighlighting(x, "number"),
+    (x) => e.applySyntaxHighlighting(x, "string"),
   ])
   .registerAlways((e) => [
     (x) => x.type === "comment",
