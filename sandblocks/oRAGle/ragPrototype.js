@@ -1,14 +1,14 @@
-import { Extension } from "../core/extension.js";
-import { useEffect, useMemo, useState } from "../external/preact-hooks.mjs";
-import { mapSeparated, withDo } from "../utils.js";
+import { Extension } from "../../core/extension.js";
+import { useEffect, useMemo, useState } from "../../external/preact-hooks.mjs";
+import { mapSeparated, withDo } from "../../utils.js";
 import {
   button,
   ensureReplacementPreact,
   h,
   installReplacementPreact,
-} from "../view/widgets.js";
-import { chat, complete } from "./copilot.js";
-import { cascadedConstructorShardsFor } from "./smalltalk.js";
+} from "../../view/widgets.js";
+import { chat, complete } from "../../extensions/copilot.js";
+import { cascadedConstructorShardsFor } from "../../extensions/smalltalk.js";
 
 export const base = new Extension()
   .registerDoubleClick((e) => [
