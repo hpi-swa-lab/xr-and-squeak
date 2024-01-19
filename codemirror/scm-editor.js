@@ -162,7 +162,6 @@ export class SCMShard extends HTMLElement {
   }
   
   sbSelectAtBoundary(part, atStart){
-    debugger
     throw ": {view: View, range}"
   
   }
