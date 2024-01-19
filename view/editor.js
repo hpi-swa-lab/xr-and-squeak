@@ -274,6 +274,13 @@ export class Editor extends HTMLElement {
     });
   }
 
+  async addExtension(extension) {
+    this.inlineExtensions ??= [];
+    if (typeof extension === "string")
+      extension = await Extension.get(extension);
+    this.inlineExtensions.push(extension);
+  }
+
   set inlineExtensions(extensions) {
     this._inlineExtensions = extensions;
   }

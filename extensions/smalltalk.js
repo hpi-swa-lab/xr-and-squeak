@@ -169,6 +169,11 @@ export const base = new Extension()
     },
   ])
 
+  .registerExtensionConnected((e) => [
+    (x) => x.query("<sandblocksExtensions: #($$$extensions)>"),
+    (x) => x.extensions.forEach((e) => e.editor.addExtension(e.text)),
+  ])
+
   // syntax highlighting
   .registerAlways((e) => [
     (x) => ["identifier", "block_argument"].includes(x.type),
