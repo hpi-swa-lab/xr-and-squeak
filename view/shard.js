@@ -369,6 +369,8 @@ export class Shard extends HTMLElement {
       }
     });
 
+    if (!candidate) return null;
+
     while (
       candidate.parentElement?.range &&
       candidate.parentElement.tagName !== "SB-SHARD" &&

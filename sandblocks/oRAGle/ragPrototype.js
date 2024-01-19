@@ -39,7 +39,7 @@ export const base = new Extension()
   .registerReplacement((e) => [
     (x) =>
       cascadedConstructorShardsFor(x, "Module", {
-        disabled: { default: "false", noShard: true },
+        disabled: { default: "false", mode: "literal" },
         title: { prefix: "'", placeholder: "title", suffix: "'" },
         text: { prefix: "'", placeholder: "text", suffix: "'" },
       }),
