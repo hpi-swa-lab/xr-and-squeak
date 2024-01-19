@@ -32,10 +32,19 @@ function nodeEditableForPart(node) {
 
 export function followingEditablePart(node, direction) {
   const currentEditable = nodeEditableForPart(node);
+  return followingElementThat(
+    node,
+    direction,
+    (n) => nodeIsEditablePart(n) && n !== currentEditable
+  );
+}
+
+export function followingElementThat(node, direction, predicate) {
   do {
     node = direction > 0 ? nextNodePreOrder(node) : previousNodePreOrder(node);
-    if (nodeIsEditablePart(node) && node !== currentEditable) return node;
+    if (predicate(node)) return node;
   } while (node);
+  return null;
 }
 
 function nextNodePreOrder(node) {
@@ -178,10 +187,6 @@ export class SBSelection extends EventTarget {
     this.informChange(view, range);
     if (scrollIntoView)
       view.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }
-
-  deselect() {
-    // this.informChange(null, null);
   }
 
   informChange(view, range) {

@@ -15,7 +15,11 @@ import {
   rangeEqual,
 } from "../utils.js";
 import { Block } from "./elements.js";
-import { followingEditablePart, markAsEditableElement } from "../core/focus.js";
+import {
+  followingEditablePart,
+  followingElementThat,
+  markAsEditableElement,
+} from "../core/focus.js";
 
 // A Shard is a self-contained editable element.
 //
@@ -241,67 +245,20 @@ export class Shard extends HTMLElement {
   }
 
   _rangeForSelection(range) {
-    const [view, start] = this._nodeAndIndexForSelection(
+    const start = this._indexForSelection(
       range.startContainer,
       range.startOffset
     );
-    const [_, end] = this._nodeAndIndexForSelection(
-      range.endContainer,
-      range.endOffset
-    );
-
+    const end = this._indexForSelection(range.endContainer, range.endOffset);
     const selectionRange = [start, end].sort((a, b) => a - b);
-    /*if (!view.node.preferForSelection) {
-      // look left and right if we got a better one that's also valid
-      for (const index of [-1, 1]) {
-        let candidate = followingEditablePart(view, index);
-        if (
-          candidate &&
-          candidate.node?.preferForSelection &&
-          candidate.shard === this &&
-          (candidate.range[0] === selectionRange[0] ||
-            candidate.range[1] === selectionRange[1])
-        ) {
-          return { selectionRange, view: this._viewForSelection(candidate) };
-        }
-      }
-    }*/
-    // select the furthest view up the chain that shares the exact same range
     return { selectionRange, view: this.findSelectedForRange(selectionRange) };
   }
 
-  _nodeAndIndexForSelection(node, offset) {
-    let child;
-    // cursor in text node, return the corresponding range and offset
-    if (node instanceof window.Text) {
-      child = parentWithTag(node, "SB-TEXT");
-      return [child, child.range[0] + offset];
-    }
-
-    if (node.tagName === "SB-TEXT") {
-      console.assert(offset <= 1);
-      return [node, offset === 0 ? node.range[0] : node.range[1]];
-    }
-
-    // cursor in an empty block or text, just return its start
-    if (node.childNodes.length < 1) {
-      console.assert(offset === 0);
-      return [node, node.range[0]];
-    }
-
-    // cursor between two children
-    child = node.childNodes[clamp(offset, 0, node.childNodes.length - 1)];
-    let atStart = true;
-    if (!child.range && offset > 0) {
-      child = node.childNodes[offset - 1];
-      atStart = false;
-    }
-    if (offset >= node.childNodes.length) atStart = false;
-    console.assert(
-      child.range,
-      "cursor is between two children that are not views"
-    );
-    return [child, atStart ? child.range[0] : child.range[1]];
+  _indexForSelection(node, offset) {
+    const parent = followingElementThat(node, -1, (n) => !!n.range);
+    if (node.parentElement === parent && node instanceof window.Text)
+      return parent.range[0] + offset;
+    else return parent.range[offset >= parent.childNodes.length ? 1 : 0];
   }
 
   // combined operation to find the source string and cursor range

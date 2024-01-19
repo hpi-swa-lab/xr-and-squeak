@@ -427,21 +427,7 @@ export class Editor extends HTMLElement {
     if (selection.type === "None") return;
 
     const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
-    if (shard?.editor !== this) return this.selection.deselect();
-
-    // is our selection an element that is neither a view itself nor has any
-    // child views?
-    if (
-      !selection.anchorNode.range &&
-      selection.anchorNode instanceof window.Element &&
-      [...selection.anchorNode.children].every((c) => !c.range)
-    )
-      return this.selection.deselect();
-    if (
-      selection.anchorNode instanceof window.Text &&
-      !selection.anchorNode.parentNode.range
-    )
-      return this.selection.deselect();
+    if (shard?.editor !== this) return;
 
     const { selectionRange, view } = shard._extractSelectionRange() ?? {};
     this.selection.informChange(view ?? shard, selectionRange);
