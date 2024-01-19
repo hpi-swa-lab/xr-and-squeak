@@ -55,6 +55,13 @@ export const useAsyncEffect = (fn, deps) => {
     fn();
   }, deps);
 };
+export const useLocalState = (key, initialValue) => {
+  const [value, setValue] = useState(localStorage.getItem(key) ?? initialValue);
+  useEffect(() => {
+    localStorage.setItem(key, value);
+  }, [value]);
+  return [value, setValue];
+};
 
 export class Widget extends HTMLElement {
   disconnectedCallback() {

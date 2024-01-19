@@ -143,6 +143,21 @@ function Sandblocks() {
       recentProjects.map((p) => p.fullSerialize())
     );
   }, [recentProjects]);
+  useEffect(() => {
+    const handler = (e) => {
+      if (openProjects.some((p) => p.unsavedChanges)) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+
+      localStorage.lastProjects = JSON.stringify(
+        openProjects.map((p) => p.fullSerialize())
+      );
+    };
+    window.addEventListener("beforeunload", handler);
+
+    return () => window.removeEventListener("beforeunload", (e) => handler);
+  }, [openProjects]);
 
   return [
     h(

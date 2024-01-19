@@ -6,7 +6,7 @@ import {
   useState,
 } from "../../external/preact-hooks.mjs";
 import { render } from "../../external/preact.mjs";
-import { ToggleableMutationObserver, wait } from "../../utils.js";
+import { ToggleableMutationObserver, orParentThat, wait } from "../../utils.js";
 import { button, editor, h } from "../../view/widgets.js";
 import { config } from "../../core/config.js";
 import { Project } from "../../core/project.js";
@@ -30,20 +30,34 @@ import {} from "../../view/widget-utils.js";
 */
 
 export class SqueakProject extends Project {
-  static deserialize({ sqType, portOrPath }) {
-    return new SqueakProject(sqType, portOrPath);
+  static deserialize({ sqType, portOrPath, restore }) {
+    return new SqueakProject(sqType, portOrPath, restore);
   }
 
   serialize() {
-    return { sqType: this.type, portOrPath: this.port ?? this.path };
+    return {
+      sqType: this.type,
+      portOrPath: this.port ?? this.path,
+      restore: [...document.body.querySelectorAll("[sq-restore]")].map((e) => {
+        // TODO filter for windows that belong to this project
+        const window = orParentThat(e, (p) => p.tagName === "SB-WINDOW");
+        return {
+          ...JSON.parse(e.getAttribute("sq-restore")),
+          initialSize: window?.size,
+          initialPosition: window?.position,
+        };
+      }),
+    };
   }
 
-  constructor(type, portOrPath) {
+  constructor(type, portOrPath, restore) {
     super();
 
     this.type = type;
     if (this.type === "rpc") this.port = portOrPath;
     else this.path = portOrPath;
+
+    this.restore = restore;
   }
 
   get name() {
@@ -62,6 +76,22 @@ export class SqueakProject extends Project {
     } else {
       await runHeadless(config.baseURL + "external/squeak-minimal.image");
       await wait(1000);
+    }
+
+    for (const window of this.restore) {
+      console.assert(window.type === "browser");
+      openComponentInWindow(
+        SqueakBrowserComponent,
+        {
+          initialClass: window.initialClass,
+          initialSelector: window.initialSelector,
+        },
+        {
+          doNotStartAttached: true,
+          initialSize: window.initialSize,
+          initialPosition: window.initialPosition,
+        }
+      );
     }
   }
 
@@ -185,7 +215,6 @@ function SqueakBrowserComponent({ initialClass }) {
 
   useEffect(() => {
     const s = (e) => {
-      console.log(e);
       if (e.class === "AddedEvent" && e.itemKind === "class") {
         setSystemCategoryMap((m) => ({
           ...m,
@@ -274,7 +303,14 @@ function SqueakBrowserComponent({ initialClass }) {
   };
   return h(
     "div",
-    { style: { display: "flex", flexDirection: "column", flex: "1 1" } },
+    {
+      style: { display: "flex", flexDirection: "column", flex: "1 1" },
+      "sq-restore": JSON.stringify({
+        type: "browser",
+        initialClass: selectedClass,
+        initialSelector: selectedSelector,
+      }),
+    },
     h(
       "div",
       { style: { display: "flex" } },
@@ -376,7 +412,6 @@ const base = new Extension()
   ])
   .registerShortcut("printIt", async (x, view, e) => {
     const widget = e.createWidget("sb-print-result");
-    console.log(x.editor.textForShortcut);
     widget.result = await sqEval(x.editor.textForShortcut);
     ToggleableMutationObserver.ignoreMutation(() => {
       view.after(widget);

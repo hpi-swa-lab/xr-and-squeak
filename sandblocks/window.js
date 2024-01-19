@@ -118,6 +118,8 @@ export function Window({
     }
   }, []);
 
+  root.size = size;
+  root.position = position;
   root.setTitle = setTitle;
   root.close = close;
   root.raise = raise;
