@@ -99,7 +99,9 @@ async function ensureSystemChangeCallback() {
   if (!systemChangeCallbackInit) {
     systemChangeCallbackInit = true;
 
-    await sqEval(`SystemChangeNotifier uniqueInstance
+    // FIXME temporarily disabled, rpc does not support it
+    if (false)
+      await sqEval(`SystemChangeNotifier uniqueInstance
       notify: JS window
       ofAllSystemChangesUsing: #sqSystemChangeCallback:`);
 
