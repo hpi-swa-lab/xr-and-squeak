@@ -228,7 +228,8 @@ export const base = new Extension()
 
   .registerSelection((e) => [
     (x) => x.isText,
-    (x) => !x.text.match(/\s+/),
+    // contains at least one of these
+    (x) => !!x.text.match(/["'A-Za-z0-9_-:]+/),
     (x) =>
       x.root.allNodesDo(
         (n) => n.isText && n.text === x.text && e.ensureClass(n, "highlight")
