@@ -199,10 +199,16 @@ export class Shard extends HTMLElement {
     this.parentElement?.removeChild(this);
   }
 
+  _lastSelectionRange = null;
   focus() {
     // FIXME necessary? if so, creates a loop with the selection's focus logic
     // this.editor.focusShard(this);
-    super.focus();
+    // super.focus();
+    if (this._lastSelectionRange) {
+      this.editor.changeSelection((selection) => {
+        selection.addRange(this._lastSelectionRange);
+      });
+    } else super.focus();
   }
 
   isMyMutation(mutation) {
@@ -241,7 +247,9 @@ export class Shard extends HTMLElement {
   // extract the current DOM selection.
   // to be used only after DOM changes have been reconciled with the model.
   _extractSelectionRange() {
-    return this._rangeForSelection(getSelection().getRangeAt(0));
+    const range = getSelection().getRangeAt(0);
+    this._lastSelectionRange = range;
+    return this._rangeForSelection(range);
   }
 
   _rangeForSelection(range) {
