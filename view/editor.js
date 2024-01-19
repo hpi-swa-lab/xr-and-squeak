@@ -278,6 +278,8 @@ export class Editor extends HTMLElement {
     this.inlineExtensions ??= [];
     if (typeof extension === "string")
       extension = await Extension.get(extension);
+    if (extension instanceof Extension)
+      extension = extension.instance(SandblocksExtensionInstance);
     this.inlineExtensions.push(extension);
   }
 
