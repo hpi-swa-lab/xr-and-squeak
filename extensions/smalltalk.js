@@ -84,35 +84,38 @@ export function cascadedConstructorShardsFor(node, name, defaults) {
   if (d === null) return null;
 
   const { receiver, messages: fields } = d;
-  return Object.fromEntries(
-    Object.entries(defaults).map(([field, v]) => {
-      if (!(field in fields))
-        return [
-          field,
-          v.noShard
-            ? {
-                get: () => v.default,
-                set: (value) => addCascadedMessageTo(receiver, field, value),
-              }
-            : h(ExpandToShard, {
-                field: field,
-                expandCallback: (input) =>
-                  addCascadedMessageTo(receiver, field, input),
-                ...v,
-              }),
-        ];
-      else
-        return [
-          field,
-          v.noShard
-            ? {
-                get: () => fields[field].sourceString,
-                set: (v) => fields[field].replaceWith(v),
-              }
-            : shard(fields[field]),
-        ];
-    })
-  );
+  return [
+    node,
+    Object.fromEntries(
+      Object.entries(defaults).map(([field, v]) => {
+        if (!(field in fields))
+          return [
+            field,
+            v.noShard
+              ? {
+                  get: () => v.default,
+                  set: (value) => addCascadedMessageTo(receiver, field, value),
+                }
+              : h(ExpandToShard, {
+                  field: field,
+                  expandCallback: (input) =>
+                    addCascadedMessageTo(receiver, field, input),
+                  ...v,
+                }),
+          ];
+        else
+          return [
+            field,
+            v.noShard
+              ? {
+                  get: () => fields[field].sourceString,
+                  set: (v) => fields[field].replaceWith(v),
+                }
+              : shard(fields[field]),
+          ];
+      })
+    ),
+  ];
 }
 
 // assumes cascade of unique one-arg messages

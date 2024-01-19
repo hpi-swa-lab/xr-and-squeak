@@ -1,5 +1,5 @@
 import { Extension } from "../core/extension.js";
-import { ensureReplacementPreact } from "../view/widgets.js";
+import { ensureReplacementPreact, h } from "../view/widgets.js";
 import { cascadedConstructorShardsFor } from "./smalltalk.js";
 
 function OragleModule({ children }) {
@@ -18,21 +18,28 @@ function OragleModule({ children }) {
 }
 
 export const base = new Extension().registerReplacement((e) => [
-  (x) =>
-    cascadedConstructorShardsFor(x, "OragleSequenceModule", {
+  (x) => {
+    let r = cascadedConstructorShardsFor(x, "OragleSequenceModule", {
       separator: { prefix: "'", placeholder: "separator", suffix: "'" },
       children: { prefix: "{", suffix: "}" },
-    }),
-  (x) =>
-    ensureReplacementPreact(e, x, "oragle-sequence-module", ({ children }) =>
-      h(
-        OragleModule,
-        {},
+    });
+    return r;
+  },
+  ([x, data]) =>
+    ensureReplacementPreact(
+      e,
+      x,
+      "oragle-sequence-module",
+      ({ children }) =>
         h(
-          "div",
-          { style: { display: "flex", flexDirection: "column" } },
-          children
-        )
-      )
+          OragleModule,
+          {},
+          h(
+            "div",
+            { style: { display: "flex", flexDirection: "column" } },
+            children
+          )
+        ),
+      data
     ),
 ]);

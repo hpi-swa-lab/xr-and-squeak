@@ -38,14 +38,11 @@ export const base = new Extension()
   ])
   .registerReplacement((e) => [
     (x) =>
-      withDo(
-        cascadedConstructorShardsFor(x, "Module", {
-          disabled: { default: "false", noShard: true },
-          title: { prefix: "'", placeholder: "title", suffix: "'" },
-          text: { prefix: "'", placeholder: "text", suffix: "'" },
-        }),
-        (c) => (c ? [x, c] : c)
-      ),
+      cascadedConstructorShardsFor(x, "Module", {
+        disabled: { default: "false", noShard: true },
+        title: { prefix: "'", placeholder: "title", suffix: "'" },
+        text: { prefix: "'", placeholder: "text", suffix: "'" },
+      }),
     ([x, data]) =>
       ensureReplacementPreact(
         e,

@@ -281,6 +281,10 @@ export class Editor extends HTMLElement {
     if (extension instanceof Extension)
       extension = extension.instance(SandblocksExtensionInstance);
     this.inlineExtensions.push(extension);
+
+    extension.process(["extensionConnected"], this.source);
+    extension.process(["replacement"], this.source);
+    extension.process(["always"], this.source);
   }
 
   set inlineExtensions(extensions) {
