@@ -2,7 +2,7 @@ import { h } from "../../view/widgets.js";
 import specExport from "../../assets/tla2PCExport.json" assert {type: "json"}
 import { useCallback, useState } from "../../external/preact-hooks.mjs";
 // TODO install via npm?
-import htm from 'https://esm.sh/htm';
+import htm from '../../external/htm.mjs';
 import { Component, createRef } from "../../external/preact.mjs";
 const html = htm.bind(h);
 
