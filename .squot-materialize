@@ -1,0 +1,11 @@
+OrderedCollection [
+	SquotTonelMapper {
+		#package : MCPackage {
+			#name : 'oRAGle'
+		},
+		#path : FSAbsolutePath [
+			'sandblocks',
+			'oRAGle'
+		]
+	}
+]
