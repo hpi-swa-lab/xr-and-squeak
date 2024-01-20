@@ -1,4 +1,5 @@
 import { Extension } from "../core/extension.js";
+import { markAsEditableElement } from "../core/focus.js";
 import {
   useEffect,
   useReducer,
@@ -64,6 +65,7 @@ function AutoSizeTextArea({ value, onChange }) {
     h(
       "textarea",
       {
+        ref: markAsEditableElement,
         rows: 1,
         style: {
           ...style,

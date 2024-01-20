@@ -120,14 +120,6 @@ export class SBSelection extends EventTarget {
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
 
-    // const cm = this.view.livelyCM.editor;
-    // const cursor = cm.getCursor("from");
-    // const el = CodeMirror.posToDOM(cm, cursor);
-    // // lively.showElement(el.node.parentNode)
-    // const view = el.node.parentNode;
-    // console.log(view);
-    // return view;
-
     let best = this.lastEditable?.sbSelectedEditablePart();
     if (best) return best;
 
@@ -220,6 +212,7 @@ export function markAsEditableElement(element) {
 
   switch (element.tagName) {
     case "INPUT":
+    case "TEXTAREA":
       element.addEventListener("keydown", handleKeyDown.bind(element));
       _markInput(element);
       break;
@@ -233,6 +226,8 @@ export function markAsEditableElement(element) {
 }
 
 function handleKeyDown(e) {
+  if (document.activeElement !== this) return;
+
   switch (e.key) {
     case "ArrowLeft":
       handleMove.call(this, e, -1);

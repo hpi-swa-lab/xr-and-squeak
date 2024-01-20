@@ -4,13 +4,11 @@ import {
   ToggleableMutationObserver,
   getSelection,
   allViewsDo,
-  clamp,
   rangeContains,
   orParentThat,
   matchesKey,
   lastDeepChild,
   withDo,
-  parentWithTag,
   rangeDistance,
   rangeEqual,
 } from "../utils.js";
@@ -263,7 +261,12 @@ export class Shard extends HTMLElement {
   }
 
   _indexForSelection(node, offset) {
-    const parent = followingElementThat(node, -1, (n) => !!n.range);
+    const ref =
+      node instanceof window.Text
+        ? node
+        : node.childNodes[Math.min(offset, node.childNodes.length - 1)];
+
+    const parent = followingElementThat(ref, -1, (n) => !!n.range);
     if (node.parentElement === parent && node instanceof window.Text)
       return parent.range[0] + offset;
     else return parent.range[offset >= parent.childNodes.length ? 1 : 0];
@@ -452,9 +455,12 @@ export class Shard extends HTMLElement {
     return { view: part ?? this.closestElementForRange(range), range };
   }
   sbIsMoveAtBoundary(delta) {
-    const me = this.sbSelectedEditablePart();
-    const myRange = me.range;
     const newPos = this.editor.selection.range[0] + delta;
+    const me = this.closestElementForRange([newPos, newPos]);
+    if (!me) {
+      return !rangeContains(this.range, [newPos, newPos]);
+    }
+    const myRange = me.range;
     if (rangeContains(myRange, [newPos, newPos])) return false;
     const following = followingEditablePart(me, delta);
     return following?.shard !== me.shard;
@@ -467,8 +473,12 @@ export class Shard extends HTMLElement {
     return view ? { view, rect, range: view.range } : null;
   }
   sbSelectedEditablePart() {
-    const part = this.editor.selection.sbLastPart;
-    if (!part || !part.isConnected || part.shard !== this) return null;
-    return part;
+    const point = withDo(this.editor.selection.range[0], (p) => [p, p]);
+    const el = this.closestElementForRange(point);
+    if (!el || !rangeContains(el.range, point)) return null;
+    return el;
+    // const part = this.editor.selection.sbLastPart;
+    // if (!part || !part.isConnected || part.shard !== this) return null;
+    // return part;
   }
 }

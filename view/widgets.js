@@ -1,3 +1,4 @@
+import "../external/preact-debug.js";
 import { h, render } from "../external/preact.mjs";
 import { nextHash, orParentThat, parentWithTag } from "../utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
@@ -204,8 +205,11 @@ function ensureReplacementTagDefined(tag) {
       tag,
       class extends Replacement {
         update(node) {
+          // needs to be a stable reference, otherwise we keep rebuilding the
+          // entire replacement
+          this._component ??= (...args) => this.component(...args);
           this.render(
-            h(this.component, { node, replacement: this, ...this.props })
+            h(this._component, { node, replacement: this, ...this.props })
           );
         }
       }

@@ -15,6 +15,7 @@ import {
 } from "../view/widgets.js";
 import {} from "../view/widget-utils.js";
 import { markAsEditableElement } from "../core/focus.js";
+import { useEffect } from "../external/preact-hooks.mjs";
 
 customElements.define(
   "sb-outline",
@@ -151,6 +152,9 @@ export const smileys = new Extension().registerReplacement((e) => [
       x,
       "sb-js-lexical-declaration-smiley",
       ({ node }) => {
+        useEffect(() => {
+          console.log("mounted");
+        }, []);
         let type = node.childNode(0);
         return h(
           "span",

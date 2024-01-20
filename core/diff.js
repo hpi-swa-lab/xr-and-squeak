@@ -609,31 +609,37 @@ class Transaction {
   }
 
   setDOMAttribute(node, attr, value) {
+    this.log("setDOMAttribute", node, attr, value);
     const oldValue = node.getAttribute(attr);
     this.undo.push(() => node.setAttribute(attr, oldValue));
     node.setAttribute(attr, value);
   }
 
   insertDOMChild(parent, child, index) {
+    this.log("insertDOMChild", parent, child, index);
     parent.insertNode(this, child, index);
   }
 
   removeDOMChild(parent, child) {
+    this.log("removeDOMChild", parent, child);
     const oldAfter = child.nextElementSibling;
     this.undo.push(() => parent.insertBefore(child, oldAfter));
     parent.removeChild(child);
   }
 
   appendDOMChild(parent, child) {
+    this.log("appendDOMChild", parent, child);
     this.undo.push(() => parent.removeChild(child));
     parent.appendChild(child);
   }
 
   updateNodeText(node, text) {
+    this.log("updateNodeText", node, text);
     this.set(node, "_text", text);
   }
 
   insertNodeChild(parent, child, index) {
+    this.log("insertNodeChild", parent, child, index);
     const oldParent = child.parent;
     const oldIndex = oldParent?.children.indexOf(child);
 
@@ -646,14 +652,19 @@ class Transaction {
   }
 
   removeNodeChild(parent, child) {
+    this.log("removeNodeChild", parent, child);
     const index = parent.children.indexOf(child);
     this.undo.push(() => parent.insertChild(child, index));
     parent.removeChild(child);
   }
 
   set(object, field, value) {
+    this.log("set", object, field, value);
     const oldValue = object[field];
     this.undo.push(() => (object[field] = oldValue));
     object[field] = value;
+  }
+  log(...op) {
+    if (false) console.log(...op);
   }
 }
