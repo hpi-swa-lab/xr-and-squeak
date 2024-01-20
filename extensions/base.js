@@ -52,7 +52,7 @@ function indexOfIndentEnd(string, index) {
 }
 
 export const base = new Extension()
-  .registerShortcut("undo", (x, view) => view.editor.undo())
+  .registerShortcut("undo", (x) => x.editor.undo())
 
   // AST-select up-down
   .registerShortcut("selectNodeUp", (x, view, e) => {

@@ -1,10 +1,24 @@
 import { h } from "../../view/widgets.js";
 import specExport from "../../assets/tla2PCExport.json" assert {type: "json"}
-import { useCallback, useState } from "../../external/preact-hooks.mjs";
+import { useCallback, useEffect, useRef, useState } from "../../external/preact-hooks.mjs";
 // TODO install via npm?
 import htm from '../../external/htm.mjs';
 import { Component, createRef } from "../../external/preact.mjs";
 const html = htm.bind(h);
+
+// TODO put this data in some global state accessible to all components
+const varToActor = {
+    "tmState": "Transaction Manager",
+    "tmPrepared": "Transaction Manager",
+    "rmState": {
+        "rm1": "RM 1",
+        "rm2": "RM 2",
+    },
+    "msgs": "messages",
+}
+const actors = ["Transaction Manager", "messages", "RM 1", "RM 2"]
+/** actor to column map */
+const a2c = actors.reduce((acc, a, i) => acc.set(a, i + 1), new Map())
 
 /** succesively applies the list of keys to obj
  * @example
@@ -124,6 +138,7 @@ const Actor = ({ row, col, label }) => {
         border: "1px solid gray",
         margin: "0 8px",
         width: "fit-content",
+        height: "min-content",
         justifySelf: "center",
     }
 
@@ -134,14 +149,15 @@ const Actor = ({ row, col, label }) => {
 
 const actionLineWidth = 3
 /** an action is the point where the diagram's lifeline is activated */
-const Action = ({ row, col, label, msgs }) => {
+const Action = ({ row, col, label, msgs, delay }) => {
     const boxStyle = {
         ...gridElementStyle(col, row),
         width: `${actionLineWidth}%`,
-        height: "max(100%, 24px)",
+        height: `calc(2em * ${msgs.length + 1})`,
         border: "1px solid gray",
         backgroundColor: "#eee",
         marginLeft: "calc(50% - 1.5%)",
+        marginTop: `${delay ? 8 : 0}px`,
     }
 
     const labelStyle = {
@@ -157,7 +173,7 @@ const Action = ({ row, col, label, msgs }) => {
         </div>`
 }
 
-class Message extends Component {
+class LinePositioning extends Component {
     refFrom = createRef()
     refTo = createRef()
 
@@ -167,20 +183,25 @@ class Message extends Component {
             return
         }
 
-        const { top: xFrom, left: yFrom, width: widthFrom, height: heightFrom } = this.refFrom.current.getBoundingClientRect()
-        const { top: xTo, left: yTo, width: widthTo, height: heightTo } = this.refTo.current.getBoundingClientRect()
+        const { x: xFrom, y: yFrom, width: widthFrom, height: heightFrom } = this.refFrom.current.getBoundingClientRect()
+        const { x: xTo, y: yTo } = this.refTo.current.getBoundingClientRect()
 
-        const xFromCenter = xFrom + widthFrom / 2
-        const xToCenter = xTo + widthTo / 2
-        const yFromCenter = yFrom + heightFrom / 2
-        const yToCenter = yTo + heightTo / 2
+        const xOffsetCenter = (widthFrom / 2)
+        const yOffset = heightFrom * this.props.yRelativePosition
 
-        const newState = { xFrom: xFromCenter, yFrom: yFromCenter, xTo: xToCenter, yTo: yToCenter }
-        this.setState(newState)
-        this.props.addLine({ ...newState, label: this.props.label })
+        const line = {
+            xFrom: xFrom + xOffsetCenter,
+            yFrom: yFrom + yOffset,
+            xTo: xTo + xOffsetCenter,
+            yTo: yTo + yOffset,
+            label: this.props.label
+        }
+
+        this.props.addLine(line)
     }
 
-    render({ fromCol, toCol, row, label, addLine }) {
+    /** yRelativePosition is the percentage [0,1] where the message starts and ends */
+    render({ fromCol, toCol, row, label, addLine, yRelativePosition }) {
         return html`
             <div ref=${this.refFrom} style=${gridElementStyle(fromCol, row)}></div>
             <div ref=${this.refTo} style=${gridElementStyle(toCol, row)}></div>
@@ -188,39 +209,8 @@ class Message extends Component {
     }
 }
 
-const MsgLine = ({ xFrom, yFrom, xTo, yTo }) => {
-    const lineStyle = { stroke: "black", strokeWidth: 2 }
-
-    return html`
-    <line x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} style=${lineStyle} />`
-}
-
-const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
-    const varToActor = {
-        "tmState": "Transaction Manager",
-        "tmPrepared": "Transaction Manager",
-        "rmState": {
-            "rm1": "RM 1",
-            "rm2": "RM 2",
-        },
-        "msgs": "messages",
-    }
-    const actors = ["Transaction Manager", "messages", "RM 1", "RM 2"]
-    /** actor to column map */
-    const a2c = actors.reduce((acc, a, i) => acc.set(a, i + 1), new Map())
-
-    const vizData = prevEdges.map(e => edgeToVizData(e, varToActor))
-
-    const gridWrapperStyle = {
-        display: "grid",
-        width: "100%",
-        gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
-        gridTemplateRows: `repeat(${vizData.length + 1}, 1fr)`,
-        //height: "100%",
-    }
-
-    const [lines, setLines] = useState([])
-    const addLine = (line) => setLines([...lines, line])
+/** a svg container with viewbox according to the global viewport */
+const MessageArrows = ({ lines }) => {
     const svgStyle = {
         position: "absolute",
         top: 0,
@@ -228,24 +218,133 @@ const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
         width: "100%",
         height: "100%",
         pointerEvents: "none",
-        //transform: `translateX(${xOffset}%)`
+        zIndex: 1,
     }
 
-    // TODO: do we need refs for the lines? or can we just infer them from the grid?
-    // the problem with the svg element is that the viewbox starts at 0,0, so we need to translate the lines, or set the viewbox to the grid
-    // but then we need to know the size of the grid, which we don't know until it's rendered
+    const lineStyle = {
+        stroke: "black",
+        strokeWidth: 2,
+        markerEnd: "url(#arrow)",
+    }
+
+    const [xOffset, setXOffset] = useState(0)
+    const [yOffset, setYOffset] = useState(0)
+    const [width, setWidth] = useState(0)
+    const [height, setHeight] = useState(0)
+
+    const ref = useRef()
+
+    useEffect(() => {
+        const handler = () => {
+            const { x, y, width, height } = ref.current.getBoundingClientRect()
+            setXOffset(x)
+            setYOffset(y)
+            setWidth(width)
+            setHeight(height)
+        }
+        window.addEventListener("resize", handler)
+        handler() // call once to set initial values
+        return () => window.removeEventListener("resize", handler)
+    }, [])
+
+    return html`
+    <svg style=${svgStyle} ref=${ref} ...${width > 0 ? { viewBox: `${xOffset} ${yOffset} ${width} ${height}` } : {}}>
+            <defs>
+                <!-- arrowhead, src: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker -->
+                <marker
+                    id="arrow"
+                    viewBox="0 0 10 10"
+                    refX="10"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" />
+                </marker>
+        </defs>
+        ${lines.map(({ xFrom, yFrom, xTo, yTo, label }) => html`<line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />`)}
+    </svg>`
+}
+
+const MessagesCompution = ({ vizData, addLine }) => {
+
+    // depending on if messages are read or write messages,
+    // they are placed on top (reads) or bottom (writes) of the lifeline
+    const computeMessagePositions = ({ actor, msgs }, i) => {
+        const row = i + 2
+
+        const readMsgs = msgs.filter(m => m.type !== "write")
+        const writeMsgs = msgs.filter(m => m.type === "write")
+
+        const readMsgPositions = readMsgs.map((m, j) => {
+            const fromCol = a2c.get(m.to)
+            const toCol = a2c.get(actor)
+            // reads start at the beginning up to the middle
+            const yRelativePosition = j / readMsgs.length / 2
+            return { fromCol, toCol, row, label: m.type, yRelativePosition }
+        })
+
+        const writeMsgPositions = writeMsgs.map((m, j) => {
+            const fromCol = a2c.get(actor)
+            const toCol = a2c.get(m.to)
+            // writes start at the end up to the middle
+            const yRelativePosition = 1.0 - j / writeMsgs.length / 2
+            return { fromCol, toCol, row, label: m.type, yRelativePosition }
+        })
+
+        return [...readMsgPositions, ...writeMsgPositions]
+    }
+
+    return vizData
+        .flatMap(computeMessagePositions)
+        .map((p) => html`<${LinePositioning} ...${p} addLine=${addLine} />`)
+}
+
+
+const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
+    const vizData = prevEdges.map(e => edgeToVizData(e, varToActor))
+
+    const gridWrapperStyle = {
+        display: "grid",
+        width: "100%",
+        gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
+        zIndex: 2,
+    }
+
+    const [lines, setLines] = useState([])
+    const addLine = (line) => setLines([...lines, line])
+
+    const lastMsgOfPrevActorCausedThisAction = ({ actor, msgs }, i) => {
+        if (i === 0) {
+            return false
+        }
+
+        const prevAction = vizData[i - 1]
+        const prevWriteMsgs = prevAction.msgs.filter(m => m.type === "write")
+
+        if (prevWriteMsgs.length === 0) {
+            return false
+        }
+
+        const lastMsg = prevWriteMsgs[prevWriteMsgs.length - 1]
+
+        const lastMsgArrivedAtThisActor = lastMsg.to === actor
+
+        const reads = msgs.filter(m => m.type !== "read")
+        const firstReadOfThisActorReadsLastMsg = reads.length > 0 && reads[0].to === lastMsg.to
+
+        return lastMsgArrivedAtThisActor || firstReadOfThisActorReadsLastMsg
+    }
 
     return [
         html`
         <div style=${gridWrapperStyle}>
             ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
             ${actors.map(a => html`<${Lifeline} numRows=${vizData.length} column=${a2c.get(a)} />`)}
-            ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-            ${vizData.map(({ actor, msgs }, i) => msgs.map(m => html`<${Message} row=${i + 2} fromCol=${a2c.get(actor)} toCol=${a2c.get(m.to)} label=${m.type} addLine=${addLine} />`))}
+            ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} delay=${lastMsgOfPrevActorCausedThisAction(d, i)} />`)}
+            <${MessagesCompution} vizData=${vizData} addLine=${addLine} />
         </div>
-        <svg style=${svgStyle}>
-            ${lines.map(({ xFrom, yFrom, xTo, yTo, label }) => html`<${MsgLine} xFrom=${xFrom} yFrom=${yFrom} xTo=${xTo} yTo=${yTo} />`)}
-        </svg>
+        <${MessageArrows} lines=${lines} />
         `,
     ]
 }

@@ -533,7 +533,7 @@ class EditHistory {
   redoStack = [];
 
   get lastView() {
-    return this.undoStack[this.undoStack.length - 1]?.view.deref();
+    return this.undoStack[this.undoStack.length - 1]?.view?.deref();
   }
 
   push(sourceString, cursorRange, view) {
