@@ -73,3 +73,37 @@ sb-window {
 .sb-deletable-shard {
   position: relative;
 }
+
+.sb-insert-button-anchor {
+  position: relative;
+}
+
+.sb-insert-button-container:not(:has(.sb-insert-button-container:hover)):hover
+  > .sb-insert-button-anchor
+  .sb-insert-button {
+  display: block;
+}
+.sb-insert-button {
+  display: none;
+  left: 50%;
+  top: 50%;
+  margin-top: -0.5rem;
+  margin-left: -0.5rem;
+  z-index: 1;
+  position: absolute;
+  background: #eee;
+  border-radius: 6px;
+  padding: 0 0.5rem;
+}
+
+.sb-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sb-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

@@ -2,7 +2,7 @@ import { Extension } from "../core/extension.js";
 import { markAsEditableElement } from "../core/focus.js";
 import { useState } from "../external/preact-hooks.mjs";
 import { mapSeparated } from "../utils.js";
-import { ensureReplacementPreact, h, shard } from "../view/widgets.js";
+import { ensureReplacementPreact, h, icon, shard } from "../view/widgets.js";
 import { cascadedConstructorShardsFor } from "./smalltalk.js";
 
 function OragleModule({ children }) {
@@ -17,22 +17,6 @@ function OragleModule({ children }) {
       },
     },
     children
-  );
-}
-
-function AddButton({ onClick }) {
-  return h(
-    "button",
-    {
-      onClick,
-      style: {
-        background: "#eee",
-        border: "1px solid #ccc",
-        borderRadius: "6px",
-        padding: "0 0.5rem",
-      },
-    },
-    "+"
   );
 }
 
@@ -56,6 +40,14 @@ function DeletableShard({ node }) {
         },
         "x"
       )
+  );
+}
+
+function AddButton({ onClick }) {
+  return h(
+    "span",
+    { class: "sb-insert-button-anchor" },
+    h("button", { onClick, class: "sb-insert-button" }, "+")
   );
 }
 
@@ -102,7 +94,12 @@ function AutoSizeTextArea({ range, value, onChange }) {
           resize: "none",
           gridArea: "1 / 1 / 2 / 2",
         },
-        onInput: onChange,
+        onInput: (e) => {
+          const range = [e.target.selectionStart, e.target.selectionEnd];
+          onChange(e);
+          e.target.selectionStart = range[0];
+          e.target.selectionEnd = range[1];
+        },
       },
       value
     ),
@@ -130,6 +127,7 @@ export const base = new Extension()
     (x) => x.type === "string",
     (x) =>
       ensureReplacementPreact(e, x, "oragle-string", ({ replacement }) =>
+        // TODO need to translate range select requests by delimiters and escapes
         h(AutoSizeTextArea, {
           range: replacement.node.range,
           value: replacement.node.sourceString.slice(1, -1).replace(/''/g, "'"),
@@ -158,9 +156,8 @@ export const base = new Extension()
             {},
             h(
               "div",
-              { style: { display: "flex", flexDirection: "column" } },
-              label,
-              h("hr"),
+              { class: "sb-insert-button-container sb-column" },
+              h("span", { class: "sb-row" }, icon("table_rows"), label),
               h(ShardArray, {
                 elements: children.elements,
                 onInsert: (i) => insertModule(children, i),
@@ -187,9 +184,8 @@ export const base = new Extension()
             {},
             h(
               "div",
-              { style: { display: "flex", flexDirection: "column" } },
-              "SCRIPT",
-              h("hr"),
+              { class: "sb-insert-button-container sb-column" },
+              h("span", { class: "sb-row" }, icon("code"), "Script"),
               h(ShardArray, {
                 elements: children.elements,
                 onInsert: (i) => insertModule(children, i),
@@ -215,7 +211,8 @@ export const base = new Extension()
             {},
             h(
               "div",
-              { style: { display: "flex", flexDirection: "row" } },
+              { class: "sb-insert-button-container sb-row" },
+              icon("alt_route"),
               h(ShardArray, {
                 elements: children.elements,
                 onInsert: (i) => insertModule(children, i),
@@ -241,14 +238,7 @@ export const base = new Extension()
           h(
             OragleModule,
             {},
-            h(
-              "div",
-              { style: { display: "flex", flexDirection: "column" } },
-              label,
-              h("hr"),
-              content,
-              state
-            )
+            h("div", { class: "sb-column" }, label, content, state)
           ),
         data
       ),

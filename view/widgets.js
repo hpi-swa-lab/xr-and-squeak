@@ -24,7 +24,11 @@ export const shardList = (list) => {
   return h(node.editor.shardTag, { initNode: [node], key: node.id });
 };
 export const icon = (name) =>
-  h("span", { class: "material-symbols-outlined" }, name);
+  h(
+    "span",
+    { class: "material-symbols-outlined", style: { fontSize: "inherit" } },
+    name
+  );
 
 function _Editor({ inlineExtensions, editorRef, ...props }) {
   const i = useMemo(
