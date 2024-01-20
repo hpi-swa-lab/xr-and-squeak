@@ -124,7 +124,7 @@ export function cascadedConstructorShardsFor(node, name, defaults) {
               shard: () => shard(node),
               array: () => ({
                 elements: node.query("{$$$elements}").elements,
-                insert: (i, value) => console.assert(false, "not yet impl"),
+                insert: (i, value) => node.insert(value, "expression", i),
                 delete: (i) =>
                   node
                     .query("{$$$elements}")

@@ -213,6 +213,26 @@ export class TreeSitterLanguage extends SBLanguage {
     return res;
   }
 
+  firstInsertPoint(node, type) {
+    const rule = this._grammarBodyFor(node);
+    console.assert(node.childNodes.length > 0);
+
+    let lastNode;
+    let start = null;
+    this._matchRule(rule, [...node.childNodes], (n, rule) => {
+      lastNode = n ?? lastNode;
+      if (
+        n === null &&
+        start === null &&
+        this.compatibleType(type, rule.name)
+      ) {
+        start = lastNode?.range[1] ?? node.range[0];
+      }
+    });
+
+    return start;
+  }
+
   separatorContextFor(node) {
     const rule = this._grammarNodeFor(node);
     return rule.separatorContext?.repeatSeparator;
@@ -244,6 +264,8 @@ export class TreeSitterLanguage extends SBLanguage {
         if (this.compatibleType(pending[0]?.type, rule.name)) {
           cb(pending.shift(), rule);
         } else {
+          // advertise the slot
+          cb(null, rule);
           throw new NoMatch();
         }
         break;

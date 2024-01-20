@@ -1,12 +1,7 @@
 import { Extension } from "../core/extension.js";
 import { markAsEditableElement } from "../core/focus.js";
-import {
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-} from "../external/preact-hooks.mjs";
-import { mapSeparated, withDo } from "../utils.js";
+import { useState } from "../external/preact-hooks.mjs";
+import { mapSeparated } from "../utils.js";
 import { ensureReplacementPreact, h, shard } from "../view/widgets.js";
 import { cascadedConstructorShardsFor } from "./smalltalk.js";
 
@@ -41,15 +36,45 @@ function AddButton({ onClick }) {
   );
 }
 
-function DynamicArray({ elements }) {
+function DeletableShard({ node }) {
+  const [hover, setHover] = useState(false);
+  return h(
+    "span",
+    {
+      onmouseenter: () => setHover(true),
+      onmouseleave: () => setHover(false),
+      style: {
+        position: "relative",
+      },
+    },
+    shard(node),
+    hover &&
+      h(
+        "button",
+        {
+          style: { position: "absolute", top: 0, left: 0 },
+          onClick: () => node.removeFull(),
+        },
+        "x"
+      )
+  );
+}
+
+function ShardArray({ elements, onInsert }) {
+  let i = 0;
+  const nextProps = () => {
+    let index = i++;
+    return { key: `insert-${i}`, onClick: () => onInsert(index) };
+  };
+
   return [
-    h(AddButton),
+    h(AddButton, nextProps()),
     mapSeparated(
       elements,
-      (c) => shard(c),
-      () => h(AddButton)
+      (c) => h(DeletableShard, { node: c, key: c?.id }),
+      () => h(AddButton, nextProps())
     ),
-    h(AddButton),
+    elements.length > 0 && h(AddButton, nextProps()),
   ];
 }
 
@@ -92,6 +117,10 @@ function AutoSizeTextArea({ value, onChange }) {
   );
 }
 
+function insertModule({ insert }, i) {
+  insert(i, "OragleLeafModule new");
+}
+
 export const base = new Extension()
   .registerReplacement((e) => [
     (x) => x.type === "string",
@@ -127,7 +156,10 @@ export const base = new Extension()
               { style: { display: "flex", flexDirection: "column" } },
               label,
               h("hr"),
-              h(DynamicArray, { elements: children.elements })
+              h(ShardArray, {
+                elements: children.elements,
+                onInsert: (i) => insertModule(children, i),
+              })
             )
           );
         },
@@ -153,7 +185,10 @@ export const base = new Extension()
               { style: { display: "flex", flexDirection: "column" } },
               "SCRIPT",
               h("hr"),
-              h(DynamicArray, { elements: children.elements })
+              h(ShardArray, {
+                elements: children.elements,
+                onInsert: (i) => insertModule(children, i),
+              })
             )
           ),
         data
@@ -176,7 +211,10 @@ export const base = new Extension()
             h(
               "div",
               { style: { display: "flex", flexDirection: "row" } },
-              h(DynamicArray, { elements: children.elements })
+              h(ShardArray, {
+                elements: children.elements,
+                onInsert: (i) => insertModule(children, i),
+              })
             )
           ),
         data

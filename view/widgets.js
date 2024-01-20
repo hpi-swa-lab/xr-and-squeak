@@ -223,7 +223,7 @@ function ensureReplacementTagDefined(tag) {
 export function ExpandToShard({ prefix, suffix, placeholder, expandCallback }) {
   return h(
     "span",
-    {},
+    { style: { display: "inline-flex" } },
     prefix,
     h("input", {
       style: { border: "none" },

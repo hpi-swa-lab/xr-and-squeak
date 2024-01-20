@@ -37,6 +37,9 @@ export class SBLanguage {
   separatorContextFor(node) {
     return null;
   }
+  firstInsertPoint(node, type) {
+    return null;
+  }
   compatibleType(type, other) {
     return type === other;
   }
@@ -332,11 +335,17 @@ class SBNode {
       (child) =>
         child.compatibleWith(type) && this.language.separatorContextFor(child)
     );
-    // TODO handle empty list by finding any slot that takes the type
+    // handle empty list by finding any slot that takes the type
+    if (list.length === 0) {
+      const position = this.language.firstInsertPoint(this, type);
+      if (position !== null)
+        this.editor.insertTextFromCommand(position, string);
+      else throw new Error("no insert point found");
+      return;
+    }
 
     const ref = list[Math.min(index, list.length - 1)];
     const sep = this.language.separatorContextFor(ref);
-    console.assert(!!sep);
 
     if (index < list.length)
       this.editor.insertTextFromCommand(ref.range[0], string + sep);
@@ -384,7 +393,15 @@ class SBNode {
         ret.push(this.previousSiblingChild);
       }
     }
-    return ret;
+    return ret.sort((a, b) => a.range[0] - b.range[0]);
+  }
+
+  removeFull() {
+    const remove = this.removalNodes;
+    this.editor.replaceTextFromCommand(
+      [remove[0].range[0], last(remove).range[1]],
+      ""
+    );
   }
 
   isWhitespace() {
