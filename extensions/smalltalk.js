@@ -106,8 +106,11 @@ export function cascadedConstructorShardsFor(node, name, defaults) {
               shard: () =>
                 h(ExpandToShard, {
                   field: field,
-                  expandCallback: (input) =>
-                    addCascadedMessageTo(receiver, field, input),
+                  expandCallback: (input) => {
+                    addCascadedMessageTo(receiver, field, input);
+                    const position = receiver.editor.selection.range[0];
+                    receiver.editor.selectRange(position - 1, position - 1);
+                  },
                   ...v,
                 }),
             }),

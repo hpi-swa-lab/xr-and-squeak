@@ -446,6 +446,7 @@ export class Editor extends HTMLElement {
   }
 
   selectRange(start, end, scrollIntoView = true) {
+    console.assert(end !== undefined);
     this.selection.moveToRange(this, [start, end], scrollIntoView);
   }
 

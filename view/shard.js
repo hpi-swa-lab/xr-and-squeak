@@ -423,7 +423,7 @@ export class Shard extends HTMLElement {
   ////////////////////////////////////
   // Selection API
   ////////////////////////////////////
-  sbSelectRange(range) {
+  sbSelectRange(range, testOnly) {
     const selectionRange = this._cursorToRange(...range);
     if (!selectionRange) return null;
     let view = this.findSelectedForRange(range);
@@ -432,9 +432,10 @@ export class Shard extends HTMLElement {
     if (!view && range[0] === this.range[0]) view = this;
     console.assert(view);
 
-    this.editor.changeSelection((selection) =>
-      selection.addRange(selectionRange)
-    );
+    if (!testOnly)
+      this.editor.changeSelection((selection) =>
+        selection.addRange(selectionRange)
+      );
     return view;
   }
   sbSelectAtBoundary(part, atStart) {
@@ -477,8 +478,5 @@ export class Shard extends HTMLElement {
     const el = this.closestElementForRange(point);
     if (!el || !rangeContains(el.range, point)) return null;
     return el;
-    // const part = this.editor.selection.sbLastPart;
-    // if (!part || !part.isConnected || part.shard !== this) return null;
-    // return part;
   }
 }

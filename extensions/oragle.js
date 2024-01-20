@@ -78,7 +78,7 @@ function ShardArray({ elements, onInsert }) {
   ];
 }
 
-function AutoSizeTextArea({ value, onChange }) {
+function AutoSizeTextArea({ range, value, onChange }) {
   const style = {
     padding: 0,
     lineHeight: "inherit",
@@ -90,7 +90,12 @@ function AutoSizeTextArea({ value, onChange }) {
     h(
       "textarea",
       {
-        ref: markAsEditableElement,
+        ref: (current) => {
+          if (current) {
+            markAsEditableElement(current);
+            current.range = range;
+          }
+        },
         rows: 1,
         style: {
           ...style,
@@ -127,6 +132,7 @@ export const base = new Extension()
     (x) =>
       ensureReplacementPreact(e, x, "oragle-string", ({ replacement }) =>
         h(AutoSizeTextArea, {
+          range: replacement.node.range,
           value: replacement.node.sourceString.slice(1, -1).replace(/''/g, "'"),
           onChange: (e) =>
             replacement.node.replaceWith(

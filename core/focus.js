@@ -1,12 +1,13 @@
 import {
   orParentThat,
+  rangeContains,
   rangeDistance,
   rangeEqual,
   rangeShift,
   rectDistance,
 } from "../utils.js";
 
-// sbSelectRange([start, end]): View | null
+// sbSelectRange([start, end], testOnly): View | null
 // sbSelectAtBoundary(part?, atStart): {view: View, range}
 // sbIsMoveAtBoundary(delta): boolean
 // sbCandidateForRange(range): {view, rect} | null
@@ -95,17 +96,18 @@ export class SBSelection extends EventTarget {
   }
 
   moveToRange(editor, targetRange, scrollIntoView = true) {
-    let node = this.viewForMove(editor, targetRange);
-    do {
-      let view = nodeEditableForPart(node).sbSelectRange(targetRange);
-      if (view) {
-        this._moveTo(view, targetRange, scrollIntoView);
-        return;
-      }
-
-      // TODO direction?
-      node = followingEditablePart(node, 1);
-    } while (node);
+    const start = this.viewForMove(editor, targetRange);
+    for (const direction of [1, -1]) {
+      let node = start;
+      do {
+        let view = nodeEditableForPart(node).sbSelectRange(targetRange);
+        if (view) {
+          this._moveTo(view, targetRange, scrollIntoView);
+          return;
+        }
+        node = followingEditablePart(node, direction);
+      } while (node);
+    }
   }
 
   focusEditable(editable) {
@@ -121,10 +123,13 @@ export class SBSelection extends EventTarget {
     newRange ??= this.range;
 
     let best = this.lastEditable?.sbSelectedEditablePart();
-    if (best) return best;
+    if (best) {
+      console.assert(best.isConnected);
+      return best;
+    }
 
     for (const editable of getAllEditableElements(editor)) {
-      if (editable.sbSelectRange(newRange)) return editable;
+      if (editable.sbSelectRange(newRange, true)) return editable;
     }
 
     if (this.lastRect) {
@@ -282,15 +287,36 @@ function handleDelete(e) {
 
 function _markInput(element) {
   element.setAttribute("sb-editable-part", "true");
-  element.sbCandidateForRange = (range) => null;
+  element.sbCandidateForRange = (range) =>
+    element.range && rangeContains(element.range, range)
+      ? {
+          view: element,
+          rect: element.getBoundingClientRect(),
+          range: element.range,
+        }
+      : null;
   element.sbSelectAtBoundary = (part, atStart) => {
     const position = atStart ? 0 : element.value.length;
     element.focus();
     element.selectionStart = position;
     element.selectionEnd = position;
-    return { view: element };
+    return {
+      view: element,
+      range: element.range
+        ? withDo(element.range[atStart ? 0 : 1], (p) => [p, p])
+        : undefined,
+    };
   };
-  element.sbSelectRange = () => null;
+  element.sbSelectRange = (range, testOnly) => {
+    if (!element.range) return null;
+    if (!rangeContains(element.range, range)) return null;
+    if (!testOnly) {
+      element.focus();
+      element.selectionStart = range[0] - element.range[0];
+      element.selectionEnd = range[1] - element.range[0];
+    }
+    return element;
+  };
   element.sbIsMoveAtBoundary = (delta) => {
     const position = element.selectionStart;
     return delta > 0 ? position === element.value.length : position === 0;
@@ -298,5 +324,5 @@ function _markInput(element) {
   element.addEventListener("focus", () =>
     getEditor(element).selection.informChange(element, null)
   );
-  element.sbSelectedEditablePart = () => element;
+  element.sbSelectedEditablePart = () => (element.isConnected ? element : null);
 }
