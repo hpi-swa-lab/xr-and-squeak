@@ -12,14 +12,14 @@ sb-block {
   padding: 0;
   font-family: monospace;
   vertical-align: top;
-  white-space: pre-wrap;
+  white-space: pre;
 }
 sb-block[type] {
   /*background: rgba(0.4, 0.4, 0.4, 0.006);*/
   /*border: 1px solid #efefef;*/
 }
 sb-text {
-  white-space: pre-wrap;
+  white-space: pre;
   display: inline;
   vertical-align: top;
 }
@@ -27,7 +27,7 @@ sb-block[type="ERROR"] {
   border: 1px solid red;
 }
 sb-shard {
-  white-space: pre-wrap;
+  white-space: pre;
   word-wrap: normal;
   tab-size: 2;
   outline: none;

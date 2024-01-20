@@ -1,0 +1,6 @@
+SquotTrackedObjectMetadata {
+	#objectClassName : #PackageInfo,
+	#id : UUID [ '13f5287f7eaa44deada88918193ff020' ],
+	#objectsReplacedByNames : true,
+	#serializer : #SquotTonelSerializer
+}

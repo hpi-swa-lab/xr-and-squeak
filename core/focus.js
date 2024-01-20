@@ -42,7 +42,7 @@ export function followingEditablePart(node, direction) {
 export function followingElementThat(node, direction, predicate) {
   do {
     node = direction > 0 ? nextNodePreOrder(node) : previousNodePreOrder(node);
-    if (node && predicate(node)) return node;
+    if (predicate(node)) return node;
   } while (node);
   return null;
 }
@@ -282,7 +282,6 @@ function handleDelete(e) {
 
 function _markInput(element) {
   element.setAttribute("sb-editable-part", "true");
-  element.sbCandidateForRange = (range) => null;
   element.sbSelectAtBoundary = (part, atStart) => {
     const position = atStart ? 0 : element.value.length;
     element.focus();

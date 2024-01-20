@@ -55,84 +55,64 @@ export function cascadedMessages(cascade) {
 export function cascadedConstructorFor(node, name) {
   const c = `${name} new`;
 
-  if (node.matches(c)) {
-    if (node.parent?.parent?.type === "cascade") {
-      return {
-        receiver: node,
-        messages: cascadeToMap(node.parent.parent),
-        root: node.parent.parent,
-      };
-    }
+  if (node.matches(c)) return { receiver: node, messages: [] };
 
-    if (node.parent?.type === "keyword_message") {
-      return {
-        receiver: node,
-        messages: Object.fromEntries([
-          withDo(selectorAndArgs(node.parent), (x) => [
-            x.selector.replace(":", ""),
-            x.arguments[0],
-          ]),
+  if (node.type === "cascade" && node.childBlock(0).childBlock(0).matches(c)) {
+    return {
+      receiver: node.childBlock(0).childBlock(0),
+      messages: cascadeToMap(node),
+    };
+  }
+
+  if (node.type === "keyword_message" && node.childBlock(0).matches(c)) {
+    return {
+      receiver: node.childBlock(0),
+      messages: Object.fromEntries([
+        withDo(selectorAndArgs(node), (x) => [
+          x.selector.replace(":", ""),
+          x.arguments[0],
         ]),
-        root: node.parent,
-      };
-    }
-
-    return { receiver: node, messages: [], root: node };
+      ]),
+    };
   }
 
   return null;
 }
 
-const caseOf = (x, cases) => cases[x]();
-
 export function cascadedConstructorShardsFor(node, name, defaults) {
   const d = cascadedConstructorFor(node, name);
   if (d === null) return null;
 
-  const { receiver, messages: fields, root } = d;
+  const { receiver, messages: fields } = d;
   return [
-    root,
+    node,
     Object.fromEntries(
       Object.entries(defaults).map(([field, v]) => {
         if (!(field in fields))
           return [
             field,
-            caseOf(v.mode ?? "shard", {
-              literal: () => ({
-                get: () => v.default,
-                set: (value) => addCascadedMessageTo(receiver, field, value),
-              }),
-              array: () => console.assert(false, "not yet impl"),
-              shard: () =>
-                h(ExpandToShard, {
+            v.noShard
+              ? {
+                  get: () => v.default,
+                  set: (value) => addCascadedMessageTo(receiver, field, value),
+                }
+              : h(ExpandToShard, {
                   field: field,
                   expandCallback: (input) =>
                     addCascadedMessageTo(receiver, field, input),
                   ...v,
                 }),
-            }),
           ];
-        else {
-          const node = fields[field];
+        else
           return [
             field,
-            caseOf(v.mode ?? "shard", {
-              literal: () => ({
-                get: () => node.sourceString,
-                set: (value) => node.replaceWith(value),
-              }),
-              shard: () => shard(node),
-              array: () => ({
-                elements: node.query("{$$$elements}").elements,
-                insert: (i, value) => console.assert(false, "not yet impl"),
-                delete: (i) =>
-                  node
-                    .query("{$$$elements}")
-                    .elements[i].removalNodes.forEach((n) => n.replaceWith("")),
-              }),
-            }),
+            v.noShard
+              ? {
+                  get: () => fields[field].sourceString,
+                  set: (v) => fields[field].replaceWith(v),
+                }
+              : shard(fields[field]),
           ];
-        }
       })
     ),
   ];
