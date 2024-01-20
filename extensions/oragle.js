@@ -43,15 +43,16 @@ function DeletableShard({ node }) {
     {
       onmouseenter: () => setHover(true),
       onmouseleave: () => setHover(false),
-      style: { position: "relative" },
+      class: "sb-deletable-shard",
     },
     shard(node),
     hover &&
       h(
         "button",
         {
-          style: { position: "absolute", top: 0, left: 0 },
+          class: "sb-delete-button",
           onClick: () => node.removeFull(),
+          title: "Delete",
         },
         "x"
       )

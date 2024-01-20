@@ -59,3 +59,17 @@ sb-window {
   background-color: #ffe17d;
   outline: 1px solid #ffcc00;
 }
+
+.sb-delete-button {
+  display: none;
+  position: absolute;
+  top: -8px;
+  left: -8px;
+}
+.sb-deletable-shard:not(:has(.sb-deletable-shard:hover)):hover
+  .sb-delete-button {
+  display: block;
+}
+.sb-deletable-shard {
+  position: relative;
+}
