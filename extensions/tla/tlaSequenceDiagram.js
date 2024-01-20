@@ -183,17 +183,21 @@ class LinePositioning extends Component {
             return
         }
 
-        const { x: xFrom, y: yFrom, width: widthFrom, height: heightFrom } = this.refFrom.current.getBoundingClientRect()
-        const { x: xTo, y: yTo } = this.refTo.current.getBoundingClientRect()
+        const yOffsetFrom = this.refFrom.current.offsetTop
+        const xOffsetFrom = this.refFrom.current.offsetLeft
+        const yOffsetTo = this.refTo.current.offsetTop
+        const xOffsetTo = this.refTo.current.offsetLeft
+
+        const { width: widthFrom, height: heightFrom } = this.refFrom.current.getBoundingClientRect()
 
         const xOffsetCenter = (widthFrom / 2)
         const yOffset = heightFrom * this.props.yRelativePosition
 
         const line = {
-            xFrom: xFrom + xOffsetCenter,
-            yFrom: yFrom + yOffset,
-            xTo: xTo + xOffsetCenter,
-            yTo: yTo + yOffset,
+            xFrom: xOffsetFrom + xOffsetCenter,
+            yFrom: yOffsetFrom + yOffset,
+            xTo: xOffsetTo + xOffsetCenter,
+            yTo: yOffsetTo + yOffset,
             label: this.props.label
         }
 
@@ -210,15 +214,12 @@ class LinePositioning extends Component {
 }
 
 /** a svg container with viewbox according to the global viewport */
-const MessageArrows = ({ lines }) => {
+const MessageArrows = ({ lines, numCols, numRows }) => {
     const svgStyle = {
         position: "absolute",
-        top: 0,
-        left: 0,
         width: "100%",
         height: "100%",
         pointerEvents: "none",
-        zIndex: 1,
     }
 
     const lineStyle = {
@@ -227,28 +228,8 @@ const MessageArrows = ({ lines }) => {
         markerEnd: "url(#arrow)",
     }
 
-    const [xOffset, setXOffset] = useState(0)
-    const [yOffset, setYOffset] = useState(0)
-    const [width, setWidth] = useState(0)
-    const [height, setHeight] = useState(0)
-
-    const ref = useRef()
-
-    useEffect(() => {
-        const handler = () => {
-            const { x, y, width, height } = ref.current.getBoundingClientRect()
-            setXOffset(x)
-            setYOffset(y)
-            setWidth(width)
-            setHeight(height)
-        }
-        window.addEventListener("resize", handler)
-        handler() // call once to set initial values
-        return () => window.removeEventListener("resize", handler)
-    }, [])
-
     return html`
-    <svg style=${svgStyle} ref=${ref} ...${width > 0 ? { viewBox: `${xOffset} ${yOffset} ${width} ${height}` } : {}}>
+    <svg style=${svgStyle}>
             <defs>
                 <!-- arrowhead, src: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker -->
                 <marker
@@ -305,10 +286,10 @@ const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
     const vizData = prevEdges.map(e => edgeToVizData(e, varToActor))
 
     const gridWrapperStyle = {
+        position: "relative", // necessary for relative positioning of messages to this element
         display: "grid",
         width: "100%",
         gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
-        zIndex: 2,
     }
 
     const [lines, setLines] = useState([])
@@ -340,11 +321,13 @@ const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
         html`
         <div style=${gridWrapperStyle}>
             ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
-            ${actors.map(a => html`<${Lifeline} numRows=${vizData.length} column=${a2c.get(a)} />`)}
+            ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
             ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} delay=${lastMsgOfPrevActorCausedThisAction(d, i)} />`)}
             <${MessagesCompution} vizData=${vizData} addLine=${addLine} />
+            <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
+            <!-- last row with fixed height to still show some of the lifeline -->
+            ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
         </div>
-        <${MessageArrows} lines=${lines} />
         `,
     ]
 }
