@@ -262,9 +262,9 @@ function handleMove(e, delta) {
 
 function handleDelete(e) {
   const isDelete = e.key === "Delete";
-  if (this.sbIsMoveAtBoundary(isDelete ? 1 : -1)) {
-    const editor = getEditor(this);
-    const current = editor.selection.range[0];
+  const editor = getEditor(this);
+  const current = editor.selection.range?.[0];
+  if (current !== null && this.sbIsMoveAtBoundary(isDelete ? 1 : -1)) {
     const pos = isDelete ? current : current - 1;
     if (pos < 0) return;
     editor.applyChanges([
