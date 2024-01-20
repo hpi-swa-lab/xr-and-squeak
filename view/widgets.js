@@ -125,6 +125,8 @@ export class Replacement extends Widget {
   handleClick(e) {
     if (e.button === 0 && e.altKey) {
       this.uninstallAndMark();
+      e.preventDefault();
+      e.stopPropagation();
     }
   }
 
@@ -145,11 +147,12 @@ export class Replacement extends Widget {
   }
 
   uninstallAndMark() {
-    this.uninstall().setAllowReplacement(this.tagName, false);
+    this.uninstall((e) => e.setAllowReplacement(this.tagName, false));
   }
 
-  uninstall() {
+  uninstall(prepareCb = null) {
     const source = this.source.toHTML();
+    prepareCb?.(source);
     this.editor.changeDOM(() => this.replaceWith(source));
     return source;
   }

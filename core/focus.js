@@ -268,8 +268,14 @@ function handleMove(e, delta) {
 function handleDelete(e) {
   const isDelete = e.key === "Delete";
   const editor = getEditor(this);
-  const current = editor.selection.range?.[0];
-  if (current !== null && this.sbIsMoveAtBoundary(isDelete ? 1 : -1)) {
+  this.sbUpdateRange();
+  const range = editor.selection.range;
+  if (
+    range !== null &&
+    range[0] === range[1] &&
+    this.sbIsMoveAtBoundary(isDelete ? 1 : -1)
+  ) {
+    const current = range[0];
     const pos = isDelete ? current : current - 1;
     if (pos < 0) return;
     editor.applyChanges([
@@ -295,6 +301,13 @@ function _markInput(element) {
           range: element.range,
         }
       : null;
+  element.sbUpdateRange = () => {
+    if (element.range)
+      getEditor(element).selection.informChange(element, [
+        element.selectionStart + element.range[0],
+        element.selectionEnd + element.range[0],
+      ]);
+  };
   element.sbSelectAtBoundary = (part, atStart) => {
     const position = atStart ? 0 : element.value.length;
     element.focus();

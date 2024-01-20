@@ -43,9 +43,7 @@ function DeletableShard({ node }) {
     {
       onmouseenter: () => setHover(true),
       onmouseleave: () => setHover(false),
-      style: {
-        position: "relative",
-      },
+      style: { position: "relative" },
     },
     shard(node),
     hover &&

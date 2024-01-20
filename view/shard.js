@@ -455,6 +455,10 @@ export class Shard extends HTMLElement {
 
     return { view: part ?? this.closestElementForRange(range), range };
   }
+  sbUpdateRange() {
+    // we're keeping the selection in sync via the onSelectionChange
+    // listener in the editor.
+  }
   sbIsMoveAtBoundary(delta) {
     const newPos = this.editor.selection.range[0] + delta;
     const me = this.closestElementForRange([newPos, newPos]);
