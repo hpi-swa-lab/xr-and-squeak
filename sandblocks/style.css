@@ -107,3 +107,7 @@ sb-window {
   flex-direction: column;
   gap: 0.25rem;
 }
+
+.sb-button-pressed {
+  background: #999;
+}

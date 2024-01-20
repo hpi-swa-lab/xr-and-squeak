@@ -1,6 +1,7 @@
 import { Extension } from "../core/extension.js";
 import { markAsEditableElement } from "../core/focus.js";
 import { useState } from "../external/preact-hooks.mjs";
+import { choose } from "../sandblocks/window.js";
 import { mapSeparated } from "../utils.js";
 import { ensureReplacementPreact, h, icon, shard } from "../view/widgets.js";
 import { cascadedConstructorShardsFor } from "./smalltalk.js";
@@ -17,6 +18,19 @@ function OragleModule({ children }) {
       },
     },
     children
+  );
+}
+
+function Dropdown({ choices, value, onChange }) {
+  return h(
+    "button",
+    {
+      onClick: async () => {
+        const choice = await choose(choices, (v) => v.label);
+        if (choice) onChange?.(choice.value);
+      },
+    },
+    choices.find((c) => c.value === value).label
   );
 }
 
@@ -73,6 +87,7 @@ function AutoSizeTextArea({ range, value, onChange }) {
   const style = {
     padding: 0,
     lineHeight: "inherit",
+    fontWeight: "inherit",
     border: "none",
   };
   return h(
@@ -157,7 +172,12 @@ export const base = new Extension()
             h(
               "div",
               { class: "sb-insert-button-container sb-column" },
-              h("span", { class: "sb-row" }, icon("table_rows"), label),
+              h(
+                "span",
+                { class: "sb-row" },
+                icon("table_rows"),
+                h("span", { style: { fontWeight: "bold" } }, label)
+              ),
               h(ShardArray, {
                 elements: children.elements,
                 onInsert: (i) => insertModule(children, i),
@@ -227,7 +247,7 @@ export const base = new Extension()
       cascadedConstructorShardsFor(x, "OragleLeafModule", {
         label: { prefix: "'", suffix: "'", placeholder: "label" },
         content: { prefix: "'", suffix: "'", placeholder: "content" },
-        state: { prefix: "#", suffix: "", placeholder: "enabled" },
+        state: { mode: "literal", default: "#enabled" },
       }),
     ([x, data]) =>
       ensureReplacementPreact(
@@ -238,7 +258,34 @@ export const base = new Extension()
           h(
             OragleModule,
             {},
-            h("div", { class: "sb-column" }, label, content, state)
+            h(
+              "div",
+              { class: "sb-column" },
+              h("span", { style: { fontWeight: "bold" } }, label),
+              content,
+              h(
+                "div",
+                { class: "sb-row" },
+                h(
+                  "button",
+                  {
+                    class: state.get() === "#solo" && "sb-button-pressed",
+                    onClick: () =>
+                      state.set(state.get() === "#solo" ? "#enabled" : "#solo"),
+                  },
+                  "S"
+                ),
+                h(
+                  "button",
+                  {
+                    class: state.get() === "#mute" && "sb-button-pressed",
+                    onClick: () =>
+                      state.set(state.get() === "#mute" ? "#enabled" : "#mute"),
+                  },
+                  "M"
+                )
+              )
+            )
           ),
         data
       ),
