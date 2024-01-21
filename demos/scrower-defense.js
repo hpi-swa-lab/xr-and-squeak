@@ -64,6 +64,13 @@ export const towers = new Extension()
       ),
   ])
 
+  .registerReplacement((e) => [
+    (x) => false,
+    (x) => x.extract("this.shoot($range, $damage)"),
+    (x) =>
+      ensureReplacementPreact(e, x, "scrower-shoot", ({ range, damage }) => {}),
+  ])
+
   .registerAlways((e) => [
     (x) => x.type === "number",
     (x) =>
@@ -131,7 +138,7 @@ export const towers = new Extension()
                 progress += balancing.enemySpeed(currentWave, data);
                 if (progress >= getPathLength()) {
                   removeEnemies.push(n);
-                  damage(balancing.enemyDamage(currentWave, enemy));
+                  damage(balancing.enemyDamage(currentWave, data));
                 } else {
                   data.progress.replaceWith(progress);
                   currentEnemies.push({ ...data, node: n });
