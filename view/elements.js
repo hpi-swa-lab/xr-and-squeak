@@ -21,7 +21,10 @@ class _EditableElement extends HTMLElement {
   }
 
   isReplacementAllowed(tag) {
-    return !this.disabledReplacements?.has(tag.toUpperCase());
+    return (
+      !this.disabledReplacements?.has(tag.toUpperCase()) &&
+      !(orParentThat(this, (x) => x instanceof Replacement)?.node === this.node)
+    );
   }
 
   setAllowReplacement(tagName, allow) {

@@ -65,10 +65,25 @@ export const towers = new Extension()
   ])
 
   .registerReplacement((e) => [
-    (x) => false,
     (x) => x.extract("this.shoot($range, $damage)"),
-    (x) =>
-      ensureReplacementPreact(e, x, "scrower-shoot", ({ range, damage }) => {}),
+    ([node, { range, damage }]) =>
+      ensureReplacementPreact(
+        e,
+        node,
+        "scrower-shoot",
+        ({ range, damage, node }) =>
+          h(
+            "span",
+            {},
+            shard(node),
+            " 🔋" +
+              balancing.shootCost(
+                parseInt(range.sourceString),
+                parseInt(damage.sourceString)
+              )
+          ),
+        { range, damage, node }
+      ),
   ])
 
   .registerAlways((e) => [
