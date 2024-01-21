@@ -93,8 +93,17 @@ export const towers = new Extension()
     (x) => true,
     (x) => x.isRoot,
     (x) => {
+      let currentWave = 0;
+      const waveInterval = 60000;
       let spawnCounter = 0;
       const editor = x.editor;
+      let beginWave = () => {
+        ++currentWave;
+        spawnCounter = currentWave;
+        console.log("wave ", currentWave);
+      };
+      beginWave();
+      setInterval(beginWave, waveInterval);
 
       setInterval(() => {
         const selectionRange = editor.selectionRange;
@@ -120,16 +129,19 @@ export const towers = new Extension()
           )
         );
 
-        if (spawnCounter <= 0) {
+        let now = Date.now();
+        let timeSinceLastSpawn = now - lastSpawnTime;
+        if (timeSinceLastSpawn >= spawnInterval && spawnCounter > 0) {
           const list = x.findQuery("let enemies = $list").list;
           list.insert(
             `new Enemy({ progress: 0, hp: 100 })`,
             "expression",
             list.childBlocks.length
           );
-          spawnCounter = 10;
+
+          lastSpawnTime = now;
+          spawnCounter--;
         }
-        spawnCounter--;
 
         editor.selectRange(...selectionRange);
       }, 500);
@@ -270,3 +282,6 @@ function getPointOnPath(distance) {
 
   return pathPoints[pathPoints.length - 1];
 }
+
+let spawnInterval = 2000;
+let lastSpawnTime = -spawnInterval;
