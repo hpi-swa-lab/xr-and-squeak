@@ -3,6 +3,9 @@
   <head>
     <!-- <meta name="viewport" content="width=device-width, initial-scale=1" /> -->
     <style>
+      body {
+        overflow: hidden;
+      }
       .tower {
         position: absolute;
         transition: all 120ms ease-out;
@@ -46,7 +49,9 @@
   </head>
   <body>
     <svg viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
-      <path id="enemy-path" d="
+      <path
+        id="enemy-path"
+        d="
         M 0 400
         L 200 400
         L 200 500
@@ -60,7 +65,8 @@
         L 400 700
         L 900 700
         L 900 400
-        L 1000 400" />
+        L 1000 400"
+      />
       <circle id="test" cx="100" cy="100" r="10" fill="red" />
     </svg>
     <sb-editor

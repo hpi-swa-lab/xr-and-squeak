@@ -190,6 +190,7 @@ export const towers = new Extension()
 
 const towerApi = (tower, enemies) => ({
   shoot: (range, damage) => {
+    const enemiesToRemove = [];
     for (const enemy of enemies) {
       const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
       const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
@@ -200,7 +201,7 @@ const towerApi = (tower, enemies) => ({
             addParticle(x, y, "💥", damage, 18);
             enemy.hp.replaceWith(parseInt(enemy.hp.sourceString) - damage);
             if (parseInt(enemy.hp.sourceString) <= 0) {
-              enemy.node.removeFull();
+              enemiesToRemove.push(enemy.node);
 
               updateEnergy((e) => e + 1000);
             }
@@ -209,6 +210,7 @@ const towerApi = (tower, enemies) => ({
         );
       }
     }
+    for (const node of enemiesToRemove) node.removeFull();
   },
 });
 
