@@ -1,6 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { objectToMap } from "../extensions/javascript.js";
-import { withDo } from "../utils.js";
+import { orParentThat, parentWithTag, withDo } from "../utils.js";
 import { ensureReplacementPreact, h, shard } from "../view/widgets.js";
 
 export const towers = new Extension()
@@ -54,6 +54,32 @@ export const towers = new Extension()
         },
         { arg }
       ),
+  ])
+
+  .registerAlways((e) => [
+    (x) => x.type === "number",
+    (x) =>
+      e.attachData(x, "scrubbing-event-listeners", (view) => {
+        let transition;
+        const tower = orParentThat(view, (p) => p.classList.contains("tower"));
+        const scrub = (e) => {
+          e.preventDefault();
+          x.replaceWith(parseInt(x.text) + e.movementX);
+        };
+        const removeScrub = () => {
+          window.removeEventListener("mousemove", scrub);
+          window.removeEventListener("mouseup", removeScrub);
+          tower.style.transition = transition;
+        };
+        view.addEventListener("mousedown", (e) => {
+          // e.preventDefault();
+          // e.stopPropagation();
+          transition = tower.style.transition;
+          tower.style.transition = "none";
+          window.addEventListener("mousemove", scrub);
+          window.addEventListener("mouseup", removeScrub);
+        });
+      }),
   ])
 
   .registerExtensionConnected((e) => [

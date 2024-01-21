@@ -107,6 +107,7 @@ export class Block extends _EditableElement {
     this.addEventListener("click", (e) => {
       if (
         e.target === this &&
+        start &&
         e.clientX === start[0] &&
         e.clientY === start[1] &&
         this.editor.interactionMode === "block"
