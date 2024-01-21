@@ -46,13 +46,14 @@ export const towers = new Extension()
         "scrower-enemy",
         ({ arg }) => {
           const args = objectToMap(arg);
+          const position = getPointOnPath(parseInt(args.progress.sourceString));
           return h(
             "div",
             {
               class: "sb-column enemy",
               style: {
-                left: parseInt(args.x.sourceString),
-                top: parseInt(args.y.sourceString),
+                left: position[0],
+                top: position[1],
               },
             },
             "Enemy",
@@ -93,14 +94,23 @@ export const towers = new Extension()
     (x) => x.isRoot,
     (x) =>
       setInterval(() => {
+        const element = document.getElementById("test");
+        d += 10;
+        const newPoint = getPointOnPath(d);
+        // element.setAttribute("cx", newPoint[0]);
+        // element.setAttribute("cy", newPoint[1]);
+
         const currentEnemies = [];
         x.allNodesDo((n) =>
           n.exec(
             (n) => n.extract("new Enemy($data)"),
             ([n, { data }]) => [n, objectToMap(data)],
             ([n, data]) => {
-              data.x.replaceWith(parseInt(data.x.sourceString) - 20);
-              data.y.replaceWith(parseInt(data.y.sourceString) - 30);
+              data.progress.replaceWith(d);
+              // data.x.replaceWith(newPoint[0]);
+              // data.y.replaceWith(newPoint[1]);
+              // data.x.replaceWith(parseInt(data.x.sourceString) - 20);
+              // data.y.replaceWith(parseInt(data.y.sourceString) - 30);
               currentEnemies.push({ ...data, node: n });
             }
           )
@@ -119,8 +129,7 @@ export const towers = new Extension()
 const towerApi = (tower, enemies) => ({
   shoot: (range, damage) => {
     for (const enemy of enemies) {
-      const x = parseInt(enemy.x.sourceString);
-      const y = parseInt(enemy.y.sourceString);
+      const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
       const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
       if (distance <= range) {
         withCostDo(
@@ -207,3 +216,42 @@ function Particle({ x, y, icon, text, size, onExpired }) {
     text && h("span", {}, text)
   );
 }
+
+let _pathPoints;
+function getPathPoints() {
+  if (_pathPoints == null) {
+    const enemyPath = document.getElementById("enemy-path").getAttribute("d");
+    _pathPoints = [...enemyPath.matchAll(/\w\s*(\d+)\s+(\d+)/g)]
+      .map(([_, x, y]) => [parseInt(x), parseInt(y)]);
+  }
+
+  return _pathPoints;
+}
+
+function getPointOnPath(distance) {
+  let pathPoints = getPathPoints();
+
+  let currentDistance = 0;
+  let currentPoint = pathPoints[0];
+  for (let i = 1; i < pathPoints.length; ++i) {
+    const nextPoint = pathPoints[i];
+    const segmentLength = Math.abs(currentPoint[0] - nextPoint[0] + currentPoint[1] - nextPoint[1]);
+    if (currentDistance + segmentLength < distance) {
+      currentDistance += segmentLength;
+      currentPoint = nextPoint;
+      continue;
+    }
+
+    const remainingDistance = distance - currentDistance;
+    const direction = [
+      Math.sign(nextPoint[0] - currentPoint[0]),
+      Math.sign(nextPoint[1] - currentPoint[1])];
+    const newPoint = [
+      currentPoint[0] + remainingDistance * direction[0],
+      currentPoint[1] + remainingDistance * direction[1]];
+
+    return newPoint;
+  }
+}
+
+        let d = 0;
