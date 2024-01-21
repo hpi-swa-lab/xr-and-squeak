@@ -35,7 +35,7 @@ export class TreeSitterLanguage extends SBLanguage {
     this.parseConfig = Object.assign(parseConfig ?? {}, {
       matchPrefix: parseConfig?.matchPrefix ?? "$",
       unwrapExpression:
-        parseConfig?.unwrapExpression ?? ((n) => n.childBlock(0)),
+        parseConfig?.unwrapExpression ?? ((n) => n.childBlock(0).childBlock(0)),
       parseExpressionPrefix: parseConfig?.parseExpressionPrefix ?? "",
       parseExpressionSuffix: parseConfig?.parseExpressionSuffix ?? "",
     });

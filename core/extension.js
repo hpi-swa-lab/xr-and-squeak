@@ -1,4 +1,5 @@
 import { exec, rangeEqual, sequenceMatch } from "../utils.js";
+import { config } from "./config.js";
 
 export class StickyReplacementRemoved extends Error {}
 
@@ -42,7 +43,11 @@ export class Extension {
     const [pkg, extName] = name.split(":");
     if (this.packageLoaders.has(pkg)) return this.packageLoaders.get(pkg);
 
-    const extensions = await import(`../extensions/${pkg}.js`);
+    const extensions = await import(
+      pkg.includes("/")
+        ? `${config.baseURL}${pkg}.js`
+        : `../extensions/${pkg}.js`
+    );
     for (const [name, ext] of Object.entries(extensions)) {
       if (!(ext instanceof Extension)) continue;
       ext.name = `${pkg}:${name}`;

@@ -500,6 +500,13 @@ class SBNode {
   matches(string, extract = null) {
     return this.query(string, extract) !== null;
   }
+
+  // query that returns the node and the result of the query,
+  // convenient for exec scripts.
+  extract(string, extract = null) {
+    const res = this.query(string, extract);
+    return res ? [this, res] : null;
+  }
 }
 
 const structureHashText = hash("text");

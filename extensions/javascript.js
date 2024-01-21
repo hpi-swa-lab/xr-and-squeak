@@ -17,6 +17,13 @@ import {} from "../view/widget-utils.js";
 import { markAsEditableElement } from "../core/focus.js";
 import { useEffect } from "../external/preact-hooks.mjs";
 
+export const objectToMap = (obj) =>
+  Object.fromEntries(
+    obj.childBlocks
+      // FIXME is key is a string, unquote
+      .map((x) => [x.atField("key").text, x.atField("value")])
+  );
+
 customElements.define(
   "sb-outline",
   class extends Widget {

@@ -1,6 +1,6 @@
 import "../external/preact-debug.js";
 import { h, render } from "../external/preact.mjs";
-import { nextHash, orParentThat, parentWithTag } from "../utils.js";
+import { nextHash, orParentThat, parentWithTag, rangeEqual } from "../utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
@@ -131,6 +131,11 @@ export class Replacement extends Widget {
       this.uninstallAndMark();
       e.preventDefault();
       e.stopPropagation();
+    } else if (e.button === 0) {
+      // this.editor.selectRange(...this.range);
+      // this.updateSelection();
+      // e.preventDefault();
+      // e.stopPropagation();
     }
   }
 
@@ -169,6 +174,15 @@ export class Replacement extends Widget {
         shard.update(node);
       }
     }
+
+    // FIXME need to call on every selection change
+    this.updateSelection();
+  }
+
+  updateSelection() {
+    if (rangeEqual(this.range, this.editor.selection.range))
+      this.setAttribute("selected", true);
+    else this.removeAttribute("selected");
   }
 
   get range() {
