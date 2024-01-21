@@ -65,12 +65,12 @@ export const towers = new Extension()
   ])
 
   .registerAlways((e) => [
-    (x) => false,
     (x) => x.type === "number",
     (x) =>
       e.attachData(x, "scrubbing-event-listeners", (view) => {
         let transition;
         const tower = orParentThat(view, (p) => p.classList.contains("tower"));
+        if (!tower) return;
         const scrub = (e) => {
           e.preventDefault();
           x.replaceWith(parseInt(x.text) + e.movementX);
