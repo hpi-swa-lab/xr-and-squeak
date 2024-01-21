@@ -94,7 +94,7 @@ export const towers = new Extension()
     (x) => x.isRoot,
     (x) => {
       let currentWave = 0;
-      const waveInterval = 60000;
+      const waveInterval = 600;
       let spawnCounter = 0;
       const editor = x.editor;
       let beginWave = () => {
@@ -110,14 +110,49 @@ export const towers = new Extension()
 
         try {
           const currentEnemies = [];
+          const removeEnemies = [];
           x.allNodesDo((n) =>
             n.exec(
               (n) => n.extract("new Enemy($data)"),
               ([n, { data }]) => [n, objectToMap(data)],
               ([n, data]) => {
-                const progress = parseInt(data.progress.sourceString);
-                data.progress.replaceWith(progress + 10);
-                currentEnemies.push({ ...data, node: n });
+                let progress = parseInt(data.progress.sourceString);
+                progress += 100;
+                if (progress >= getPathLength()) {
+                  removeEnemies.push(n);
+                  damage(100);
+                } else {
+                  data.progress.replaceWith(progress + 10);
+                  currentEnemies.push({ ...data, node: n });
+                }
+              }
+            )
+          );
+
+          let now = Date.now();
+          let timeSinceLastSpawn = now - lastSpawnTime;
+          if (timeSinceLastSpawn >= spawnInterval && spawnCounter > 0) {
+            const list = x.findQuery("let enemies = $list").list;
+            list.insert(
+              `new Enemy({ progress: 0, hp: 100 })`,
+              "expression",
+              list.childBlocks.length
+            );
+
+            lastSpawnTime = now;
+            spawnCounter--;
+          }
+
+          x.allNodesDo((n) =>
+            n.exec(
+              (n) => n.query("new Tower($data)")?.data,
+              (data) => {
+                try {
+                  return [data, eval(`(${data.sourceString})`)];
+                } catch (e) {
+                  reportErrorAtNode(data, e);
+                  return null;
+                }
               }
             )
           );
@@ -143,18 +178,8 @@ export const towers = new Extension()
             )
           );
 
-          let now = Date.now();
-          let timeSinceLastSpawn = now - lastSpawnTime;
-          if (timeSinceLastSpawn >= spawnInterval && spawnCounter > 0) {
-            const list = x.findQuery("let enemies = $list").list;
-            list.insert(
-              `new Enemy({ progress: 0, hp: 100 })`,
-              "expression",
-              list.childBlocks.length
-            );
-
-            lastSpawnTime = now;
-            spawnCounter--;
+          for (const enemy of removeEnemies) {
+            enemy.removeFull();
           }
         } finally {
           editor.selectRange(...selectionRange);
@@ -291,6 +316,24 @@ function getPathPoints() {
   return _pathPoints;
 }
 
+let _pathLength;
+function getPathLength() {
+  if (_pathLength == null) {
+    _pathLength = 0;
+    const pathPoints = getPathPoints();
+    let currentPoint = pathPoints[0];
+    for (let i = 1; i < pathPoints.length; ++i) {
+      let nextPoint = pathPoints[i];
+      _pathLength += Math.abs(
+        currentPoint[0] - nextPoint[0] + currentPoint[1] - nextPoint[1]
+      );
+      currentPoint = nextPoint;
+    }
+  }
+
+  return _pathLength;
+}
+
 function getPointOnPath(distance) {
   let pathPoints = getPathPoints();
 
@@ -321,6 +364,17 @@ function getPointOnPath(distance) {
   }
 
   return pathPoints[pathPoints.length - 1];
+}
+
+function damage(amount) {
+  let { value } = document
+    .querySelector("sb-editor")
+    .source.findQuery("let hp = $value");
+  const newHp = parseInt(value.sourceString) - amount;
+  value.replaceWith(newHp);
+  if (newHp <= 0) {
+    alert("you done goofed");
+  }
 }
 
 let spawnInterval = 2000;
