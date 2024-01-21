@@ -241,7 +241,9 @@ export const towers = new Extension()
               },
               ([node, data]) => {
                 try {
-                  data.loop?.apply(towerApi(data, currentEnemies));
+                  data.loop?.apply(
+                    towerApi(data, currentEnemies, removeEnemies)
+                  );
                 } catch (e) {
                   reportErrorAtNode(node, e);
                 }
@@ -249,7 +251,7 @@ export const towers = new Extension()
             )
           );
 
-          for (const enemy of removeEnemies) {
+          for (const enemy of new Set(removeEnemies)) {
             enemy.removeFull();
           }
         } finally {
@@ -276,9 +278,8 @@ const balancing = {
   initialEnergy: () => 300,
 };
 
-const towerApi = (tower, enemies) => ({
+const towerApi = (tower, enemies, removeEnemies) => ({
   area: (range, damage) => {
-    const enemiesToRemove = [];
     addCircle(tower.x, tower.y, range * 2);
 
     for (const enemy of enemies) {
@@ -293,7 +294,7 @@ const towerApi = (tower, enemies) => ({
             const newHp = parseInt(enemy.hp.sourceString) - damage;
             enemy.hp.replaceWith(newHp);
             if (newHp <= 0) {
-              enemiesToRemove.push(enemy.node);
+              removeEnemies.push(enemy.node);
               updateEnergy((e) => e + balancing.energyOnKill(enemy));
             }
           },
@@ -301,7 +302,6 @@ const towerApi = (tower, enemies) => ({
         );
       }
     }
-    for (const node of enemiesToRemove) node.removeFull();
   },
 
   shoot: (range, damage) => {
@@ -331,7 +331,7 @@ const towerApi = (tower, enemies) => ({
           const newHp = parseInt(best.hp.sourceString) - damage;
           best.hp.replaceWith(newHp);
           if (newHp <= 0) {
-            best.node.removeFull();
+            removeEnemies.push(best.node);
             updateEnergy((e) => e + balancing.energyOnKill(best));
           }
         },
@@ -441,7 +441,7 @@ function Particle({ x, y, icon, text, size, onExpired }) {
       },
     },
     !isCircle && icon,
-    text && h("span", {}, text) 
+    text && h("span", {}, text)
   );
 }
 
