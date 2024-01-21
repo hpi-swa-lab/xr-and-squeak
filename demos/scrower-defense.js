@@ -96,23 +96,14 @@ export const towers = new Extension()
       let spawnCounter = 0;
 
       setInterval(() => {
-        const element = document.getElementById("test");
-        d += 10;
-        const newPoint = getPointOnPath(d);
-        // element.setAttribute("cx", newPoint[0]);
-        // element.setAttribute("cy", newPoint[1]);
-
         const currentEnemies = [];
         x.allNodesDo((n) =>
           n.exec(
             (n) => n.extract("new Enemy($data)"),
             ([n, { data }]) => [n, objectToMap(data)],
             ([n, data]) => {
-              data.progress.replaceWith(d);
-              // data.x.replaceWith(newPoint[0]);
-              // data.y.replaceWith(newPoint[1]);
-              // data.x.replaceWith(parseInt(data.x.sourceString) - 20);
-              // data.y.replaceWith(parseInt(data.y.sourceString) - 30);
+              const progress = parseInt(data.progress.sourceString);
+              data.progress.replaceWith(progress + 10);
               currentEnemies.push({ ...data, node: n });
             }
           )
@@ -129,7 +120,7 @@ export const towers = new Extension()
         if (spawnCounter <= 0) {
           const list = x.findQuery("let enemies = $list").list;
           list.insert(
-            `new Enemy({ x: 600, y: 600, hp: 100 })`,
+            `new Enemy({ progress: 0, hp: 100 })`,
             "expression",
             list.childBlocks.length
           );
