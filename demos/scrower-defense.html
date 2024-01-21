@@ -30,6 +30,9 @@
       .particle span {
         font-size: 12px;
       }
+      .particle {
+        pointer-events: none;
+      }
 
       svg {
         background: #ffffff;
@@ -93,6 +96,9 @@ const towers = [
     new Tower({
         x: 300,
         y: 100,
+        loop() {
+
+        }
     })
 ];
 const enemies = [

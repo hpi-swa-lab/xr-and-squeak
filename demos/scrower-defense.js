@@ -86,6 +86,28 @@ export const towers = new Extension()
       ),
   ])
 
+  .registerReplacement((e) => [
+    (x) => x.extract("this.area($range, $damage)"),
+    ([node, { range, damage }]) =>
+      ensureReplacementPreact(
+        e,
+        node,
+        "scrower-area",
+        ({ range, damage, node }) =>
+          h(
+            "span",
+            {},
+            shard(node),
+            " 🔋" +
+              balancing.areaCost(
+                parseInt(range.sourceString),
+                parseInt(damage.sourceString)
+              )
+          ),
+        { range, damage, node }
+      ),
+  ])
+
   .registerAlways((e) => [
     (x) => x.type === "number",
     (x) =>
@@ -222,6 +244,7 @@ export const towers = new Extension()
           }
         } finally {
           editor.suspendViewChanges = false;
+          console.log("REEEEEESTING", selectionRange);
           editor.updateViewAfterChange(selectionRange, null, [], true);
         }
       }, 500);
@@ -236,20 +259,22 @@ const balancing = {
   enemyHp: (wave) => 100 + wave * 10,
   enemyDamage: (wave, enemy) => 10 + wave * 2,
   shootCost: (range, damage) => damage * (range / 200) * (range / 200),
+  areaCost: (range, damage) => damage * (range / 50),
   baseHp: () => 1000,
   spawnInterval: (wave) => 2000,
   initialEnergy: () => 300,
 };
 
 const towerApi = (tower, enemies) => ({
-  shoot: (range, damage) => {
+  area: (range, damage) => {
     const enemiesToRemove = [];
+    addCircle(tower.x, tower.y, range * 2);
+
     for (const enemy of enemies) {
       const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
       const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
-      addCircle(tower.x, tower.y, range * 2);
       if (distance <= range) {
-        const cost = balancing.shootCost(range, damage);
+        const cost = balancing.areaCost(range, damage);
         withCostDo(
           cost,
           () => {
@@ -266,6 +291,39 @@ const towerApi = (tower, enemies) => ({
       }
     }
     for (const node of enemiesToRemove) node.removeFull();
+  },
+
+  shoot: (range, damage) => {
+    addCircle(tower.x, tower.y, range * 2);
+    let best = null;
+    let bestPos = null;
+    let bestRange = range;
+
+    for (const enemy of enemies) {
+      const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
+      const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
+      if (distance <= bestRange) {
+        best = enemy;
+        bestPos = [x, y];
+      }
+    }
+
+    if (best) {
+      const cost = balancing.shootCost(range, damage);
+      withCostDo(
+        cost,
+        () => {
+          addParticle(...bestPos, "💥", damage, 18);
+          const newHp = parseInt(best.hp.sourceString) - damage;
+          best.hp.replaceWith(newHp);
+          if (newHp <= 0) {
+            best.node.removeFull();
+            updateEnergy((e) => e + balancing.energyOnKill(best));
+          }
+        },
+        () => addParticle(tower.x, tower.y, "🔋", cost, 30)
+      );
+    }
   },
 });
 
