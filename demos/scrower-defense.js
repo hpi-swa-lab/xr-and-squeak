@@ -218,7 +218,7 @@ const balancing = {
   enemySpeed: (wave, enemy) => 30 + wave * 5,
   enemyHp: (wave) => 100 + wave * 10,
   enemyDamage: (wave, enemy) => 10 + wave * 2,
-  shootCost: (range, damage) => damage * (range / 200),
+  shootCost: (range, damage) => damage * (range / 200) * (range / 200),
   baseHp: () => 1000,
   spawnInterval: (wave) => 2000,
   initialEnergy: () => 300,
@@ -352,7 +352,7 @@ function Particle({ x, y, icon, text, size, onExpired }) {
       },
     },
     !isCircle && icon,
-    text && h("span", {}, text)
+    text && h("span", {}, text) 
   );
 }
 
