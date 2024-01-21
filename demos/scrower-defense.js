@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "../external/preact-hooks.mjs";
-import { orParentThat } from "../utils.js";
+import { orParentThat, withDo } from "../utils.js";
 import { ensureReplacementPreact, h, render, shard } from "../view/widgets.js";
 
 export const towers = new Extension()
@@ -124,8 +124,21 @@ export const towers = new Extension()
         x.allNodesDo((n) =>
           n.exec(
             (n) => n.query("new Tower($data)")?.data,
-            (data) => eval(`(${data.sourceString})`),
-            (data) => data.loop?.apply(towerApi(data, currentEnemies))
+            (data) => {
+              try {
+                return [data, eval(`(${data.sourceString})`)];
+              } catch (e) {
+                reportErrorAtNode(data, e);
+                return null;
+              }
+            },
+            ([node, data]) => {
+              try {
+                data.loop?.apply(towerApi(data, currentEnemies));
+              } catch (e) {
+                reportErrorAtNode(node, e);
+              }
+            }
           )
         );
 
@@ -167,6 +180,19 @@ const towerApi = (tower, enemies) => ({
     }
   },
 });
+
+function reportErrorAtNode(node, error) {
+  console.error(error);
+  addParticle(
+    ...withDo(node.debugView.getBoundingClientRect(), (r) => [
+      r.x + r.width / 2,
+      r.y + r.height / 2,
+    ]),
+    "🔥",
+    error.message,
+    18
+  );
+}
 
 function withCostDo(num, action, noEnergy) {
   const { value } = document

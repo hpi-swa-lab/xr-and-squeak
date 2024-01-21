@@ -165,7 +165,7 @@ class SBNode {
 
   // quick way to obtain a view to the element, should only be used for debugging
   get debugView() {
-    return this._views?._array[0].deref();
+    return last(this._views?._array).deref();
   }
 
   get editor() {
