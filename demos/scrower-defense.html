@@ -36,7 +36,7 @@
         aspect-ratio: 1000/800;
         max-height: 100vh;
         width: 1000px;
-        height 800px;
+        height: 800px;
       }
 
       #enemy-path {
@@ -44,6 +44,13 @@
         stroke-linejoin: round;
         stroke-width: 40px;
         fill: none;
+      }
+
+      .circle {
+        border-radius: 99999px;
+        background: rgba(1, 0, 0, 0.03);
+        position: absolute;
+        pointer-events: none;
       }
     </style>
   </head>

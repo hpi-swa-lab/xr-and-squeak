@@ -223,6 +223,7 @@ const towerApi = (tower, enemies) => ({
     for (const enemy of enemies) {
       const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
       const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
+      addCircle(tower.x, tower.y, range * 2);
       if (distance <= range) {
         const cost = balancing.shootCost(range, damage);
         withCostDo(
@@ -277,6 +278,10 @@ function updateEnergy(cb) {
 
 render(h(Particles), document.querySelector("#particles"));
 
+function addCircle(x, y, size) {
+  addParticle(x, y, "circle", null, size);
+}
+
 function Particles() {
   const [particles, setParticles] = useState([]);
   const idRef = useRef(0);
@@ -301,6 +306,8 @@ function Particles() {
 function Particle({ x, y, icon, text, size, onExpired }) {
   size ??= 18;
 
+  const isCircle = icon === "circle";
+
   const [position, setPosition] = useState([x, y]);
 
   const direction = useMemo(() => {
@@ -312,7 +319,9 @@ function Particle({ x, y, icon, text, size, onExpired }) {
 
   useEffect(() => {
     const update = () => {
-      setPosition(([x, y]) => [x + direction[0], y + direction[1]]);
+      if (!isCircle) {
+        setPosition(([x, y]) => [x + direction[0], y + direction[1]]);
+      }
       lifeTimeRef.current++;
       if (lifeTimeRef.current > 20) onExpired();
       else requestAnimationFrame(update);
@@ -324,14 +333,18 @@ function Particle({ x, y, icon, text, size, onExpired }) {
   return h(
     "div",
     {
-      class: "particle",
+      class: isCircle ? "circle" : "particle",
       style: {
         left: position[0],
         top: position[1],
         fontSize: size,
+        marginLeft: -size / 2,
+        marginTop: -size / 2,
+        width: size,
+        height: size,
       },
     },
-    icon,
+    !isCircle && icon,
     text && h("span", {}, text)
   );
 }
