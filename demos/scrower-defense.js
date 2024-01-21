@@ -94,8 +94,11 @@ export const towers = new Extension()
     (x) => x.isRoot,
     (x) => {
       let spawnCounter = 0;
+      const editor = x.editor;
 
       setInterval(() => {
+        const selectionRange = editor.selectionRange;
+
         const currentEnemies = [];
         x.allNodesDo((n) =>
           n.exec(
@@ -127,6 +130,8 @@ export const towers = new Extension()
           spawnCounter = 10;
         }
         spawnCounter--;
+
+        editor.selectRange(...selectionRange);
       }, 500);
     },
   ]);
@@ -226,8 +231,9 @@ let _pathPoints;
 function getPathPoints() {
   if (_pathPoints == null) {
     const enemyPath = document.getElementById("enemy-path").getAttribute("d");
-    _pathPoints = [...enemyPath.matchAll(/\w\s*(\d+)\s+(\d+)/g)]
-      .map(([_, x, y]) => [parseInt(x), parseInt(y)]);
+    _pathPoints = [...enemyPath.matchAll(/\w\s*(\d+)\s+(\d+)/g)].map(
+      ([_, x, y]) => [parseInt(x), parseInt(y)]
+    );
   }
 
   return _pathPoints;
@@ -240,7 +246,9 @@ function getPointOnPath(distance) {
   let currentPoint = pathPoints[0];
   for (let i = 1; i < pathPoints.length; ++i) {
     const nextPoint = pathPoints[i];
-    const segmentLength = Math.abs(currentPoint[0] - nextPoint[0] + currentPoint[1] - nextPoint[1]);
+    const segmentLength = Math.abs(
+      currentPoint[0] - nextPoint[0] + currentPoint[1] - nextPoint[1]
+    );
     if (currentDistance + segmentLength < distance) {
       currentDistance += segmentLength;
       currentPoint = nextPoint;
@@ -250,13 +258,15 @@ function getPointOnPath(distance) {
     const remainingDistance = distance - currentDistance;
     const direction = [
       Math.sign(nextPoint[0] - currentPoint[0]),
-      Math.sign(nextPoint[1] - currentPoint[1])];
+      Math.sign(nextPoint[1] - currentPoint[1]),
+    ];
     const newPoint = [
       currentPoint[0] + remainingDistance * direction[0],
-      currentPoint[1] + remainingDistance * direction[1]];
+      currentPoint[1] + remainingDistance * direction[1],
+    ];
 
     return newPoint;
   }
 }
 
-        let d = 0;
+let d = 0;
