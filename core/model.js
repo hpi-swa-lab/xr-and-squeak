@@ -462,6 +462,7 @@ class SBNode {
 
   // edit operations
   replaceWith(str) {
+    if (typeof str === "number") str = str.toString();
     this.editor.replaceTextFromCommand(this.range, str);
   }
 
