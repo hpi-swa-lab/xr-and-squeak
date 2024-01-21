@@ -91,7 +91,9 @@ export const towers = new Extension()
   .registerExtensionConnected((e) => [
     (x) => true,
     (x) => x.isRoot,
-    (x) =>
+    (x) => {
+      let spawnCounter = 0;
+
       setInterval(() => {
         const currentEnemies = [];
         x.allNodesDo((n) =>
@@ -113,7 +115,19 @@ export const towers = new Extension()
             (data) => data.loop?.apply(towerApi(data, currentEnemies))
           )
         );
-      }, 500),
+
+        if (spawnCounter <= 0) {
+          const list = x.findQuery("let enemies = $list").list;
+          list.insert(
+            `new Enemy({ x: 600, y: 600, hp: 100 })`,
+            "expression",
+            list.childBlocks.length
+          );
+          spawnCounter = 10;
+        }
+        spawnCounter--;
+      }, 500);
+    },
   ]);
 
 const towerApi = (tower, enemies) => ({
