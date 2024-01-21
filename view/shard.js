@@ -482,6 +482,7 @@ export class Shard extends HTMLElement {
   sbSelectedEditablePart() {
     const point = withDo(this.editor.selection.range[0], (p) => [p, p]);
     const el = this.closestElementForRange(point);
+    if (!el.isConnected) return null;
     if (!el || !rangeContains(el.range, point)) return null;
     return el;
   }
