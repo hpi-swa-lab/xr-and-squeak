@@ -108,55 +108,57 @@ export const towers = new Extension()
       setInterval(() => {
         const selectionRange = editor.selectionRange;
 
-        const currentEnemies = [];
-        x.allNodesDo((n) =>
-          n.exec(
-            (n) => n.extract("new Enemy($data)"),
-            ([n, { data }]) => [n, objectToMap(data)],
-            ([n, data]) => {
-              const progress = parseInt(data.progress.sourceString);
-              data.progress.replaceWith(progress + 10);
-              currentEnemies.push({ ...data, node: n });
-            }
-          )
-        );
-
-        x.allNodesDo((n) =>
-          n.exec(
-            (n) => n.query("new Tower($data)")?.data,
-            (data) => {
-              try {
-                return [data, eval(`(${data.sourceString})`)];
-              } catch (e) {
-                reportErrorAtNode(data, e);
-                return null;
+        try {
+          const currentEnemies = [];
+          x.allNodesDo((n) =>
+            n.exec(
+              (n) => n.extract("new Enemy($data)"),
+              ([n, { data }]) => [n, objectToMap(data)],
+              ([n, data]) => {
+                const progress = parseInt(data.progress.sourceString);
+                data.progress.replaceWith(progress + 10);
+                currentEnemies.push({ ...data, node: n });
               }
-            },
-            ([node, data]) => {
-              try {
-                data.loop?.apply(towerApi(data, currentEnemies));
-              } catch (e) {
-                reportErrorAtNode(node, e);
-              }
-            }
-          )
-        );
-
-        let now = Date.now();
-        let timeSinceLastSpawn = now - lastSpawnTime;
-        if (timeSinceLastSpawn >= spawnInterval && spawnCounter > 0) {
-          const list = x.findQuery("let enemies = $list").list;
-          list.insert(
-            `new Enemy({ progress: 0, hp: 100 })`,
-            "expression",
-            list.childBlocks.length
+            )
           );
 
-          lastSpawnTime = now;
-          spawnCounter--;
-        }
+          x.allNodesDo((n) =>
+            n.exec(
+              (n) => n.query("new Tower($data)")?.data,
+              (data) => {
+                try {
+                  return [data, eval(`(${data.sourceString})`)];
+                } catch (e) {
+                  reportErrorAtNode(data, e);
+                  return null;
+                }
+              },
+              ([node, data]) => {
+                try {
+                  data.loop?.apply(towerApi(data, currentEnemies));
+                } catch (e) {
+                  reportErrorAtNode(node, e);
+                }
+              }
+            )
+          );
 
-        editor.selectRange(...selectionRange);
+          let now = Date.now();
+          let timeSinceLastSpawn = now - lastSpawnTime;
+          if (timeSinceLastSpawn >= spawnInterval && spawnCounter > 0) {
+            const list = x.findQuery("let enemies = $list").list;
+            list.insert(
+              `new Enemy({ progress: 0, hp: 100 })`,
+              "expression",
+              list.childBlocks.length
+            );
+
+            lastSpawnTime = now;
+            spawnCounter--;
+          }
+        } finally {
+          editor.selectRange(...selectionRange);
+        }
       }, 500);
     },
   ]);
