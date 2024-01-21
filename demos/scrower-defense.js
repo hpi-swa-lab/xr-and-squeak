@@ -1,7 +1,14 @@
 import { Extension } from "../core/extension.js";
 import { objectToMap } from "../extensions/javascript.js";
-import { orParentThat, parentWithTag, withDo } from "../utils.js";
-import { ensureReplacementPreact, h, shard } from "../view/widgets.js";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "../external/preact-hooks.mjs";
+import { orParentThat } from "../utils.js";
+import { ensureReplacementPreact, h, render, shard } from "../view/widgets.js";
 
 export const towers = new Extension()
   .registerReplacement((e) => [
@@ -72,8 +79,6 @@ export const towers = new Extension()
           tower.style.transition = transition;
         };
         view.addEventListener("mousedown", (e) => {
-          // e.preventDefault();
-          // e.stopPropagation();
           transition = tower.style.transition;
           tower.style.transition = "none";
           window.addEventListener("mousemove", scrub);
@@ -83,19 +88,105 @@ export const towers = new Extension()
   ])
 
   .registerExtensionConnected((e) => [
-    (x) => false,
+    (x) => true,
     (x) => x.isRoot,
     (x) =>
       setInterval(() => {
-        x.allNodesDo((n) => {
+        const currentEnemies = [];
+        x.allNodesDo((n) =>
           n.exec(
-            (n) => n.query("new Enemy($data)")?.data,
-            (d) => objectToMap(d),
-            (data) => {
+            (n) => n.extract("new Enemy($data)"),
+            ([n, { data }]) => [n, objectToMap(data)],
+            ([n, data]) => {
               data.x.replaceWith(parseInt(data.x.sourceString) - 20);
               data.y.replaceWith(parseInt(data.y.sourceString) - 30);
+              currentEnemies.push({ ...data, node: n });
             }
-          );
-        });
+          )
+        );
+
+        x.allNodesDo((n) =>
+          n.exec(
+            (n) => n.query("new Tower($data)")?.data,
+            (data) => eval(`(${data.sourceString})`),
+            (data) => data.loop?.apply(towerApi(data, currentEnemies))
+          )
+        );
       }, 500),
   ]);
+
+const towerApi = (tower, enemies) => ({
+  shoot: (range, damage) => {
+    for (const enemy of enemies) {
+      const x = parseInt(enemy.x.sourceString);
+      const y = parseInt(enemy.y.sourceString);
+      const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
+      if (distance <= range) {
+        addParticle(x, y, "💥", damage, 18);
+        enemy.hp.replaceWith(parseInt(enemy.hp.sourceString) - damage);
+        if (parseInt(enemy.hp.sourceString) <= 0) enemy.node.removeFull();
+      }
+    }
+  },
+});
+
+render(h(Particles), document.querySelector("#particles"));
+
+function Particles() {
+  const [particles, setParticles] = useState([]);
+  const idRef = useRef(0);
+
+  window.addParticle = useCallback((x, y, icon, text, size) => {
+    setParticles((p) => [
+      ...p,
+      { x, y, icon, text, size, id: idRef.current++ },
+    ]);
+  });
+
+  return particles.map((p) =>
+    h(Particle, {
+      key: p.id,
+      ...p,
+      onExpired: () =>
+        setParticles((list) => list.filter((x) => x.id !== p.id)),
+    })
+  );
+}
+
+function Particle({ x, y, icon, text, size, onExpired }) {
+  size ??= 18;
+
+  const [position, setPosition] = useState([x, y]);
+
+  const direction = useMemo(() => {
+    const angle = Math.random() * Math.PI * 2;
+    return [Math.cos(angle), Math.sin(angle)];
+  });
+
+  const lifeTimeRef = useRef(0);
+
+  useEffect(() => {
+    const update = () => {
+      setPosition(([x, y]) => [x + direction[0], y + direction[1]]);
+      lifeTimeRef.current++;
+      if (lifeTimeRef.current > 20) onExpired();
+      else requestAnimationFrame(update);
+    };
+    const id = requestAnimationFrame(update);
+    () => cancelAnimationFrame(id);
+  }, []);
+
+  return h(
+    "div",
+    {
+      class: "particle",
+      style: {
+        left: position[0],
+        top: position[1],
+        fontSize: size,
+      },
+    },
+    icon,
+    text && h("span", {}, text)
+  );
+}

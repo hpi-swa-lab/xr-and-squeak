@@ -83,7 +83,7 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
         const customData = add(view);
         update?.(view, node, customData);
         this.newAttachedData.set(hash, {
-          remove: (data) => remove(view, data),
+          remove: (data) => remove?.(view, data),
           customData,
         });
       } else {
