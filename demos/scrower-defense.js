@@ -295,15 +295,18 @@ const towerApi = (tower, enemies) => ({
   shoot: (range, damage) => {
     addCircle(tower.x, tower.y, range * 2);
     let best = null;
+    let bestProgress = Number.NEGATIVE_INFINITY;
     let bestPos = null;
     let bestRange = range;
 
     for (const enemy of enemies) {
-      const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
+      const progress = parseInt(enemy.progress.sourceString);
+      const [x, y] = getPointOnPath(progress);
       const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
-      if (distance <= bestRange) {
+      if (distance <= bestRange && progress > bestProgress) {
         best = enemy;
         bestPos = [x, y];
+        bestProgress = progress;
       }
     }
 
