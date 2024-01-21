@@ -10,6 +10,20 @@ import {
 import { orParentThat, withDo } from "../utils.js";
 import { ensureReplacementPreact, h, render, shard } from "../view/widgets.js";
 
+const balancing = {
+  waveInterval: (wave) => 5000,
+  energyOnKill: (enemy) => 300,
+  energyPerTurn: () => 100,
+  enemySpeed: (wave, enemy) => 30 + wave * 5,
+  enemyHp: (wave) => 100 + wave * 10,
+  enemyDamage: (wave, enemy) => 10 + wave * 2,
+  shootCost: (range, damage) => damage * (range / 200),
+  areaCost: (range, damage) => damage * (range / 70) * (range / 70),
+  baseHp: () => 1000,
+  spawnInterval: (wave) => 2000,
+  initialEnergy: () => 300,
+};
+
 export const towers = new Extension()
   .registerReplacement((e) => [
     (x) => x.extract("new Tower($arg)"),
@@ -264,32 +278,17 @@ export const towers = new Extension()
     },
   ]);
 
-const balancing = {
-  waveInterval: (wave) => 5000,
-  energyOnKill: (enemy) => 300,
-  energyPerTurn: () => 100,
-  enemySpeed: (wave, enemy) => 30 + wave * 5,
-  enemyHp: (wave) => 100 + wave * 10,
-  enemyDamage: (wave, enemy) => 10 + wave * 2,
-  shootCost: (range, damage) => damage * (range / 200),
-  areaCost: (range, damage) => damage * (range / 100) * (range / 100),
-  baseHp: () => 1000,
-  spawnInterval: (wave) => 2000,
-  initialEnergy: () => 300,
-};
-
 const towerApi = (tower, enemies, removeEnemies) => ({
   area: (range, damage) => {
-    addCircle(tower.x, tower.y, range * 2);
-
-    for (const enemy of enemies) {
-      const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
-      const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
-      if (distance <= range) {
-        const cost = balancing.areaCost(range, damage);
-        withCostDo(
-          cost,
-          () => {
+    const cost = balancing.areaCost(range, damage);
+    withCostDo(
+      cost,
+      () => {
+        addCircle(tower.x, tower.y, range * 2);
+        for (const enemy of enemies) {
+          const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
+          const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
+          if (distance <= range) {
             addParticle(x, y, "💥", damage, 18);
             const newHp = parseInt(enemy.hp.sourceString) - damage;
             enemy.hp.replaceWith(newHp);
@@ -297,11 +296,11 @@ const towerApi = (tower, enemies, removeEnemies) => ({
               removeEnemies.push(enemy.node);
               updateEnergy((e) => e + balancing.energyOnKill(enemy));
             }
-          },
-          () => addParticle(tower.x, tower.y, "🔋", cost, 30)
-        );
-      }
-    }
+          }
+        }
+      },
+      () => addParticle(tower.x, tower.y, "🔋", ` needed ${cost}`, 30)
+    );
   },
 
   shoot: (range, damage) => {
@@ -335,7 +334,7 @@ const towerApi = (tower, enemies, removeEnemies) => ({
             updateEnergy((e) => e + balancing.energyOnKill(best));
           }
         },
-        () => addParticle(tower.x, tower.y, "🔋", cost, 30)
+        () => addParticle(tower.x, tower.y, "🔋", ` needed ${cost}`, 30)
       );
     }
   },
