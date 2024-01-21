@@ -64,6 +64,7 @@ export const towers = new Extension()
   ])
 
   .registerAlways((e) => [
+    (x) => false,
     (x) => x.type === "number",
     (x) =>
       e.attachData(x, "scrubbing-event-listeners", (view) => {
@@ -122,13 +123,29 @@ const towerApi = (tower, enemies) => ({
       const y = parseInt(enemy.y.sourceString);
       const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
       if (distance <= range) {
-        addParticle(x, y, "💥", damage, 18);
-        enemy.hp.replaceWith(parseInt(enemy.hp.sourceString) - damage);
-        if (parseInt(enemy.hp.sourceString) <= 0) enemy.node.removeFull();
+        withCostDo(
+          10,
+          () => {
+            addParticle(x, y, "💥", damage, 18);
+            enemy.hp.replaceWith(parseInt(enemy.hp.sourceString) - damage);
+            if (parseInt(enemy.hp.sourceString) <= 0) enemy.node.removeFull();
+          },
+          () => addParticle(tower.x, tower.y, "🔋", "", 30)
+        );
       }
     }
   },
 });
+
+function withCostDo(num, action, noEnergy) {
+  const { value } = document
+    .querySelector("sb-editor")
+    .source.findQuery("let energy = $value");
+  if (parseInt(value.sourceString) >= num) {
+    value.replaceWith(parseInt(value.sourceString) - num);
+    action();
+  } else noEnergy?.();
+}
 
 render(h(Particles), document.querySelector("#particles"));
 

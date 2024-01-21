@@ -507,6 +507,16 @@ class SBNode {
     const res = this.query(string, extract);
     return res ? [this, res] : null;
   }
+
+  findQuery(string, extract = null) {
+    const res = this.query(string, extract);
+    if (res) return res;
+    for (const child of this.children) {
+      const res = child.findQuery(string, extract);
+      if (res) return res;
+    }
+    return null;
+  }
 }
 
 const structureHashText = hash("text");
