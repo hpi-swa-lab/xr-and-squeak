@@ -257,6 +257,6 @@ function getPointOnPath(distance) {
 
     return newPoint;
   }
-}
 
-        let d = 0;
+  return pathPoints[pathPoints.length - 1];
+}
