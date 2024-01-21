@@ -138,6 +138,7 @@ export const towers = new Extension()
 
       setInterval(() => {
         const selectionRange = editor.selectionRange;
+        editor.suspendViewChanges = true;
 
         try {
           updateEnergy((e) => e + balancing.energyPerTurn());
@@ -220,7 +221,8 @@ export const towers = new Extension()
             enemy.removeFull();
           }
         } finally {
-          editor.selectRange(...selectionRange);
+          editor.suspendViewChanges = false;
+          editor.updateViewAfterChange(selectionRange, null, [], true);
         }
       }, 500);
     },

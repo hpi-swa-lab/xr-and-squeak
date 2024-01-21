@@ -222,31 +222,61 @@ export class Editor extends HTMLElement {
         newSource.slice(0, from) + (insert ?? "") + newSource.slice(to);
     }
 
-    const diff = this._setText(newSource, last(changes).selectionRange);
-    if (diff) {
-      this.clearSuggestions();
-      if (this.selected)
-        this.extensionsDo((e) => e.process(["type"], this.selected.node));
-      this.extensionsDo((e) =>
-        e.process(["always"], this.selected?.node ?? this.source)
-      );
-      this.extensionsDo((e) =>
-        e.changesApplied(changes, oldSource, newSource, this.source, diff)
-      );
-
-      if (!doNotCommitToHistory && oldSelected !== this.selected) {
-        this.editHistory.push(oldSource, oldRange, this.selected);
-      }
-      this.dispatchEvent(
-        new CustomEvent("change", { detail: this.sourceString })
+    const diff = this._setText(newSource);
+    if (diff && !this.suspendViewChanges) {
+      this.updateViewAfterChange(
+        last(changes).selectionRange,
+        diff,
+        changes,
+        doNotCommitToHistory,
+        oldSelected,
+        oldRange,
+        oldSource
       );
     }
+  }
+
+  updateViewAfterChange(
+    selectionRange,
+    diff,
+    changes,
+    doNotCommitToHistory,
+    oldSelected,
+    oldRange,
+    oldSource
+  ) {
+    this.extensionsDo((e) => e.process(["replacement"], this.source));
+    this.selection.moveToRange(this, selectionRange);
+
+    this.clearSuggestions();
+    if (this.selected)
+      this.extensionsDo((e) => e.process(["type"], this.selected.node));
+    this.extensionsDo((e) =>
+      e.process(["always"], this.selected?.node ?? this.source)
+    );
+    if (diff)
+      this.extensionsDo((e) =>
+        e.changesApplied(
+          changes,
+          oldSource,
+          this.sourceString,
+          this.source,
+          diff
+        )
+      );
+
+    if (!doNotCommitToHistory && oldSelected !== this.selected) {
+      this.editHistory.push(oldSource, oldRange, this.selected);
+    }
+    this.dispatchEvent(
+      new CustomEvent("change", { detail: this.sourceString })
+    );
   }
 
   // update the text buffer and resync selection and replacements
   // returns either the diff on success or null if the change was
   // denied
-  _setText(text, selectionRange) {
+  _setText(text) {
     const { diff, tx } = this.source.updateModelAndView(text);
 
     let mayCommit = true;
@@ -259,8 +289,6 @@ export class Editor extends HTMLElement {
       return null;
     }
 
-    this.extensionsDo((e) => e.process(["replacement"], this.source));
-    this.selection.moveToRange(this, selectionRange);
     return diff;
   }
 
