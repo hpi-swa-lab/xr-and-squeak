@@ -5,13 +5,16 @@ import {
   rangeEqual,
   rangeShift,
   rectDistance,
+  withDo,
 } from "../utils.js";
+import { Replacement } from "../view/widgets.js";
 
 // sbSelectRange([start, end], testOnly): View | null
 // sbSelectAtBoundary(part?, atStart): {view: View, range}
 // sbIsMoveAtBoundary(delta): boolean
 // sbCandidateForRange(range): {view, rect} | null
 // sbSelectedEditablePart(): Element | null
+// [OPTIONAL] sbNoteFocusChange(received): void
 
 function nodeIsEditablePart(node) {
   return (
@@ -188,10 +191,16 @@ export class SBSelection extends EventTarget {
 
   informChange(view, range) {
     const editor = getEditor(view);
+    const newEditable = nodeEditableForPart(view);
+
+    if (this.lastEditable !== newEditable) {
+      this.lastEditable?.sbNoteFocusChange?.(false);
+      newEditable?.sbNoteFocusChange?.(true);
+    }
 
     this.range = range;
     this.sbLastPart = view;
-    this.lastEditable = nodeEditableForPart(view);
+    this.lastEditable = newEditable;
     const node = range && editor.source.childEncompassingRange(range);
 
     if (this.lastNode !== node) {
@@ -226,6 +235,8 @@ export function markAsEditableElement(element) {
       element.addEventListener("keydown", handleKeyDown.bind(element));
       break;
     default:
+      if (element instanceof Replacement)
+        element.addEventListener("keydown", handleKeyDown.bind(element));
       break;
   }
 }

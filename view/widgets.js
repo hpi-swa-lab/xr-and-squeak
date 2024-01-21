@@ -131,11 +131,10 @@ export class Replacement extends Widget {
       this.uninstallAndMark();
       e.preventDefault();
       e.stopPropagation();
-    } else if (e.button === 0) {
-      // this.editor.selectRange(...this.range);
-      // this.updateSelection();
-      // e.preventDefault();
-      // e.stopPropagation();
+    } else if (e.button === 0 && this.selectable) {
+      this.editor.selectRange(...this.range);
+      e.preventDefault();
+      e.stopPropagation();
     }
   }
 
@@ -174,15 +173,6 @@ export class Replacement extends Widget {
         shard.update(node);
       }
     }
-
-    // FIXME need to call on every selection change
-    this.updateSelection();
-  }
-
-  updateSelection() {
-    if (rangeEqual(this.range, this.editor.selection.range))
-      this.setAttribute("selected", true);
-    else this.removeAttribute("selected");
   }
 
   get range() {
@@ -216,8 +206,54 @@ export class Replacement extends Widget {
     );
   }
 
+  set selectable(v) {
+    if (v) {
+      markAsEditableElement(this);
+      this.setAttribute("sb-editable-part", "true");
+      this.setAttribute("focusable", "true");
+      this.setAttribute("tabindex", -1);
+    }
+    this._selectable = v;
+  }
+  get selectable() {
+    return this._selectable;
+  }
+
   // see AttachOp>>apply()
   insertNode(node, index) {}
+
+  // selection protocol
+  sbSelectRange(range, testOnly) {
+    if (rangeEqual(this.range, range)) return this;
+    else return null;
+  }
+  sbSelectedEditablePart() {
+    return this.isConnected ? this : null;
+  }
+  sbNoteFocusChange(received) {
+    this.classList.toggle("sb-replacement-selected", received);
+  }
+  sbSelectAtBoundary(view, delta) {
+    this.focus();
+    return { view: this, range: this.range };
+  }
+  sbIsMoveAtBoundary(delta) {
+    return true;
+  }
+  focus() {
+    this.editor.selectRange(...this.range);
+    super.focus();
+  }
+  sbCandidateForRange(range) {
+    return rangeEqual(this.range, range)
+      ? {
+          view: this,
+          rect: this.getBoundingClientRect(),
+          range: this.range,
+        }
+      : null;
+  }
+  sbUpdateRange() {}
 }
 
 function ensureReplacementTagDefined(tag) {
@@ -266,10 +302,11 @@ export function ensureReplacementPreact(
   node,
   tag,
   component,
-  props
+  props,
+  options
 ) {
   ensureReplacementTagDefined(tag);
-  extension.ensureReplacement(node, tag, { props, component });
+  extension.ensureReplacement(node, tag, { props, component, ...options });
 }
 
 export function installReplacementPreact(

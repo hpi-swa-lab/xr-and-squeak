@@ -463,7 +463,9 @@ export class Shard extends HTMLElement {
     const newPos = this.editor.selection.range[0] + delta;
     const me = this.closestElementForRange([newPos, newPos]);
     if (!me) {
-      return !rangeContains(this.range, [newPos, newPos]);
+      // FIXME not sure what the correct behavior should be
+      // return !rangeContains(this.range, [newPos, newPos]);
+      return true;
     }
     const myRange = me.range;
     if (rangeContains(myRange, [newPos, newPos])) return false;

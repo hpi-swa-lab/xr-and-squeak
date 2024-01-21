@@ -177,3 +177,7 @@ td {
 .suggestions .material-symbols-outlined {
   font-size: 1.4em;
 }
+
+.sb-replacement-selected {
+  outline-width: 4px !important;
+}

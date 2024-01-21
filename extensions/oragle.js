@@ -287,6 +287,7 @@ export const base = new Extension()
               )
             )
           ),
-        data
+        data,
+        { selectable: true }
       ),
   ]);
