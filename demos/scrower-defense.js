@@ -93,8 +93,17 @@ export const towers = new Extension()
     (x) => true,
     (x) => x.isRoot,
     (x) => {
+      document
+        .querySelector("sb-editor")
+        .source.findQuery("let hp = $value")
+        .value.replaceWith(balancing.baseHp());
+      document
+        .querySelector("sb-editor")
+        .source.findQuery("let energy = $value")
+        .value.replaceWith(balancing.initialEnergy());
+
       let currentWave = 0;
-      const waveInterval = 600;
+      const waveInterval = balancing.waveInterval(currentWave);
       let spawnCounter = 0;
       const editor = x.editor;
       let beginWave = () => {
@@ -109,6 +118,8 @@ export const towers = new Extension()
         const selectionRange = editor.selectionRange;
 
         try {
+          updateEnergy((e) => e + balancing.energyPerTurn());
+
           const currentEnemies = [];
           const removeEnemies = [];
           x.allNodesDo((n) =>
@@ -117,12 +128,12 @@ export const towers = new Extension()
               ([n, { data }]) => [n, objectToMap(data)],
               ([n, data]) => {
                 let progress = parseInt(data.progress.sourceString);
-                progress += 100;
+                progress += balancing.enemySpeed(currentWave, data);
                 if (progress >= getPathLength()) {
                   removeEnemies.push(n);
-                  damage(100);
+                  damage(balancing.enemyDamage(currentWave, enemy));
                 } else {
-                  data.progress.replaceWith(progress + 10);
+                  data.progress.replaceWith(progress);
                   currentEnemies.push({ ...data, node: n });
                 }
               }
@@ -131,10 +142,15 @@ export const towers = new Extension()
 
           let now = Date.now();
           let timeSinceLastSpawn = now - lastSpawnTime;
-          if (timeSinceLastSpawn >= spawnInterval && spawnCounter > 0) {
+          if (
+            timeSinceLastSpawn >= balancing.spawnInterval(currentWave) &&
+            spawnCounter > 0
+          ) {
             const list = x.findQuery("let enemies = $list").list;
             list.insert(
-              `new Enemy({ progress: 0, hp: 100 })`,
+              `new Enemy({ progress: 0, hp: ${balancing.enemyHp(
+                currentWave
+              )} })`,
               "expression",
               list.childBlocks.length
             );
@@ -188,6 +204,19 @@ export const towers = new Extension()
     },
   ]);
 
+const balancing = {
+  waveInterval: (wave) => 5000,
+  energyOnKill: (enemy) => 300,
+  energyPerTurn: () => 100,
+  enemySpeed: (wave, enemy) => 30 + wave * 5,
+  enemyHp: (wave) => 100 + wave * 10,
+  enemyDamage: (wave, enemy) => 10 + wave * 2,
+  shootCost: (range, damage) => damage * (range / 200),
+  baseHp: () => 1000,
+  spawnInterval: (wave) => 2000,
+  initialEnergy: () => 300,
+};
+
 const towerApi = (tower, enemies) => ({
   shoot: (range, damage) => {
     const enemiesToRemove = [];
@@ -195,18 +224,19 @@ const towerApi = (tower, enemies) => ({
       const [x, y] = getPointOnPath(parseInt(enemy.progress.sourceString));
       const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
       if (distance <= range) {
+        const cost = balancing.shootCost(range, damage);
         withCostDo(
-          10,
+          cost,
           () => {
             addParticle(x, y, "💥", damage, 18);
-            enemy.hp.replaceWith(parseInt(enemy.hp.sourceString) - damage);
-            if (parseInt(enemy.hp.sourceString) <= 0) {
+            const newHp = parseInt(enemy.hp.sourceString) - damage;
+            enemy.hp.replaceWith(newHp);
+            if (newHp <= 0) {
               enemiesToRemove.push(enemy.node);
-
-              updateEnergy((e) => e + 1000);
+              updateEnergy((e) => e + balancing.energyOnKill(enemy));
             }
           },
-          () => addParticle(tower.x, tower.y, "🔋", "", 30)
+          () => addParticle(tower.x, tower.y, "🔋", cost, 30)
         );
       }
     }
@@ -379,5 +409,4 @@ function damage(amount) {
   }
 }
 
-let spawnInterval = 2000;
-let lastSpawnTime = -spawnInterval;
+let lastSpawnTime = -balancing.spawnInterval();
