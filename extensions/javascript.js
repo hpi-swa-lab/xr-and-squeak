@@ -20,6 +20,7 @@ import { useEffect } from "../external/preact-hooks.mjs";
 export const objectToMap = (obj) =>
   Object.fromEntries(
     obj.childBlocks
+      .filter((c) => c.type === "pair")
       // FIXME is key is a string, unquote
       .map((x) => [x.atField("key").text, x.atField("value")])
   );

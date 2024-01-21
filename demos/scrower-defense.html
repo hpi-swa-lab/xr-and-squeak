@@ -12,8 +12,19 @@
         transition: all 120ms ease-out;
       }
 
+      .particle {
+        position: absolute;
+        font-family: sans-serif;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+
       body {
         margin: 0;
+      }
+
+      .particle span {
+        font-size: 12px;
       }
 
       svg {
@@ -52,9 +63,21 @@
     <sb-editor
       id="towers"
       extensions="javascript:base base:base base:identifierSuggestions editorConfig:base demos/scrower-defense:towers"
-      text="const towers = [
+      text="let energy = 30;
+
+const towers = [
     new Tower({
         x: 100,
+        y: 100,
+        range: 100,
+        damage: 10,
+        speed: 1,
+        loop() {
+          this.shoot(500, 10)
+        }
+    }),
+    new Tower({
+        x: 300,
         y: 100,
         range: 100,
         damage: 10,
@@ -64,11 +87,13 @@
 const enemies = [
     new Enemy({
       x: 500,
-      y: 400
+      y: 400,
+      hp: 60
     })
 ]"
       language="javascript"
     ></sb-editor>
+    <div id="particles"></div>
 
     <script type="module" src="../view/init.js"></script>
     <script type="module" src="scrower-defense-logic.js"></script>
