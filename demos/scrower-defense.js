@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "../external/preact-hooks.mjs";
-import { orParentThat } from "../utils.js";
+import { orParentThat, withDo } from "../utils.js";
 import { ensureReplacementPreact, h, render, shard } from "../view/widgets.js";
 
 export const towers = new Extension()
@@ -96,8 +96,9 @@ export const towers = new Extension()
       console.log(getPathLength());
 
       let currentWave = 0;
-      const waveInterval = 10000
+      const waveInterval = 60000
       let spawnCounter = 0;
+      const editor = x.editor;
       let beginWave = () => {
         ++currentWave;
         spawnCounter = currentWave;
@@ -107,6 +108,8 @@ export const towers = new Extension()
       setInterval(beginWave, waveInterval);
 
       setInterval(() => {
+        const selectionRange = editor.selectionRange;
+
         const currentEnemies = [];
         const removeEnemies = [];
         x.allNodesDo((n) =>
@@ -130,8 +133,21 @@ export const towers = new Extension()
         x.allNodesDo((n) =>
           n.exec(
             (n) => n.query("new Tower($data)")?.data,
-            (data) => eval(`(${data.sourceString})`),
-            (data) => data.loop?.apply(towerApi(data, currentEnemies))
+            (data) => {
+              try {
+                return [data, eval(`(${data.sourceString})`)];
+              } catch (e) {
+                reportErrorAtNode(data, e);
+                return null;
+              }
+            },
+            ([node, data]) => {
+              try {
+                data.loop?.apply(towerApi(data, currentEnemies));
+              } catch (e) {
+                reportErrorAtNode(node, e);
+              }
+            }
           )
         );
 
@@ -148,6 +164,8 @@ export const towers = new Extension()
           lastSpawnTime = now;
           spawnCounter--;
         }
+
+        editor.selectRange(...selectionRange);
 
         for (const enemy of removeEnemies) {
           enemy.removeFull();
@@ -175,6 +193,19 @@ const towerApi = (tower, enemies) => ({
     }
   },
 });
+
+function reportErrorAtNode(node, error) {
+  console.error(error);
+  addParticle(
+    ...withDo(node.debugView.getBoundingClientRect(), (r) => [
+      r.x + r.width / 2,
+      r.y + r.height / 2,
+    ]),
+    "🔥",
+    error.message,
+    18
+  );
+}
 
 function withCostDo(num, action, noEnergy) {
   const { value } = document
@@ -251,8 +282,9 @@ let _pathPoints;
 function getPathPoints() {
   if (_pathPoints == null) {
     const enemyPath = document.getElementById("enemy-path").getAttribute("d");
-    _pathPoints = [...enemyPath.matchAll(/\w\s*(\d+)\s+(\d+)/g)]
-      .map(([_, x, y]) => [parseInt(x), parseInt(y)]);
+    _pathPoints = [...enemyPath.matchAll(/\w\s*(\d+)\s+(\d+)/g)].map(
+      ([_, x, y]) => [parseInt(x), parseInt(y)]
+    );
   }
 
   return _pathPoints;
@@ -281,7 +313,9 @@ function getPointOnPath(distance) {
   let currentPoint = pathPoints[0];
   for (let i = 1; i < pathPoints.length; ++i) {
     const nextPoint = pathPoints[i];
-    const segmentLength = Math.abs(currentPoint[0] - nextPoint[0] + currentPoint[1] - nextPoint[1]);
+    const segmentLength = Math.abs(
+      currentPoint[0] - nextPoint[0] + currentPoint[1] - nextPoint[1]
+    );
     if (currentDistance + segmentLength < distance) {
       currentDistance += segmentLength;
       currentPoint = nextPoint;
@@ -291,10 +325,12 @@ function getPointOnPath(distance) {
     const remainingDistance = distance - currentDistance;
     const direction = [
       Math.sign(nextPoint[0] - currentPoint[0]),
-      Math.sign(nextPoint[1] - currentPoint[1])];
+      Math.sign(nextPoint[1] - currentPoint[1]),
+    ];
     const newPoint = [
       currentPoint[0] + remainingDistance * direction[0],
-      currentPoint[1] + remainingDistance * direction[1]];
+      currentPoint[1] + remainingDistance * direction[1],
+    ];
 
     return newPoint;
   }
