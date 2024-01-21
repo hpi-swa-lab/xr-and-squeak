@@ -6,6 +6,7 @@ import {
   getSelection,
   last,
   parentWithTag,
+  rangeEqual,
 } from "../utils.js";
 import { Block, Text, ViewList } from "./elements.js";
 import { Shard } from "./shard.js";
@@ -198,6 +199,7 @@ export class Editor extends HTMLElement {
   }
 
   replaceTextFromCommand(range, text) {
+    console.assert(typeof text === "string");
     const position = range[0] + text.length;
     this.applyChanges([
       {
@@ -247,6 +249,7 @@ export class Editor extends HTMLElement {
   ) {
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     this.selection.moveToRange(this, selectionRange);
+    console.assert(rangeEqual(this.selectionRange, selectionRange));
 
     this.clearSuggestions();
     if (this.selected)

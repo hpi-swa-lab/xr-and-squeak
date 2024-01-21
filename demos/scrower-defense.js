@@ -244,7 +244,6 @@ export const towers = new Extension()
           }
         } finally {
           editor.suspendViewChanges = false;
-          console.log("REEEEEESTING", selectionRange);
           editor.updateViewAfterChange(selectionRange, null, [], true);
         }
       }, 500);
