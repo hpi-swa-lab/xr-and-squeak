@@ -174,7 +174,11 @@ const towerApi = (tower, enemies) => ({
           () => {
             addParticle(x, y, "💥", damage, 18);
             enemy.hp.replaceWith(parseInt(enemy.hp.sourceString) - damage);
-            if (parseInt(enemy.hp.sourceString) <= 0) enemy.node.removeFull();
+            if (parseInt(enemy.hp.sourceString) <= 0) {
+              enemy.node.removeFull();
+
+              updateEnergy((e) => e + 1000);
+            }
           },
           () => addParticle(tower.x, tower.y, "🔋", "", 30)
         );
@@ -204,6 +208,14 @@ function withCostDo(num, action, noEnergy) {
     value.replaceWith(parseInt(value.sourceString) - num);
     action();
   } else noEnergy?.();
+}
+
+function updateEnergy(cb) {
+  const { value } = document
+    .querySelector("sb-editor")
+    .source.findQuery("let energy = $value");
+  const newVal = cb(parseInt(value.sourceString));
+  value.replaceWith(newVal);
 }
 
 render(h(Particles), document.querySelector("#particles"));
