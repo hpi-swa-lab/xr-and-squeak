@@ -93,8 +93,10 @@ export const towers = new Extension()
     (x) => true,
     (x) => x.isRoot,
     (x) => {
+      console.log(getPathLength());
+
       let currentWave = 0;
-      const waveInterval = 60000
+      const waveInterval = 10000
       let spawnCounter = 0;
       let beginWave = () => {
         ++currentWave;
@@ -106,14 +108,21 @@ export const towers = new Extension()
 
       setInterval(() => {
         const currentEnemies = [];
+        const removeEnemies = [];
         x.allNodesDo((n) =>
           n.exec(
             (n) => n.extract("new Enemy($data)"),
             ([n, { data }]) => [n, objectToMap(data)],
             ([n, data]) => {
-              const progress = parseInt(data.progress.sourceString);
-              data.progress.replaceWith(progress + 10);
-              currentEnemies.push({ ...data, node: n });
+              let progress = parseInt(data.progress.sourceString);
+              progress += 1000;
+              if (progress >= getPathLength()) {
+                removeEnemies.push(n)
+                damage(100);
+              } else {
+                data.progress.replaceWith(progress + 10);
+                currentEnemies.push({ ...data, node: n });
+              }
             }
           )
         );
@@ -138,6 +147,10 @@ export const towers = new Extension()
 
           lastSpawnTime = now;
           spawnCounter--;
+        }
+
+        for (const enemy of removeEnemies) {
+          enemy.removeFull();
         }
       }, 500);
     },
@@ -245,6 +258,22 @@ function getPathPoints() {
   return _pathPoints;
 }
 
+let _pathLength;
+function getPathLength() {
+  if (_pathLength == null) {
+    _pathLength = 0;
+    const pathPoints = getPathPoints();
+    let currentPoint = pathPoints[0];
+    for (let i = 1; i < pathPoints.length; ++i) {
+      let nextPoint = pathPoints[i];
+      _pathLength += Math.abs(currentPoint[0] - nextPoint[0] + currentPoint[1] - nextPoint[1]);
+      currentPoint = nextPoint;
+    }
+  }
+
+  return _pathLength;
+}
+
 function getPointOnPath(distance) {
   let pathPoints = getPathPoints();
 
@@ -271,6 +300,17 @@ function getPointOnPath(distance) {
   }
 
   return pathPoints[pathPoints.length - 1];
+}
+
+function damage(amount) {
+  let { value } = document
+    .querySelector("sb-editor")
+    .source.findQuery("let hp = $value");
+  const newHp = parseInt(value.sourceString) - amount;
+  value.replaceWith(newHp);
+  if (newHp <= 0) {
+    alert("you done goofed");
+  }
 }
 
 let spawnInterval = 2000;
