@@ -29,7 +29,7 @@ export const towers = new Extension()
                 top: parseInt(args.y.sourceString),
               },
             },
-            "Tower",
+            h("span", { style: { fontSize: "2rem" } }, "🥦"),
             shard(arg)
           );
         },
@@ -56,8 +56,14 @@ export const towers = new Extension()
                 top: position[1],
               },
             },
-            "Enemy",
-            shard(arg)
+            h("span", { style: { fontSize: "1.5rem" } }, "🍔"),
+            h(
+              "div",
+              {
+                style: { transform: "scale(0.6)", transformOrigin: "top left" },
+              },
+              shard(arg)
+            )
           );
         },
         { arg }
@@ -77,10 +83,12 @@ export const towers = new Extension()
             {},
             shard(node),
             " 🔋" +
-              balancing.shootCost(
-                parseInt(range.sourceString),
-                parseInt(damage.sourceString)
-              )
+              balancing
+                .shootCost(
+                  parseInt(range.sourceString),
+                  parseInt(damage.sourceString)
+                )
+                .toFixed(2)
           ),
         { range, damage, node }
       ),
@@ -99,10 +107,12 @@ export const towers = new Extension()
             {},
             shard(node),
             " 🔋" +
-              balancing.areaCost(
-                parseInt(range.sourceString),
-                parseInt(damage.sourceString)
-              )
+              balancing
+                .areaCost(
+                  parseInt(range.sourceString),
+                  parseInt(damage.sourceString)
+                )
+                .toFixed(2)
           ),
         { range, damage, node }
       ),
@@ -244,6 +254,8 @@ export const towers = new Extension()
           }
         } finally {
           editor.suspendViewChanges = false;
+          // TODO the selection range will have moved if we did any changes
+          // before the tower definition!
           editor.updateViewAfterChange(selectionRange, null, [], true);
         }
       }, 500);

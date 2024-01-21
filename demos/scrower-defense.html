@@ -13,6 +13,7 @@
       .enemy {
         position: absolute;
         transition: all 120ms ease-out;
+        pointer-events: none;
       }
 
       .particle {
@@ -43,7 +44,7 @@
       }
 
       #enemy-path {
-        stroke: #d68a0f;
+        stroke: #e4e4e4;
         stroke-linejoin: round;
         stroke-width: 40px;
         fill: none;
@@ -92,9 +93,9 @@
     }),
     new Tower({
         x: 300,
-        y: 100,
+        y: 350,
         loop() {
-
+          this.shoot(200, 10)
         }
     })
 ];
