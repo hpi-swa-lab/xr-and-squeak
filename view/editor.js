@@ -104,7 +104,7 @@ export class Editor extends HTMLElement {
   }
 
   get selected() {
-    return this.selection.lastEditable.sbSelectedEditablePart();
+    return this.selection.lastEditable?.sbSelectedEditablePart();
   }
   set selected(node) {
     throw new Error("FIXME set selected");
