@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
   <head>
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1" /> -->
     <style>
       .tower {
         position: absolute;
@@ -10,9 +11,44 @@
         position: absolute;
         transition: all 120ms ease-out;
       }
+
+      body {
+        margin: 0;
+      }
+
+      svg {
+        background: #69d154;
+        aspect-ratio: 1000/800;
+        max-height: 100vh;
+      }
+
+      #enemy-path {
+        stroke: #d68a0f;
+        stroke-linejoin: round;
+        stroke-width: 40px;
+        fill: none;
+      }
     </style>
   </head>
   <body>
+    <svg viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
+      <path id="enemy-path" d="
+        M 0 400
+        L 200 400
+        L 200 500
+        L 500 500
+        L 500 300
+        L 400 300
+        L 400 100
+        L 700 100
+        L 700 600
+        L 400 600
+        L 400 700
+        L 900 700
+        L 900 400
+        L 1000 400" />
+      <circle id="test" cx="100" cy="100" r="10" fill="red" />
+    </svg>
     <sb-editor
       id="towers"
       extensions="javascript:base base:base base:identifierSuggestions editorConfig:base demos/scrower-defense:towers"
@@ -35,5 +71,6 @@ const enemies = [
     ></sb-editor>
 
     <script type="module" src="../view/init.js"></script>
+    <script type="module" src="scrower-defense-logic.js"></script>
   </body>
 </html>
