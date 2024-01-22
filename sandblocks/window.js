@@ -290,7 +290,7 @@ export function confirmUnsavedChanges() {
 }
 
 export function choose(items, labelFunc) {
-  labelFunc ??= (i) => i.label;
+  labelFunc ??= (i) => (typeof i === "string" ? i : i.label);
   return new Promise((resolve) => {
     openComponentInWindow(
       Choose,
