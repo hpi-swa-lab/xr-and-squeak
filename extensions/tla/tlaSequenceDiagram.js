@@ -229,19 +229,6 @@ class LinePositioning extends Component {
         this.props.setLines(this.props.lines.filter(l => l.key !== this.getLabelIdentifier()))
     }
 
-    /** TODO check if this is necessary if event handling of window resizing implemented */
-    componentDidUpdate() {
-        const line = this.calcLineData()
-        const oldLine = this.props.lines.find(l => l.key === this.getLabelIdentifier())
-        const linesDiffer = (l1, l2) => l1.xFrom !== l2.xFrom || l1.yFrom !== l2.yFrom || l1.xTo !== l2.xTo || l1.yTo !== l2.yTo
-        if (oldLine && linesDiffer(oldLine, line)) {
-            const idx = this.props.lines.indexOf(oldLine)
-            const newLines = [...this.props.lines]
-            newLines[idx] = line
-            this.props.setLines(newLines)
-        }
-    }
-
     /** yRelativePosition is the percentage [0,1] where the message starts and ends */
     render({ fromCol, toCol, row, label, yRelativePosition, lines, setLines }) {
         return html`
