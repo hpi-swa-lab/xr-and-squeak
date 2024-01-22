@@ -187,7 +187,7 @@ export class Editor extends HTMLElement {
     this.replaceTextFromCommand([position, position], text);
   }
 
-  replaceFullTextFromCommand(text, shard, selectionRange) {
+  replaceFullTextFromCommand(text, selectionRange) {
     this.applyChanges([
       {
         from: 0,

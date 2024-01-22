@@ -42,7 +42,7 @@ function extensionWith(parser, deps, config) {
       const delta = cursorOffset - x.editor.selectionRange[0];
       if (formatted !== x.sourceString)
         ToggleableMutationObserver.ignoreMutation(() =>
-          x.editor.replaceFullTextFromCommand(formatted, null, [
+          x.editor.replaceFullTextFromCommand(formatted, [
             x.editor.selectionRange[0] + delta,
             x.editor.selectionRange[1] + delta,
           ])

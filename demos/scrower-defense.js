@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "../external/preact-hooks.mjs";
-import { orParentThat, withDo } from "../utils.js";
+import { orParentThat, requireValues, withDo } from "../utils.js";
 import { ensureReplacementPreact, h, render, shard } from "../view/widgets.js";
 
 const balancing = {
@@ -27,27 +27,27 @@ const balancing = {
 export const towers = new Extension()
   .registerReplacement((e) => [
     (x) => x.extract("new Tower($arg)"),
-    ([x, { arg }]) =>
+    ([x, { arg }]) => [x, objectToMap(arg)],
+    ([_, arg]) => requireValues(arg, ["x", "y"]),
+    ([node, { x, y }]) =>
       ensureReplacementPreact(
         e,
         x,
         "scrower-tower",
-        ({ arg }) => {
-          const args = objectToMap(arg);
-          return h(
+        ({ node, x, y }) =>
+          h(
             "div",
             {
               class: "sb-column tower",
               style: {
-                left: parseInt(args.x.sourceString),
-                top: parseInt(args.y.sourceString),
+                left: parseInt(x.sourceString),
+                top: parseInt(y.sourceString),
               },
             },
             h("span", { style: { fontSize: "2rem" } }, "🥦"),
-            shard(arg)
-          );
-        },
-        { arg }
+            shard(node)
+          ),
+        { node, x, y }
       ),
   ])
 

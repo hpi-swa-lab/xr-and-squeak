@@ -297,6 +297,16 @@ export function exec(arg, ...script) {
   return current;
 }
 
+export function requireValues(arg, keys) {
+  if (!arg) return false;
+
+  for (const key of keys) {
+    if (!(key in arg)) return false;
+  }
+
+  return true;
+}
+
 function _isEmptyObject(obj) {
   return Object.keys(obj).length === 0 && obj.constructor === Object;
 }
