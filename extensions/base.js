@@ -1,5 +1,5 @@
 import { LoadOp, RemoveOp, UpdateOp } from "../core/diff.js";
-import { Extension } from "../core/extension.js";
+import { Extension, needsSelection } from "../core/extension.js";
 import { rangeEqual } from "../utils.js";
 import { Widget } from "../view/widgets.js";
 
@@ -55,29 +55,42 @@ export const base = new Extension()
   .registerShortcut("undo", (x) => x.editor.undo())
 
   // AST-select up-down
-  .registerShortcut("selectNodeUp", (x, view, e) => {
-    if (view.isFullySelected()) {
-      if (!x.isRoot) {
-        // we need to select the furthest ancestor that has the same range
-        // for our selection-down clearing logic to work
-        x.parent.select(view);
+  .registerShortcut(
+    "selectNodeUp",
+    (x, view, e) => {
+      if (view.isFullySelected()) {
+        if (!x.isRoot) {
+          // we need to select the furthest ancestor that has the same range
+          // for our selection-down clearing logic to work
+          x.parent.select(view);
+          e.data("selectionDownList", () => []).push(x);
+        }
+      } else {
         e.data("selectionDownList", () => []).push(x);
+        e.setData("selectionDownRange", x.editor.selectionRange);
+        x.select(view);
       }
-    } else {
-      e.data("selectionDownList", () => []).push(x);
-      e.setData("selectionDownRange", x.editor.selectionRange);
-      x.select(view);
-    }
-  })
-  .registerShortcut("selectNodeDown", (x, view, e) => {
-    const list = e.data("selectionDownList");
-    const target = list?.pop();
-    if (list.length === 0) {
-      x.editor.selectRange(...e.data("selectionDownRange"), view.shard, false);
-    } else {
-      (target ?? x.childBlock(0) ?? x.childNode(0))?.select(view);
-    }
-  })
+    },
+    [needsSelection]
+  )
+  .registerShortcut(
+    "selectNodeDown",
+    (x, view, e) => {
+      if (!view) return;
+      const list = e.data("selectionDownList");
+      const target = list?.pop();
+      if (list.length === 0) {
+        x.editor.selectRange(
+          ...e.data("selectionDownRange"),
+          view.shard,
+          false
+        );
+      } else {
+        (target ?? x.childBlock(0) ?? x.childNode(0))?.select(view);
+      }
+    },
+    [needsSelection]
+  )
   .registerSelection((e) => [
     (x) => {
       if (
@@ -92,13 +105,17 @@ export const base = new Extension()
     },
   ])
 
-  .registerShortcut("popNodeOut", (x, view, e) => {
-    const window = document.createElement("sb-window");
-    const detached = e.createWidget("sb-detached-shard");
-    detached.shard = x.editor.createShardFor(x);
-    window.appendChild(detached);
-    x.editor.after(window);
-  })
+  .registerShortcut(
+    "popNodeOut",
+    (x, view, e) => {
+      const window = document.createElement("sb-window");
+      const detached = e.createWidget("sb-detached-shard");
+      detached.shard = x.editor.createShardFor(x);
+      window.appendChild(detached);
+      x.editor.after(window);
+    },
+    [needsSelection]
+  )
 
   .registerShortcut("indentLess", (x, view, e) => {
     debugger;
@@ -167,6 +184,7 @@ export const base = new Extension()
   })
 
   .registerQuery("shortcut", (e) => [
+    needsSelection,
     (x) => {
       function callback(shift) {
         return function (node, view) {

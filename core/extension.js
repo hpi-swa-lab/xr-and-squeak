@@ -153,6 +153,10 @@ export class Extension {
   }
 }
 
+export function needsSelection(x) {
+  return !!x.editor.selected;
+}
+
 export class ExtensionInstance {
   constructor(extension) {
     this.extension = extension;
@@ -345,9 +349,14 @@ export class ExtensionInstance {
   dispatchShortcut(identifier, selected, root) {
     this.currentShortcut = identifier;
     this.currentShortcutView = selected;
+
     this._processTrigger("shortcut", selected?.node ?? root);
+    const handled = this.currentShortcut === null;
+
     this.currentShortcut = null;
     this.currentShortcutView = null;
+
+    return handled;
   }
 
   stopPropagatingShortcut() {

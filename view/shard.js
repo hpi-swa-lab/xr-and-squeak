@@ -84,30 +84,45 @@ export class Shard extends HTMLElement {
 
       for (const [action, key] of Object.entries(Editor.keyMap)) {
         if (matchesKey(e, key)) {
-          let preventDefault = true;
+          let preventDefault = false;
           let selected = this.editor.selected;
 
           // dispatch to extensions
-          this.editor.extensionsDo((e) =>
-            e.dispatchShortcut(action, selected, this.editor.source)
-          );
+          let handled = false;
+          this.editor.extensionsDo((e) => {
+            if (!handled)
+              handled = e.dispatchShortcut(
+                action,
+                selected,
+                this.editor.source
+              );
+          });
 
-          // built-in actions
-          switch (action) {
-            case "dismiss":
-              this.editor.clearSuggestions();
-              break;
-            case "save":
-              e.preventDefault();
-              e.stopPropagation();
-              await this.editor.asyncExtensionsDo((e) =>
-                e.processAsync("preSave", this.source)
-              );
-              this.editor.extensionsDo((e) => e.process(["save"], this.source));
-              this.editor.dispatchEvent(
-                new CustomEvent("save", { detail: this.editor.sourceString })
-              );
-              break;
+          if (!handled) {
+            preventDefault = true;
+            // built-in actions
+            switch (action) {
+              case "dismiss":
+                this.editor.clearSuggestions();
+                break;
+              case "save":
+                e.preventDefault();
+                e.stopPropagation();
+                await this.editor.asyncExtensionsDo((e) =>
+                  e.processAsync("preSave", this.source)
+                );
+                this.editor.extensionsDo((e) =>
+                  e.process(["save"], this.source)
+                );
+                this.editor.dispatchEvent(
+                  new CustomEvent("save", { detail: this.editor.sourceString })
+                );
+                break;
+              default:
+                preventDefault = false;
+            }
+          } else {
+            preventDefault = true;
           }
 
           if (preventDefault) {
