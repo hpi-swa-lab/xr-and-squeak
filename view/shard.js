@@ -56,9 +56,11 @@ export class Shard extends HTMLElement {
     });
 
     this.addEventListener("copy", function (e) {
-      e.clipboardData.setData("text/plain", this.editor.selectedText);
-      e.preventDefault();
-      e.stopPropagation();
+      if (this.editor.selectedText) {
+        e.clipboardData.setData("text/plain", this.editor.selectedText);
+        e.preventDefault();
+        e.stopPropagation();
+      }
     });
 
     this.addEventListener("keydown", async (e) => {

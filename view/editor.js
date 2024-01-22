@@ -527,7 +527,9 @@ export class Editor extends HTMLElement {
   }
 
   get selectedText() {
-    return this.sourceString.slice(...this.selectionRange);
+    return (
+      this.selectionRange && this.sourceString.slice(...this.selectionRange)
+    );
   }
 
   get textForShortcut() {

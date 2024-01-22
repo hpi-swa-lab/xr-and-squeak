@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "../external/preact-hooks.mjs";
-import { matchesKey, orParentThat } from "../utils.js";
+import { focusWithoutScroll, matchesKey, orParentThat } from "../utils.js";
 import { h, button, registerPreactElement, render } from "../view/widgets.js";
 import { List } from "./list.js";
 
@@ -41,7 +41,7 @@ function updateFocus(target) {
     f !== active
     //  !orParentThat(active, (p) => p === f)
   ) {
-    f?.focus();
+    focusWithoutScroll(f);
   }
 }
 

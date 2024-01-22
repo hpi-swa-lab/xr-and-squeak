@@ -1,6 +1,12 @@
 import "../external/preact-debug.js";
 import { h, render } from "../external/preact.mjs";
-import { nextHash, orParentThat, parentWithTag, rangeEqual } from "../utils.js";
+import {
+  focusWithoutScroll,
+  nextHash,
+  orParentThat,
+  parentWithTag,
+  rangeEqual,
+} from "../utils.js";
 import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
@@ -241,8 +247,8 @@ export class Replacement extends Widget {
     return true;
   }
   focus() {
-    this.editor.selectRange(...this.range);
-    super.focus();
+    this.editor.selectRange(...this.range, false);
+    focusWithoutScroll(this, () => super.focus());
   }
   sbCandidateForRange(range) {
     return rangeEqual(this.range, range)
