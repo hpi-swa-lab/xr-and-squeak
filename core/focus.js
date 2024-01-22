@@ -30,7 +30,7 @@ export function nodeIsEditable(node) {
   return !!node.getAttribute("sb-editable");
 }
 
-function nodeEditableForPart(node) {
+export function nodeEditableForPart(node) {
   return orParentThat(node, (p) => nodeIsEditable(p));
 }
 

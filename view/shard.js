@@ -19,6 +19,7 @@ import {
   followingEditablePart,
   followingElementThat,
   markAsEditableElement,
+  nodeEditableForPart,
 } from "../core/focus.js";
 
 // A Shard is a self-contained editable element.
@@ -106,14 +107,6 @@ export class Shard extends HTMLElement {
               this.editor.dispatchEvent(
                 new CustomEvent("save", { detail: this.editor.sourceString })
               );
-              break;
-            case "cut":
-            case "copy":
-              // if we don't have a selection, cut/copy the full node
-              if (new Set(this.editor.selectionRange).size === 1) {
-                debugger;
-              }
-              preventDefault = false;
               break;
           }
 
@@ -480,16 +473,23 @@ export class Shard extends HTMLElement {
     const newSel = sel.getRangeAt(0).cloneRange();
     sel.removeAllRanges();
     sel.addRange(currentSel);
-
-    const newRange = rangeShift(this.editor.selection.range, delta);
+    const selectionChangesEditables =
+      nodeEditableForPart(newSel.commonAncestorContainer) !== this;
     const me = this.sbSelectedEditablePart();
-    const following = followingEditablePart(me, delta);
-    if (
-      (!rangeContains(me.range, newRange) ||
-        parentWithTag(newSel.commonAncestorContainer, "SB-SHARD") !== this) &&
-      following?.shard !== me.shard
-    )
-      return true;
+
+    // if we have a selected part, we can do more sophisticated testing.
+    // otherwise, fallback to just comparing the selected editable
+    if (me) {
+      const newRange = rangeShift(this.editor.selection.range, delta);
+      const following = me && followingEditablePart(me, delta);
+      if (
+        (!rangeContains(me.range, newRange) || selectionChangesEditables) &&
+        following?.shard !== me.shard
+      )
+        return true;
+    } else {
+      if (selectionChangesEditables) return true;
+    }
 
     return false;
   }
