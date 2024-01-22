@@ -78,7 +78,7 @@ export class SqueakProject extends Project {
       await wait(1000);
     }
 
-    for (const window of this.restore) {
+    for (const window of (this.restore ?? [])) {
       console.assert(window.type === "browser");
       openComponentInWindow(
         SqueakBrowserComponent,
