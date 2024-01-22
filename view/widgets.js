@@ -309,6 +309,23 @@ export function ensureReplacementPreact(
   extension.ensureReplacement(node, tag, { props, component, ...options });
 }
 
+// convenience wrapper around ensureReplacementPreact, can be
+// placed directly in a script chain. Either takes a single node
+// or a node and props tuple.
+export function replacement(e, name, component, options) {
+  return (args) => {
+    let node, props;
+    if (Array.isArray(args)) {
+      node = args[0];
+      props = args[1];
+    } else {
+      node = args;
+      props = {};
+    }
+    return ensureReplacementPreact(e, node, name, component, props, options);
+  };
+}
+
 export function installReplacementPreact(
   extension,
   node,
