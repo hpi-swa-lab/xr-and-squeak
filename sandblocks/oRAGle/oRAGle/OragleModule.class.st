@@ -55,12 +55,35 @@ OragleModule >> defaultState [
 ]
 
 {
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/22/2024 15:13'
+}
+OragleModule >> enabledChildren [
+
+	| isSolo |
+	isSolo := self children anySatisfy: [:child | child isSolo].
+	^ self children
+		select: [:child | (isSolo ==> [child isSolo]) and: [child isMute not]]
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/22/2024 15:14'
+}
+OragleModule >> enabledChildrenDo: aBlock [
+
+	^ self enabledChildren do: aBlock
+]
+
+{
 	#category : #visiting,
-	#'squeak_changestamp' : 'lubo 1/19/2024 15:46'
+	#'squeak_changestamp' : 'ct 1/22/2024 17:01'
 }
 OragleModule >> expand [
 
-	self subclassResponsibility.
+	^ OraglePromptVisitor new
+		rootModule: self;
+		value
 ]
 
 {
@@ -73,6 +96,33 @@ OragleModule >> initialize [
 	
 	state := self defaultState.
 	label := self defaultLabel.
+]
+
+{
+	#category : #testing,
+	#'squeak_changestamp' : 'ct 1/22/2024 15:09'
+}
+OragleModule >> isEnabled [
+
+	^ self state = #enabled
+]
+
+{
+	#category : #testing,
+	#'squeak_changestamp' : 'ct 1/22/2024 15:09'
+}
+OragleModule >> isMute [
+
+	^ self state = #mute
+]
+
+{
+	#category : #testing,
+	#'squeak_changestamp' : 'ct 1/22/2024 15:09'
+}
+OragleModule >> isSolo [
+
+	^ self state = #solo
 ]
 
 {

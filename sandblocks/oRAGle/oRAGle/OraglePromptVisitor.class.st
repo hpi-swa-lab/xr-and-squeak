@@ -1,74 +1,57 @@
 Class {
 	#name : #OraglePromptVisitor,
 	#superclass : #OragleVisitor,
-	#instVars : [
-		'alternationChildIndex',
-		'currentPrompt'
-	],
 	#category : #oRAGle
 }
 
 {
-	#category : #'initialize-release',
-	#'squeak_changestamp' : 'lubo 1/20/2024 02:01'
-}
-OraglePromptVisitor >> initialize [
-
-	alternationChildIndex := Dictionary new.
-	currentPrompt := OrderedCollection new.
-]
-
-{
 	#category : #execute,
-	#'squeak_changestamp' : 'lubo 1/20/2024 02:02'
+	#'squeak_changestamp' : 'ct 1/22/2024 15:52'
 }
 OraglePromptVisitor >> value [
-	
-	| numPrompts prompts |
-	
-	numPrompts := (OraglePromptCountVisitor rootModule: rootModule) value.
-	
-	prompts := OrderedCollection new.
-	1 to: numPrompts do: [:index |
-		rootModule accept: self.
-		
-		prompts add: currentPrompt.
-		currentPrompt := OrderedCollection new.
-	].
 
-	^ prompts
+	^ rootModule accept: self
 ]
 
 {
 	#category : #visiting,
-	#'squeak_changestamp' : 'lubo 1/20/2024 02:00'
+	#'squeak_changestamp' : 'ct 1/22/2024 15:57'
+}
+OraglePromptVisitor >> visit: aModule [
+
+	self isThisEverCalled.
+	^ aModule enabledChildren collect: [:child | child accept: self]
+]
+
+{
+	#category : #visiting,
+	#'squeak_changestamp' : 'ct 1/22/2024 15:57'
 }
 OraglePromptVisitor >> visitAlternation: aModule [
 
-	| calculatedIndex |
-
-	alternationChildIndex at: aModule
-		ifPresent: [:index | alternationChildIndex at: aModule put: index + 1]
-		ifAbsentPut: 1.
-		
-	calculatedIndex := ((alternationChildIndex at: aModule) \\ aModule children size) + 1.
-	(aModule children at: calculatedIndex) accept: self.
+	^ aModule enabledChildren gather: [:child |
+		child accept: self]
 ]
 
 {
 	#category : #visiting,
-	#'squeak_changestamp' : 'lubo 1/20/2024 02:02'
+	#'squeak_changestamp' : 'ct 1/22/2024 16:08'
 }
 OraglePromptVisitor >> visitLeafModule: aModule [
 
-	currentPrompt add: aModule.
+	^ {OraglePrompt with: aModule}
 ]
 
 {
 	#category : #visiting,
-	#'squeak_changestamp' : 'lubo 1/20/2024 01:15'
+	#'squeak_changestamp' : 'ct 1/22/2024 16:07'
 }
 OraglePromptVisitor >> visitSequenceModule: aModule [
 
-	self visit: aModule.
+	^ aModule enabledChildren
+		inject: {OraglePrompt new}
+		into: [:promptPrefixes :child |
+			(child accept: self) gather: [:newPrompt |
+				promptPrefixes collect: [:promptPrefix |
+					promptPrefix copyWith: newPrompt separator: aModule separator]]]
 ]

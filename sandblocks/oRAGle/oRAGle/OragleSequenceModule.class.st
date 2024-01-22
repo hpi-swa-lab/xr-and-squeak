@@ -18,10 +18,10 @@ OragleSequenceModule >> accept: aVisitor [
 
 {
 	#category : #defaults,
-	#'squeak_changestamp' : 'ct 1/22/2024 11:46'
+	#'squeak_changestamp' : 'ct 1/22/2024 16:24'
 }
 OragleSequenceModule >> defaultSeparator [
-	^ String cr, String cr.
+	^ String cr
 ]
 
 {

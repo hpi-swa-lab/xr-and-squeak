@@ -35,7 +35,7 @@ OragleLeafModule >> content: aString [
 ]
 
 {
-	#category : #'as yet unclassified',
+	#category : #printing,
 	#'squeak_changestamp' : 'ct 1/22/2024 12:11'
 }
 OragleLeafModule >> printContentOn: aStream [

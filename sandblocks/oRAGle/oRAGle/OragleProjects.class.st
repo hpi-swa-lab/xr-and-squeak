@@ -156,12 +156,12 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 
 {
 	#category : #'as yet unclassified',
-	#'squeak_changestamp' : 'ct 1/22/2024 13:09'
+	#'squeak_changestamp' : 'ct 1/22/2024 15:03'
 }
 OragleProjects >> copilotWithoutScripts [
 <sandblocksExtensions: #(oragle:base)>
 
-| codeSample longPrompt module sample input inputs prefix |
+| codeSample postcard handcrafted longPrompt module input inputs prefix |
 longPrompt := 'You are an expert programmer, assisting in completing code snippets. You do not add comments, only complete statements. If the given prefix to be completed is the start of a function, you may complete the entire function but only do so, if you can complete it without elision. Answer only the code that is to be inserted.'.
 
 codeSample := Text codeSample.
@@ -200,11 +200,11 @@ module := OragleSequenceModule new
 							label: 'someKnowledge';
 							children:
 								{OragleLeafModule new
-									content: 'This is a sample of Smalltalk code:';
+									content: 'This is a of Smalltalk code:';
 									state: #enabled.
 								OragleAlternation new children: {OragleLeafModule new
 									content: postcard;
-									state: #enabled.OragleLeafModule new content: 'handcrafted'}}
+									state: #enabled.OragleLeafModule new content: handcrafted}}
 					}}.
 		OragleSequenceModule new
 			label: 'context';

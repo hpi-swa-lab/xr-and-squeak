@@ -49,11 +49,11 @@ OragleVisitor >> value [
 
 {
 	#category : #visiting,
-	#'squeak_changestamp' : 'lubo 1/20/2024 00:42'
+	#'squeak_changestamp' : 'ct 1/22/2024 15:51'
 }
 OragleVisitor >> visit: aModule [
 
-	aModule children do: [:child | child accept: self]
+	^ aModule children collect: [:child | child accept: self]
 	
 ]
 
