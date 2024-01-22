@@ -534,7 +534,7 @@ export class Editor extends HTMLElement {
 
   get textForShortcut() {
     const range = this.selectionRange;
-    if (range.start === range.end) {
+    if (range[0] === range[1]) {
       return this.selected?.node?.sourceString ?? "";
     } else {
       return this.selectedText;

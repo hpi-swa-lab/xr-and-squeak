@@ -412,7 +412,9 @@ const base = new Extension()
   ])
   .registerShortcut("printIt", async (x, view, e) => {
     const widget = e.createWidget("sb-print-result");
-    widget.result = await sqEval(x.editor.textForShortcut);
+    widget.result = JSON.parse(
+      await sqEval(`(${x.editor.textForShortcut}) printString asJsonString`)
+    );
     ToggleableMutationObserver.ignoreMutation(() => {
       view.after(widget);
       widget.focus();
