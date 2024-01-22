@@ -146,6 +146,7 @@ const Actor = ({ row, col, label }) => {
         width: "fit-content",
         height: "min-content",
         justifySelf: "center",
+        alignSelf: "end",
     }
 
     return html`
@@ -187,7 +188,7 @@ class LinePositioning extends Component {
         return `${this.props.fromCol}-${this.props.toCol}-${this.props.row}-${this.props.label}`
     }
 
-    componentDidMount() {
+    calcLineData() {
         if (!this.refFrom.current || !this.refTo.current) {
             console.error("ref not set")
             return
@@ -216,16 +217,33 @@ class LinePositioning extends Component {
             key: this.getLabelIdentifier(),
             type: this.props.type,
         }
+        return line
+    }
 
-        this.props.addLine(line)
+    componentDidMount() {
+        const line = this.calcLineData()
+        this.props.setLines([...this.props.lines, line])
     }
 
     componentWillUnmount() {
-        this.props.removeLine(this.getLabelIdentifier())
+        this.props.setLines(this.props.lines.filter(l => l.key !== this.getLabelIdentifier()))
+    }
+
+    /** TODO check if this is necessary if event handling of window resizing implemented */
+    componentDidUpdate() {
+        const line = this.calcLineData()
+        const oldLine = this.props.lines.find(l => l.key === this.getLabelIdentifier())
+        const linesDiffer = (l1, l2) => l1.xFrom !== l2.xFrom || l1.yFrom !== l2.yFrom || l1.xTo !== l2.xTo || l1.yTo !== l2.yTo
+        if (oldLine && linesDiffer(oldLine, line)) {
+            const idx = this.props.lines.indexOf(oldLine)
+            const newLines = [...this.props.lines]
+            newLines[idx] = line
+            this.props.setLines(newLines)
+        }
     }
 
     /** yRelativePosition is the percentage [0,1] where the message starts and ends */
-    render({ fromCol, toCol, row, label, addLine, yRelativePosition, removeLine }) {
+    render({ fromCol, toCol, row, label, yRelativePosition, lines, setLines }) {
         return html`
             <div ref=${this.refFrom} style=${gridElementStyle(fromCol, row)}></div>
             <div ref=${this.refTo} style=${gridElementStyle(toCol, row)}></div>
@@ -292,7 +310,7 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
     </svg>`
 }
 
-const MessagesPositionsCompution = ({ vizData, addLine, removeLine }) => {
+const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
 
     // depending on if messages are read or write messages,
     // they are placed on top (reads) or bottom (writes) of the lifeline
@@ -323,7 +341,7 @@ const MessagesPositionsCompution = ({ vizData, addLine, removeLine }) => {
 
     return vizData
         .flatMap(computeMessagePositions)
-        .map((p) => html`<${LinePositioning} ...${p} addLine=${addLine} removeLine=${removeLine} />`)
+        .map((p) => html`<${LinePositioning} ...${p} lines=${lines} setLines=${setLines} />`)
 }
 
 
@@ -335,12 +353,11 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge }) => {
         position: "relative", // necessary for relative positioning of messages to this element
         display: "grid",
         width: "100%",
+        height: "min-content",
         gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
     }
 
     const [lines, setLines] = useState([])
-    const addLine = (line) => setLines([...lines, line])
-    const removeLine = (key) => setLines(lines.filter(l => l.key !== key))
 
     return [
         html`
@@ -348,7 +365,7 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge }) => {
             ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
             ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
             ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-            <${MessagesPositionsCompution} vizData=${vizData} addLine=${addLine} removeLine=${removeLine} />
+            <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
             <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
             <!-- last row with fixed height to still show some of the lifeline -->
             ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
@@ -386,16 +403,34 @@ const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges, set
         }
     }
 
+    const containerStyle = {
+        width: "30%",
+        padding: "0 16px 16px 16px",
+        backgroundColor: "white",
+        borderLeft: "1px solid gray",
+        zIndex: 2,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between"
+    }
+
     return html`
-        <div>
-            ${nextEdges.map(([to, e]) => html`
-                <${EdgePickerButton} 
-                    onClick=${selectNodeFn([to, e])}
-                    onMouseEnter=${() => setPreviewEdge(e)}
-                    onMouseLeave=${() => setPreviewEdge(null)}
-                    >
-                    ${e.label + e.parameters}
-                </${EdgePickerButton}>`)}
+        <div style=${containerStyle}>
+            <div>
+                <h3>State around Action</h3>
+                ${JSON.stringify(currNode)}
+            </div>
+            <div>
+                <h3>Choose Next Action</h3>
+                ${nextEdges.map(([to, e]) => html`
+                    <${EdgePickerButton} 
+                        onClick=${selectNodeFn([to, e])}
+                        onMouseEnter=${() => setPreviewEdge(e)}
+                        onMouseLeave=${() => setPreviewEdge(null)}
+                        >
+                        ${e.label + e.parameters}
+                    </${EdgePickerButton}>`)}
+            </div>
         </div>`
 }
 
@@ -405,7 +440,7 @@ const State = ({ graph, initNode }) => {
     const [prevEdges, setPrevEdges] = useState([])
 
     return html`
-    <div style=${{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+    <div style=${{ display: "flex", height: "100%" }}>
         <${Diagram} ...${{ graph, prevEdges, setPrevEdges, previewEdge }} />
         <${EdgePicker} ...${{ graph, currNode, setCurrNode, prevEdges, setPrevEdges, setPreviewEdge }} />
     </div>
