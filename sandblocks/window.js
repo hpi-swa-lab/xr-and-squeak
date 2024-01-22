@@ -14,7 +14,7 @@ function wantsMouseOverFocus(e) {
 let globalMousePos = { x: 0, y: 0 };
 document.addEventListener("mousemove", (e) => {
   globalMousePos = { x: e.clientX, y: e.clientY };
-  updateFocus(e.target);
+  if (localStorage.sbUseMouseOverForFocus !== "false") updateFocus(e.target);
 });
 
 function updateFocus(target) {

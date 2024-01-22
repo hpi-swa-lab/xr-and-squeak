@@ -190,6 +190,18 @@ function Sandblocks() {
         project.renderItem({
           onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),
         })
+      ),
+      h(
+        "label",
+        {},
+        h("input", {
+          type: "checkbox",
+          checked: localStorage.sbUseMouseOverForFocus !== "false",
+          onchange: (e) => {
+            localStorage.sbUseMouseOverForFocus = e.target.checked;
+          },
+        }),
+        "mouse over for focus"
       )
     ),
     openProjects.map((project) => project.renderBackground?.()),
