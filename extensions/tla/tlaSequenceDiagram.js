@@ -214,6 +214,7 @@ class LinePositioning extends Component {
             yTo: yOffsetTo + yOffset + delayOffset,
             label: this.props.label,
             key: this.getLabelIdentifier(),
+            type: this.props.type,
         }
 
         this.props.addLine(line)
@@ -254,6 +255,11 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
         paintOrder: "stroke",
     }
 
+    const dottedLine = {
+        ...lineStyle,
+        strokeDasharray: "2 2",
+    }
+
     return html`
     <svg style=${svgStyle}>
             <defs>
@@ -270,10 +276,17 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
                 </marker>
         </defs>
         <!-- add line and text in the middle of it -->
-        ${lines.map(({ xFrom, yFrom, xTo, yTo, label }) => html`
+        ${lines.map(({ xFrom, yFrom, xTo, yTo, label, type }) => html`
         <g>
             <text style=${textStyle} x=${xFrom + (xTo - xFrom) / 2} y=${yFrom + (yTo - yFrom) / 2 - 8}>${label}</text>
-            <line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />
+            ${type === "write"
+            ? html`<line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />`
+            : html`
+                <g>
+                    <line style=${lineStyle} x1=${xTo} y1=${yTo} x2=${xFrom} y2=${yFrom} />
+                    <line style=${dottedLine} x1=${xFrom} y1=${yFrom + 8} x2=${xTo} y2=${yTo + 8} />
+                </g>`
+        }
         </g>
         `)}
     </svg>`
@@ -294,7 +307,7 @@ const MessagesPositionsCompution = ({ vizData, addLine, removeLine }) => {
             const toCol = a2c.get(actor)
             // reads start at the beginning up to the middle
             const yRelativePosition = j / readMsgs.length / 2
-            return { fromCol, toCol, row, label: m.label, yRelativePosition }
+            return { fromCol, toCol, row, label: m.label, yRelativePosition, type: m.type }
         })
 
         const writeMsgPositions = writeMsgs.map((m, j) => {
@@ -302,7 +315,7 @@ const MessagesPositionsCompution = ({ vizData, addLine, removeLine }) => {
             const toCol = a2c.get(m.to)
             // writes start at the end up to the middle
             const yRelativePosition = 1.0 - j / writeMsgs.length / 2
-            return { fromCol, toCol, row, label: m.label, yRelativePosition }
+            return { fromCol, toCol, row, label: m.label, yRelativePosition, type: m.type }
         })
 
         return [...readMsgPositions, ...writeMsgPositions]
