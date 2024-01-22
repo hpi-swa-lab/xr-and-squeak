@@ -52,3 +52,12 @@ OragleSequenceModule >> separator: aString [
 
 	separator := aString.
 ]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/22/2024 12:10'
+}
+OragleSequenceModule >> type [
+
+	^ #sequence
+]
