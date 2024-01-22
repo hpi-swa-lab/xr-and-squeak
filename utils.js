@@ -409,27 +409,6 @@ export function isNullRect(rect) {
   return rect.x === 0 && rect.y === 0 && rect.width === 0 && rect.height === 0;
 }
 
-// ranges of 0-size may return no client rect, so we compute an edge ourselves
-export function edgeForRange(range, start) {
-  let rect;
-  const rects = range.getClientRects();
-  if (rects.length > 0) {
-    rect = start ? rects[0] : last(rects);
-  } else {
-    const c = range.startContainer.children;
-    const node = c[clamp(range.startOffset, 0, c.length - 1)];
-    rect = node.getClientRects()[0];
-    rect =
-      range.startOffset < c.length
-        ? new DOMRect(rect.left, rect.top, 0, 0)
-        : new DOMRect(rect.right, rect.top, 0, 0);
-  }
-
-  return start
-    ? new DOMRect(rect.left, rect.top, 0, 0)
-    : new DOMRect(rect.right, rect.top, 0, 0);
-}
-
 export function clampRange(range, [min, max]) {
   return [clamp(range[0], min, max), clamp(range[1], min, max)];
 }
