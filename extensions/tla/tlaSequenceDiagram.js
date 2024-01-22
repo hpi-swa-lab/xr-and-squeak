@@ -101,12 +101,18 @@ function edgeToVizData({ reads, readsDuringWrites, writes, label }, varToActor) 
         }
     }
 
+    const keysActorPairsToMsg = (p) => {
+        const type = keysActorPairsWrite.includes(p) ? "write" : "read"
+        const object = p.keys.reduce((acc, k) => acc + "." + k)
+        return { to: p.actor, type: type, label: `${type} ${object}` }
+    }
+
     return {
         label: label,
         actor,
         msgs: keysActorPairs
             .filter(pair => pair.actor !== actor)
-            .map(p => ({ to: p.actor, type: keysActorPairsWrite.includes(p) ? "write" : "read" }))
+            .map(keysActorPairsToMsg)
     }
 }
 
@@ -149,7 +155,7 @@ const Actor = ({ row, col, label }) => {
 
 const actionLineWidth = 3
 /** an action is the point where the diagram's lifeline is activated */
-const Action = ({ row, col, label, msgs, delay }) => {
+const Action = ({ row, col, label, msgs }) => {
     const boxStyle = {
         ...gridElementStyle(col, row),
         width: `${actionLineWidth}%`,
@@ -157,7 +163,7 @@ const Action = ({ row, col, label, msgs, delay }) => {
         border: "1px solid gray",
         backgroundColor: "#eee",
         marginLeft: "calc(50% - 1.5%)",
-        marginTop: `${delay ? 8 : 0}px`,
+        marginTop: "12px",
     }
 
     const labelStyle = {
@@ -191,13 +197,17 @@ class LinePositioning extends Component {
         const { width: widthFrom, height: heightFrom } = this.refFrom.current.getBoundingClientRect()
 
         const xOffsetCenter = (widthFrom / 2)
-        const yOffset = heightFrom * this.props.yRelativePosition
+        // in action we have a top margin of 12px such that there's some gap between
+        // successive actions, which we need to account for
+        const delayOffset = 12
+        const yOffset = (heightFrom - delayOffset) * this.props.yRelativePosition
+
 
         const line = {
             xFrom: xOffsetFrom + xOffsetCenter,
-            yFrom: yOffsetFrom + yOffset,
+            yFrom: yOffsetFrom + yOffset + delayOffset,
             xTo: xOffsetTo + xOffsetCenter,
-            yTo: yOffsetTo + yOffset,
+            yTo: yOffsetTo + yOffset + delayOffset,
             label: this.props.label
         }
 
@@ -228,6 +238,13 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
         markerEnd: "url(#arrow)",
     }
 
+    const textStyle = {
+        textAnchor: "middle",
+        stroke: "white",
+        strokeWidth: 4,
+        paintOrder: "stroke",
+    }
+
     return html`
     <svg style=${svgStyle}>
             <defs>
@@ -243,11 +260,17 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
                     <path d="M 0 0 L 10 5 L 0 10 z" />
                 </marker>
         </defs>
-        ${lines.map(({ xFrom, yFrom, xTo, yTo, label }) => html`<line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />`)}
+        <!-- add line and text in the middle of it -->
+        ${lines.map(({ xFrom, yFrom, xTo, yTo, label }) => html`
+        <g>
+            <text style=${textStyle} x=${xFrom + (xTo - xFrom) / 2} y=${yFrom + (yTo - yFrom) / 2 - 8}>${label}</text>
+            <line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />
+        </g>
+        `)}
     </svg>`
 }
 
-const MessagesCompution = ({ vizData, addLine }) => {
+const MessagesPositionsCompution = ({ vizData, addLine }) => {
 
     // depending on if messages are read or write messages,
     // they are placed on top (reads) or bottom (writes) of the lifeline
@@ -262,7 +285,7 @@ const MessagesCompution = ({ vizData, addLine }) => {
             const toCol = a2c.get(actor)
             // reads start at the beginning up to the middle
             const yRelativePosition = j / readMsgs.length / 2
-            return { fromCol, toCol, row, label: m.type, yRelativePosition }
+            return { fromCol, toCol, row, label: m.label, yRelativePosition }
         })
 
         const writeMsgPositions = writeMsgs.map((m, j) => {
@@ -270,7 +293,7 @@ const MessagesCompution = ({ vizData, addLine }) => {
             const toCol = a2c.get(m.to)
             // writes start at the end up to the middle
             const yRelativePosition = 1.0 - j / writeMsgs.length / 2
-            return { fromCol, toCol, row, label: m.type, yRelativePosition }
+            return { fromCol, toCol, row, label: m.label, yRelativePosition }
         })
 
         return [...readMsgPositions, ...writeMsgPositions]
@@ -295,35 +318,13 @@ const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
     const [lines, setLines] = useState([])
     const addLine = (line) => setLines([...lines, line])
 
-    const lastMsgOfPrevActorCausedThisAction = ({ actor, msgs }, i) => {
-        if (i === 0) {
-            return false
-        }
-
-        const prevAction = vizData[i - 1]
-        const prevWriteMsgs = prevAction.msgs.filter(m => m.type === "write")
-
-        if (prevWriteMsgs.length === 0) {
-            return false
-        }
-
-        const lastMsg = prevWriteMsgs[prevWriteMsgs.length - 1]
-
-        const lastMsgArrivedAtThisActor = lastMsg.to === actor
-
-        const reads = msgs.filter(m => m.type !== "read")
-        const firstReadOfThisActorReadsLastMsg = reads.length > 0 && reads[0].to === lastMsg.to
-
-        return lastMsgArrivedAtThisActor || firstReadOfThisActorReadsLastMsg
-    }
-
     return [
         html`
         <div style=${gridWrapperStyle}>
             ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
             ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
-            ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} delay=${lastMsgOfPrevActorCausedThisAction(d, i)} />`)}
-            <${MessagesCompution} vizData=${vizData} addLine=${addLine} />
+            ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
+            <${MessagesPositionsCompution} vizData=${vizData} addLine=${addLine} />
             <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
             <!-- last row with fixed height to still show some of the lifeline -->
             ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
