@@ -331,36 +331,6 @@ const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
         .map((p) => html`<${LinePositioning} ...${p} lines=${lines} setLines=${setLines} />`)
 }
 
-
-const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge }) => {
-    const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges
-    const vizData = edges.map(e => edgeToVizData(e, varToActor))
-
-    const gridWrapperStyle = {
-        position: "relative", // necessary for relative positioning of messages to this element
-        display: "grid",
-        width: "100%",
-        height: "min-content",
-        gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
-    }
-
-    const [lines, setLines] = useState([])
-
-    return [
-        html`
-        <div style=${gridWrapperStyle}>
-            ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
-            ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
-            ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-            <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
-            <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
-            <!-- last row with fixed height to still show some of the lifeline -->
-            ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
-        </div>
-        `,
-    ]
-}
-
 const EdgePickerButton = (props) => {
     const buttonStyle = {
         padding: "4px",
@@ -380,7 +350,11 @@ const EdgePickerButton = (props) => {
     `
 }
 
-const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges, setPreviewEdge }) => {
+const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCurrNode, setPreviewEdge }) => {
+    const [lines, setLines] = useState([])
+
+    const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges
+    const vizData = edges.map(e => edgeToVizData(e, varToActor))
     const nextEdges = Object.entries(graph.outgoingEdges.get(currNode.id))
 
     const selectNodeFn = ([to, e]) => {
@@ -390,6 +364,50 @@ const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges, set
         }
     }
 
+    const gridWrapperStyle = {
+        position: "relative", // necessary for relative positioning of messages to this element
+        display: "grid",
+        width: "100%",
+        height: "min-content",
+        gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
+    }
+
+    const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === a))
+
+
+    return html`
+        <div style=${{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style=${gridWrapperStyle}>
+                ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
+                ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
+                ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
+                <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
+                <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
+                <!-- last row with fixed height to still show some of the lifeline -->
+                ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
+            </div>
+            <div>
+                <h3>Choose Next Action</h3>
+                <div style=${gridWrapperStyle}>
+                    ${nextActionsPerActorIndex.map((actions, i) => html`
+                        <div style=${{ gridColumn: i + 1, gridRow: 1, display: "flex", flexDirection: "column" }}>
+                            ${actions.map(([to, e]) => html`
+                                <${EdgePickerButton} 
+                                    onClick=${selectNodeFn([to, e])}
+                                    onMouseEnter=${() => setPreviewEdge(e)}
+                                    onMouseLeave=${() => setPreviewEdge(null)}
+                                    >
+                                    ${e.label + e.parameters}
+                                </${EdgePickerButton}>`)}
+                        </div>
+                    `)}
+                </div>
+            </div>
+        </div>
+        `
+}
+
+const Sidebar = ({ currNode }) => {
     const containerStyle = {
         width: "30%",
         padding: "0 16px 16px 16px",
@@ -398,7 +416,8 @@ const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges, set
         zIndex: 2,
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between"
+        justifyContent: "space-between",
+        overflowX: "scroll",
     }
 
     return html`
@@ -408,15 +427,6 @@ const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges, set
                 ${JSON.stringify(currNode)}
             </div>
             <div>
-                <h3>Choose Next Action</h3>
-                ${nextEdges.map(([to, e]) => html`
-                    <${EdgePickerButton} 
-                        onClick=${selectNodeFn([to, e])}
-                        onMouseEnter=${() => setPreviewEdge(e)}
-                        onMouseLeave=${() => setPreviewEdge(null)}
-                        >
-                        ${e.label + e.parameters}
-                    </${EdgePickerButton}>`)}
             </div>
         </div>`
 }
@@ -428,8 +438,8 @@ const State = ({ graph, initNode }) => {
 
     return html`
     <div style=${{ display: "flex", height: "100%" }}>
-        <${Diagram} ...${{ graph, prevEdges, setPrevEdges, previewEdge }} />
-        <${EdgePicker} ...${{ graph, currNode, setCurrNode, prevEdges, setPrevEdges, setPreviewEdge }} />
+        <${Diagram} ...${{ graph, prevEdges, setPrevEdges, previewEdge, setPreviewEdge, currNode, setCurrNode }} />
+        <${Sidebar} ...${{ graph, currNode, setCurrNode, prevEdges, setPrevEdges, }} />
     </div>
     `
 }
