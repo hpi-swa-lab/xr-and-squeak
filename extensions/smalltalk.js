@@ -1,5 +1,5 @@
 import { Extension } from "../core/extension.js";
-import { exec, mapSeparated, withDo } from "../utils.js";
+import { caseOf, exec, mapSeparated, withDo } from "../utils.js";
 import { ExpandToShard, Replacement, h, shard } from "../view/widgets.js";
 
 customElements.define(
@@ -82,8 +82,6 @@ export function cascadedConstructorFor(node, name) {
 
   return null;
 }
-
-const caseOf = (x, cases) => cases[x]();
 
 export function cascadedConstructorShardsFor(node, name, defaults) {
   const d = cascadedConstructorFor(node, name);

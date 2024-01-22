@@ -4,12 +4,49 @@ import { useState } from "../external/preact-hooks.mjs";
 import { choose } from "../sandblocks/window.js";
 import { mapSeparated } from "../utils.js";
 import { ensureReplacementPreact, h, icon, shard } from "../view/widgets.js";
-import { cascadedConstructorShardsFor } from "./smalltalk.js";
+import {
+  cascadedConstructorFor,
+  cascadedConstructorShardsFor,
+} from "./smalltalk.js";
 
-function OragleModule({ children }) {
+function OragleModule({ children, node, type }) {
   return h(
     "div",
     {
+      oncontextmenu: async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        (
+          await choose([
+            {
+              label: "Wrap in Sequence",
+              action: () =>
+                node.wrapWith("OragleSequenceModule new children: {", "}"),
+            },
+            {
+              label: "Wrap in Alternative",
+              action: () =>
+                node.wrapWith("OragleAlternation new children: {", "}"),
+            },
+            {
+              label: "Unwrap children",
+              action: () => {
+                const {
+                  messages: { children },
+                } = cascadedConstructorFor(
+                  node.findQuery(`${type} new`).root,
+                  type
+                );
+                if (children)
+                  node.replaceWith(
+                    children.childBlocks.map((c) => c.sourceString).join(". ")
+                  );
+                else node.removeFull();
+              },
+            },
+          ])
+        )?.action();
+      },
       style: {
         display: "inline-flex",
         border: "2px solid #333",
@@ -165,10 +202,10 @@ export const base = new Extension()
         e,
         x,
         "oragle-sequence-module",
-        ({ children, label }) => {
+        ({ children, label, replacement }) => {
           return h(
             OragleModule,
-            {},
+            { node: replacement.node, type: "OragleSequenceModule" },
             h(
               "div",
               { class: "sb-insert-button-container sb-column" },
@@ -198,10 +235,10 @@ export const base = new Extension()
         e,
         x,
         "oragle-script-module",
-        ({ children }) =>
+        ({ children, replacement }) =>
           h(
             OragleModule,
-            {},
+            { node: replacement.node, type: "OragleScriptModule" },
             h(
               "div",
               { class: "sb-insert-button-container sb-column" },
@@ -225,10 +262,10 @@ export const base = new Extension()
         e,
         x,
         "oragle-alternation-module",
-        ({ children }) =>
+        ({ children, replacement }) =>
           h(
             OragleModule,
-            {},
+            { node: replacement.node, type: "OragleAlternation" },
             h(
               "div",
               { class: "sb-insert-button-container sb-row" },
@@ -254,10 +291,10 @@ export const base = new Extension()
         e,
         x,
         "oragle-leaf-module",
-        ({ label, content, state }) =>
+        ({ label, content, state, replacement }) =>
           h(
             OragleModule,
-            {},
+            { node: replacement.node, type: "OragleLeafModule" },
             h(
               "div",
               { class: "sb-column" },

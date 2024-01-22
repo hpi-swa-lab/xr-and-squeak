@@ -511,7 +511,7 @@ class SBNode {
 
   findQuery(string, extract = null) {
     const res = this.query(string, extract);
-    if (res) return res;
+    if (res) return { ...res, root: this };
     for (const child of this.children) {
       const res = child.findQuery(string, extract);
       if (res) return res;

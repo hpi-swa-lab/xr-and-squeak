@@ -433,3 +433,8 @@ export function edgeForRange(range, start) {
 export function clampRange(range, [min, max]) {
   return [clamp(range[0], min, max), clamp(range[1], min, max)];
 }
+
+export const caseOf = (x, cases, otherwise) => {
+  const func = cases[x];
+  return func ? func() : otherwise();
+};
