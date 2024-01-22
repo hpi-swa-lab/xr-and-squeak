@@ -1,7 +1,7 @@
 import { markAsEditableElement } from "../../core/focus.js";
 import { h } from "../widgets.js";
 
-export function AutoSizeTextArea({ range, value, onChange }) {
+export function AutoSizeTextArea({ node, value, onChange }) {
   const style = {
     padding: 0,
     lineHeight: "inherit",
@@ -17,7 +17,8 @@ export function AutoSizeTextArea({ range, value, onChange }) {
         ref: (current) => {
           if (current) {
             markAsEditableElement(current);
-            current.range = range;
+            current.range = node.range;
+            current.node = node;
           }
         },
         rows: 1,

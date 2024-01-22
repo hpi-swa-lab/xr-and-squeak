@@ -11,7 +11,7 @@ import { useEffect } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
 import { SandblocksExtensionInstance } from "./extension-instance.js";
-import { markAsEditableElement } from "../core/focus.js";
+import { markAsEditableElement, nodeIsEditable } from "../core/focus.js";
 
 export { h, render } from "../external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
@@ -137,7 +137,11 @@ export class Replacement extends Widget {
       this.uninstallAndMark();
       e.preventDefault();
       e.stopPropagation();
-    } else if (e.button === 0 && this.selectable) {
+    } else if (
+      e.button === 0 &&
+      this.selectable &&
+      orParentThat(e.target, (p) => nodeIsEditable(p)) === this
+    ) {
       this.editor.selectRange(...this.range);
       e.preventDefault();
       e.stopPropagation();

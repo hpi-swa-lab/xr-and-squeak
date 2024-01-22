@@ -16,7 +16,7 @@ export const base = new Extension()
     replacement(e, "oragle-string", ({ replacement }) =>
       // TODO need to translate range select requests by delimiters and escapes
       h(AutoSizeTextArea, {
-        range: replacement.node.range,
+        node: replacement.node,
         value: replacement.node.sourceString.slice(1, -1).replace(/''/g, "'"),
         onChange: (e) =>
           replacement.node.replaceWith(

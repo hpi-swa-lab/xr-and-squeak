@@ -11,6 +11,8 @@ import {
   withDo,
   rangeDistance,
   rangeEqual,
+  parentWithTag,
+  rangeShift,
 } from "../utils.js";
 import { Block } from "./elements.js";
 import {
@@ -262,7 +264,10 @@ export class Shard extends HTMLElement {
     );
     const end = this._indexForSelection(range.endContainer, range.endOffset);
     const selectionRange = [start, end].sort((a, b) => a - b);
-    return { selectionRange, view: this.findSelectedForRange(selectionRange) };
+    return {
+      selectionRange,
+      view: this.closestElementForRange(selectionRange),
+    };
   }
 
   _indexForSelection(node, offset) {
@@ -276,7 +281,7 @@ export class Shard extends HTMLElement {
       : followingElementThat(ref, -1, (n) => !!n.range);
     if (node.parentElement === parent && node instanceof window.Text)
       return parent.range[0] + offset;
-    else return parent.range[offset >= parent.childNodes.length ? 1 : 0];
+    else return parent.range[offset >= node.childNodes.length ? 1 : 0];
   }
 
   // combined operation to find the source string and cursor range
@@ -400,7 +405,7 @@ export class Shard extends HTMLElement {
       if (!child.node.isText) return;
       if (child.shard !== this) return;
       let distance = rangeDistance(range, child.range);
-      if (distance < bestDistance) {
+      if (distance <= bestDistance) {
         candidate = child;
         bestDistance = distance;
       }
@@ -433,7 +438,7 @@ export class Shard extends HTMLElement {
   sbSelectRange(range, testOnly) {
     const selectionRange = this._cursorToRange(...range);
     if (!selectionRange) return null;
-    let view = this.findSelectedForRange(range);
+    let view = this.closestElementForRange(range);
 
     // if we are at the very start, there may be no view
     if (!view && range[0] === this.range[0]) view = this;
@@ -467,17 +472,26 @@ export class Shard extends HTMLElement {
     // listener in the editor.
   }
   sbIsMoveAtBoundary(delta) {
-    const newPos = this.editor.selection.range[0] + delta;
-    const me = this.closestElementForRange([newPos, newPos]);
-    if (!me) {
-      // FIXME not sure what the correct behavior should be
-      // return !rangeContains(this.range, [newPos, newPos]);
-      return true;
-    }
-    const myRange = me.range;
-    if (rangeContains(myRange, [newPos, newPos])) return false;
+    // when moving, the browser may sometimes skip over a cursor position.
+    // we find this case by manually advancing and reversing.
+    const sel = getSelection();
+    const currentSel = sel.getRangeAt(0).cloneRange();
+    sel.modify("move", delta > 0 ? "forward" : "backward", "character");
+    const newSel = sel.getRangeAt(0).cloneRange();
+    sel.removeAllRanges();
+    sel.addRange(currentSel);
+
+    const newRange = rangeShift(this.editor.selection.range, delta);
+    const me = this.sbSelectedEditablePart();
     const following = followingEditablePart(me, delta);
-    return following?.shard !== me.shard;
+    if (
+      (!rangeContains(me.range, newRange) ||
+        parentWithTag(newSel.commonAncestorContainer, "SB-SHARD") !== this) &&
+      following?.shard !== me.shard
+    )
+      return true;
+
+    return false;
   }
   sbCandidateForRange(range) {
     if (!rangeContains(this.range, range)) return null;
@@ -487,13 +501,14 @@ export class Shard extends HTMLElement {
     return view ? { view, rect, range: view.range } : null;
   }
   sbSelectedEditablePart() {
+    const sel = this.editor.selection;
+
     if (!this.isConnected) return null;
 
-    let el = this.findSelectedForRange(this.editor.selection.range);
-    if (el) return el;
+    if (sel.sbLastPart && sel.sbLastPart.shard === this) return sel.sbLastPart;
 
-    const point = withDo(this.editor.selection.range[0], (p) => [p, p]);
-    el = this.closestElementForRange(point);
+    const point = withDo(sel.range[0], (p) => [p, p]);
+    const el = this.closestElementForRange(point);
     if (!el || !rangeContains(el.range, point)) return null;
     return el;
   }
