@@ -268,7 +268,9 @@ export class Shard extends HTMLElement {
         ? node
         : node.childNodes[Math.min(offset, node.childNodes.length - 1)];
 
-    const parent = followingElementThat(ref, -1, (n) => !!n.range);
+    const parent = ref.range
+      ? ref
+      : followingElementThat(ref, -1, (n) => !!n.range);
     if (node.parentElement === parent && node instanceof window.Text)
       return parent.range[0] + offset;
     else return parent.range[offset >= parent.childNodes.length ? 1 : 0];
@@ -482,10 +484,14 @@ export class Shard extends HTMLElement {
     return view ? { view, rect, range: view.range } : null;
   }
   sbSelectedEditablePart() {
+    if (!this.isConnected) return null;
+
+    let el = this.findSelectedForRange(this.editor.selection.range);
+    if (el) return el;
+
     const point = withDo(this.editor.selection.range[0], (p) => [p, p]);
-    const el = this.closestElementForRange(point);
+    el = this.closestElementForRange(point);
     if (!el || !rangeContains(el.range, point)) return null;
-    if (!el.isConnected) return null;
     return el;
   }
 }

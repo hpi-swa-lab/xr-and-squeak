@@ -125,7 +125,11 @@ export class SBSelection extends EventTarget {
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
 
-    let best = this.lastEditable?.sbSelectedEditablePart();
+    let best;
+
+    if (this.lastEditable?.isConnected)
+      best = this.lastEditable.sbSelectedEditablePart();
+
     if (best) {
       console.assert(best.isConnected);
       return best;
