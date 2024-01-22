@@ -465,16 +465,21 @@ export class Shard extends HTMLElement {
     // listener in the editor.
   }
   sbIsMoveAtBoundary(delta) {
+    let selectionChangesEditables = false;
+
     // when moving, the browser may sometimes skip over a cursor position.
     // we find this case by manually advancing and reversing.
     const sel = getSelection();
-    const currentSel = sel.getRangeAt(0).cloneRange();
-    sel.modify("move", delta > 0 ? "forward" : "backward", "character");
-    const newSel = sel.getRangeAt(0).cloneRange();
-    sel.removeAllRanges();
-    sel.addRange(currentSel);
-    const selectionChangesEditables =
-      nodeEditableForPart(newSel.commonAncestorContainer) !== this;
+    if (sel.rangeCount > 0) {
+      const currentSel = sel.getRangeAt(0).cloneRange();
+      sel.modify("move", delta > 0 ? "forward" : "backward", "character");
+      const newSel = sel.getRangeAt(0).cloneRange();
+      sel.removeAllRanges();
+      sel.addRange(currentSel);
+      selectionChangesEditables =
+        nodeEditableForPart(newSel.commonAncestorContainer) !== this;
+    }
+
     const me = this.sbSelectedEditablePart();
 
     // if we have a selected part, we can do more sophisticated testing.

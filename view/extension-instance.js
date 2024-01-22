@@ -77,6 +77,8 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
   }
 
   attachData(node, identifier, add, remove, update = null) {
+    if (this._recordReplacementsOnly) return;
+
     node.viewsDo((view) => {
       const hash = `${view.hash}:${identifier}`;
       if (!this.currentAttachedData.has(hash)) {
