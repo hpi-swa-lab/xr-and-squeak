@@ -1,7 +1,6 @@
 import { h } from "../../view/widgets.js";
 import specExport from "../../assets/tla2PCExport.json" assert {type: "json"}
 import { useCallback, useEffect, useRef, useState } from "../../external/preact-hooks.mjs";
-// TODO install via npm?
 import htm from '../../external/htm.mjs';
 import { Component, createRef } from "../../external/preact.mjs";
 const html = htm.bind(h);
@@ -52,16 +51,19 @@ function apply(obj, keys) {
 function nestedKeys(varTree) {
     const keys = []
 
+    if (Array.isArray(varTree) || typeof varTree !== "object") {
+        return []
+    }
+
     const dfs = (obj, accessors) => {
+        if (Array.isArray(obj) || typeof obj !== "object") {
+            keys.push([...accessors])
+            return
+        }
+
         for (const k of Object.keys(obj)) {
             accessors.push(k)
-
-            if (obj[k] === true) {
-                keys.push([...accessors])
-            } else {
-                dfs(obj[k], accessors)
-            }
-
+            dfs(obj[k], accessors)
             accessors.pop()
         }
     }
@@ -238,7 +240,6 @@ class LinePositioning extends Component {
     }
 }
 
-/** a svg container with viewbox according to the global viewport */
 const MessageArrows = ({ lines, numCols, numRows }) => {
     const svgStyle = {
         position: "absolute",
@@ -420,11 +421,63 @@ const Sidebar = ({ currNode }) => {
         overflowX: "scroll",
     }
 
+    const tableHeaderStyle = {
+        textAlign: "left",
+        fontWeight: "normal"
+    }
+
+    /** TODOs
+     * 1. groub vars by actor
+     * 2. show vars as nested table under matching actor
+     * 3. show diffs between actions
+     */
+    const keySeqs = nestedKeys(currNode.vars)
+    const keySeqsActorPairsPerActor = actors.reduce((acc, a) =>
+        acc.set(a, keySeqs.filter(keys => apply(varToActor, keys) === a)), new Map())
+
+    const exportToHTML = (keys) => {
+        const value = apply(currNode.vars, keys)
+
+        if (Array.isArray(value) && value.length > 0) {
+            return value.map(
+                (v, i) => html`
+                        <tr>
+                            ${i === 0
+                        ? html`<td style=${{ rowspan: value.length }}>${keys.join(".")}</td>`
+                        : html`<td></td>`}
+                            <td>${JSON.stringify(v)}</td>
+                        </tr>
+                    `)
+        }
+
+        return html`
+            <tr>
+                <td>${keys.join(".")}</td>
+                <td>${JSON.stringify(value)}</td>
+            </tr>`
+    }
+
     return html`
         <div style=${containerStyle}>
             <div>
                 <h3>State around Action</h3>
-                ${JSON.stringify(currNode)}
+                ${actors.map((a, i) => html`
+                    <div style=${{ display: "flex", flexDirection: "column" }}>
+                        <h4>${a}</h4>
+                        <table>
+                            ${i === 0 ? html`<thead>
+                                        <tr>
+                                            <th style=${tableHeaderStyle}>Scope</th>
+                                            <th style=${tableHeaderStyle}>Value</th>
+                                        </tr>
+                                    </thead>` : ""}
+                            <tbody>
+                                ${keySeqsActorPairsPerActor.get(a).map(exportToHTML)}
+                            </tbody>
+                        </table>
+                    </div>
+                `)
+        }
             </div>
             <div>
             </div>
