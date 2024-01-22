@@ -10,7 +10,7 @@ Class {
 }
 
 {
-	#category : #'as yet unclassified',
+	#category : #visiting,
 	#'squeak_changestamp' : 'lubo 1/19/2024 19:05'
 }
 OragleModule >> accept: aVisitor [
@@ -29,11 +29,11 @@ OragleModule >> children [
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'lubo 1/19/2024 16:18'
+	#'squeak_changestamp' : 'ct 1/22/2024 11:47'
 }
-OragleModule >> children: anObject [
+OragleModule >> children: aCollection [
 
-	children := anObject.
+	children := aCollection.
 ]
 
 {
@@ -55,7 +55,7 @@ OragleModule >> defaultState [
 ]
 
 {
-	#category : #'as yet unclassified',
+	#category : #visiting,
 	#'squeak_changestamp' : 'lubo 1/19/2024 15:46'
 }
 OragleModule >> expand [
@@ -86,11 +86,11 @@ OragleModule >> label [
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'lubo 1/19/2024 15:46'
+	#'squeak_changestamp' : 'ct 1/22/2024 11:47'
 }
-OragleModule >> label: anObject [
+OragleModule >> label: aString [
 
-	label := anObject.
+	label := aString.
 ]
 
 {
@@ -104,9 +104,10 @@ OragleModule >> state [
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'lubo 1/19/2024 17:12'
+	#'squeak_changestamp' : 'ct 1/22/2024 11:49'
 }
-OragleModule >> state: anObject [
+OragleModule >> state: aSymbol [
 
-	state := anObject.
+	self assert: (#(enabled mute solo) includes: aSymbol).
+	state := aSymbol.
 ]

@@ -5,7 +5,7 @@ Class {
 }
 
 {
-	#category : #'as yet unclassified',
+	#category : #visiting,
 	#'squeak_changestamp' : 'lubo 1/19/2024 19:04'
 }
 OragleAlternation >> accept: aVisitor [
@@ -14,7 +14,7 @@ OragleAlternation >> accept: aVisitor [
 ]
 
 {
-	#category : #'as yet unclassified',
+	#category : #visiting,
 	#'squeak_changestamp' : 'lubo 1/19/2024 18:29'
 }
 OragleAlternation >> expand [

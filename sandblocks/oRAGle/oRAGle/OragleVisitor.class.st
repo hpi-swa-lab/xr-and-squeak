@@ -31,11 +31,11 @@ OragleVisitor >> rootModule [
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'lubo 1/20/2024 01:35'
+	#'squeak_changestamp' : 'ct 1/22/2024 11:47'
 }
-OragleVisitor >> rootModule: anObject [
+OragleVisitor >> rootModule: aModule [
 
-	rootModule := anObject.
+	rootModule := aModule.
 ]
 
 {

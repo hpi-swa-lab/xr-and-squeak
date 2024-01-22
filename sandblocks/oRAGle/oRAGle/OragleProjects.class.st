@@ -39,11 +39,12 @@ OragleProjects class >> stopRpc [
 
 {
 	#category : #'as yet unclassified',
-	#'squeak_changestamp' : 'tobe 1/19/2024 07:46'
+	#'squeak_changestamp' : 'ct 1/22/2024 12:31'
 }
 OragleProjects >> copilot [
+<sandblocksExtensions: #(oragle:base)>
 
-| codeSample input inputs longPrompt module prefix sample |
+| codeSample longPrompt module sample input inputs prefix |
 longPrompt := 'You are a an expert programmer, assisting in completing code snippets. You do not add comments, only complete statements. If the given prefix to be completed is the start of a function, you may complete the entire function but only do so, if you can complete it without elision. Answer only the code that is to be inserted.'.
 
 codeSample := Text codeSample.
@@ -54,32 +55,32 @@ module := OragleSequenceModule new
 		{OragleScriptModule new children:
 				{OragleSequenceModule new children:
 						{OragleAlternation new children: {
-								(OragleLeafModule new
+								OragleLeafModule new
 									label: 'postcard';
 									content: '''\\Example>>'' withCRs, codeSample';
-									state: #enabled). "#enabled, #mute, #solo"
-								(OragleLeafModule new
+									state: #enabled.
+								OragleLeafModule new
 									label: 'handcrafted';
 									content: 'randomMethod source';
-									state: #enabled)} "#enabled, #mute, #solo"
+									state: #enabled} "#enabled, #mute, #solo"
 							}}.
 		OragleSequenceModule new
 			label: 'completion prefix';
-			disabled: false;
+			state: #enabled;
 			separator: String cr , String cr;
 			children:
 				{OragleAlternation new
 					children:
-						(OragleLeafModule new
+						{OragleLeafModule new
 							content:
 'toIsometric: aPoint
 
 	"Return a new point in isometric view"
-	^ ')
+	^ '};
 						state: #enabled}.
 		OragleSequenceModule new
 			label: 'languageKnowledge';
-			disabled: false;
+			state: #enabled;
 			separator: String cr , String cr;
 			children:
 				{OragleAlternation new
@@ -100,7 +101,7 @@ module := OragleSequenceModule new
 					}}.
 		OragleSequenceModule new
 			label: 'context';
-			disabled: false;
+			state: #enabled;
 			separator: String cr, String cr;
 			children:
 				{

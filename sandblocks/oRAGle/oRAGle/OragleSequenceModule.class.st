@@ -2,13 +2,13 @@ Class {
 	#name : #OragleSequenceModule,
 	#superclass : #OragleModule,
 	#instVars : [
-		'seperator'
+		'separator'
 	],
 	#category : #oRAGle
 }
 
 {
-	#category : #'as yet unclassified',
+	#category : #visiting,
 	#'squeak_changestamp' : 'lubo 1/19/2024 19:06'
 }
 OragleSequenceModule >> accept: aVisitor [
@@ -17,27 +17,38 @@ OragleSequenceModule >> accept: aVisitor [
 ]
 
 {
-	#category : #'as yet unclassified',
-	#'squeak_changestamp' : 'lubo 1/19/2024 17:21'
+	#category : #defaults,
+	#'squeak_changestamp' : 'ct 1/22/2024 11:46'
 }
-OragleSequenceModule >> defaultSeperator [
-	^ String cr String cr.
+OragleSequenceModule >> defaultSeparator [
+	^ String cr, String cr.
+]
+
+{
+	#category : #'initialize-release',
+	#'squeak_changestamp' : 'ct 1/22/2024 11:47'
+}
+OragleSequenceModule >> initialize [
+	
+	super initialize.
+	
+	separator := self defaultSeparator.
 ]
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'lubo 1/19/2024 17:21'
+	#'squeak_changestamp' : 'ct 1/22/2024 11:46'
 }
-OragleSequenceModule >> seperator [
+OragleSequenceModule >> separator [
 
-	^ seperator
+	^ separator
 ]
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'lubo 1/19/2024 17:21'
+	#'squeak_changestamp' : 'ct 1/22/2024 11:48'
 }
-OragleSequenceModule >> seperator: anObject [
+OragleSequenceModule >> separator: aString [
 
-	seperator := anObject.
+	separator := aString.
 ]

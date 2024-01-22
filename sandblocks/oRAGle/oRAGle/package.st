@@ -1,4 +1,4 @@
 Package {
-	#'squeak_changestamp' : true,
-	#name : #oRAGle
+	#name : #oRAGle,
+	#'squeak_changestamp' : true
 }
