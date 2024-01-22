@@ -33,3 +33,21 @@ OragleLeafModule >> content: aString [
 
 	content := aString.
 ]
+
+{
+	#category : #'as yet unclassified',
+	#'squeak_changestamp' : 'ct 1/22/2024 12:11'
+}
+OragleLeafModule >> printContentOn: aStream [
+
+	aStream print: self content.
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/22/2024 12:10'
+}
+OragleLeafModule >> type [
+
+	^ #leaf
+]

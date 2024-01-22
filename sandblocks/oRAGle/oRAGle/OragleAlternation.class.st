@@ -21,3 +21,12 @@ OragleAlternation >> expand [
 
 	^ children gather: [:child | child expand ]
 ]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/22/2024 12:10'
+}
+OragleAlternation >> type [
+
+	^ #alternation
+]

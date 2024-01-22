@@ -94,6 +94,34 @@ OragleModule >> label: aString [
 ]
 
 {
+	#category : #printing,
+	#'squeak_changestamp' : 'ct 1/22/2024 12:11'
+}
+OragleModule >> printContentOn: aStream [
+
+	aStream print: self children.
+]
+
+{
+	#category : #printing,
+	#'squeak_changestamp' : 'ct 1/22/2024 12:15'
+}
+OragleModule >> printOn: aStream [
+
+	(#(sequence) includes: self type) ifFalse:
+		[aStream
+			nextPut: $[;
+			nextPutAll: self type;
+			nextPut: $]].
+	self state = #enabled ifFalse:
+		[aStream
+			nextPut: $<;
+			nextPutAll: self state;
+			nextPut: $>].
+	self printContentOn: aStream.
+]
+
+{
 	#category : #accessing,
 	#'squeak_changestamp' : 'lubo 1/19/2024 17:12'
 }
@@ -110,4 +138,13 @@ OragleModule >> state: aSymbol [
 
 	self assert: (#(enabled mute solo) includes: aSymbol).
 	state := aSymbol.
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/22/2024 12:10'
+}
+OragleModule >> type [
+
+	^ self subclassResponsibility
 ]
