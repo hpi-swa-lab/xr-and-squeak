@@ -162,7 +162,7 @@ function OragleModule({ children, node, type }) {
 
         const wrapItem = (name, cls) => ({
           label: `Wrap in ${name}`,
-          action: () => node.wrapWith(`${cls} new children: {`, "}`"),
+          action: () => node.wrapWith(`${cls} new children: {`, "}"),
         });
 
         choose([
