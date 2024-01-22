@@ -74,11 +74,11 @@ export class SqueakProject extends Project {
         return await res.text();
       };
     } else {
-      await runHeadless(config.baseURL + "external/squeak-minimal.image");
+      await runHeadless(config.baseURL + this.path);
       await wait(1000);
     }
 
-    for (const window of this.restore ?? []) {
+    for (const window of (this.restore ?? [])) {
       console.assert(window.type === "browser");
       openComponentInWindow(
         SqueakBrowserComponent,
