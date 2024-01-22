@@ -92,7 +92,12 @@ export const base = new Extension()
         { node: replacement.node, type: "OragleAlternation" },
         h(
           "div",
-          { class: "sb-insert-button-container sb-row" },
+          {
+            class: "sb-insert-button-container sb-row",
+            style: {
+              alignItems: "start"
+            }
+          },
           icon("alt_route"),
           h(ShardArray, {
             elements: children.elements,
