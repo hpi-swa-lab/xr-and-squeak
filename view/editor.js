@@ -314,8 +314,10 @@ export class Editor extends HTMLElement {
     this.inlineExtensions.push(extension);
 
     extension.process(["extensionConnected"], this.source);
-    extension.process(["replacement"], this.source);
-    extension.process(["always"], this.source);
+    // need to process all extensions since the new extension may have
+    // introduced new shards
+    this.extensionsDo((e) => e.process(["replacement"], this.source));
+    this.extensionsDo((e) => e.process(["always"], this.source));
   }
 
   set inlineExtensions(extensions) {

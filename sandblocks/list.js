@@ -105,6 +105,7 @@ export function List({
       )
     ),
     visibleItems.length < 1 &&
+      items.length > 0 &&
       h(
         "span",
         { style: { fontStyle: "italic" } },
