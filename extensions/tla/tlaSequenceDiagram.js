@@ -146,6 +146,7 @@ const Actor = ({ row, col, label }) => {
         width: "fit-content",
         height: "min-content",
         justifySelf: "center",
+        alignSelf: "end",
     }
 
     return html`
@@ -183,7 +184,11 @@ class LinePositioning extends Component {
     refFrom = createRef()
     refTo = createRef()
 
-    componentDidMount() {
+    getLabelIdentifier() {
+        return `${this.props.fromCol}-${this.props.toCol}-${this.props.row}-${this.props.label}`
+    }
+
+    calcLineData() {
         if (!this.refFrom.current || !this.refTo.current) {
             console.error("ref not set")
             return
@@ -208,14 +213,24 @@ class LinePositioning extends Component {
             yFrom: yOffsetFrom + yOffset + delayOffset,
             xTo: xOffsetTo + xOffsetCenter,
             yTo: yOffsetTo + yOffset + delayOffset,
-            label: this.props.label
+            label: this.props.label,
+            key: this.getLabelIdentifier(),
+            type: this.props.type,
         }
+        return line
+    }
 
-        this.props.addLine(line)
+    componentDidMount() {
+        const line = this.calcLineData()
+        this.props.setLines([...this.props.lines, line])
+    }
+
+    componentWillUnmount() {
+        this.props.setLines(this.props.lines.filter(l => l.key !== this.getLabelIdentifier()))
     }
 
     /** yRelativePosition is the percentage [0,1] where the message starts and ends */
-    render({ fromCol, toCol, row, label, addLine, yRelativePosition }) {
+    render({ fromCol, toCol, row, label, yRelativePosition, lines, setLines }) {
         return html`
             <div ref=${this.refFrom} style=${gridElementStyle(fromCol, row)}></div>
             <div ref=${this.refTo} style=${gridElementStyle(toCol, row)}></div>
@@ -245,6 +260,11 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
         paintOrder: "stroke",
     }
 
+    const dottedLine = {
+        ...lineStyle,
+        strokeDasharray: "2 2",
+    }
+
     return html`
     <svg style=${svgStyle}>
             <defs>
@@ -261,16 +281,23 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
                 </marker>
         </defs>
         <!-- add line and text in the middle of it -->
-        ${lines.map(({ xFrom, yFrom, xTo, yTo, label }) => html`
+        ${lines.map(({ xFrom, yFrom, xTo, yTo, label, type }) => html`
         <g>
             <text style=${textStyle} x=${xFrom + (xTo - xFrom) / 2} y=${yFrom + (yTo - yFrom) / 2 - 8}>${label}</text>
-            <line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />
+            ${type === "write"
+            ? html`<line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />`
+            : html`
+                <g>
+                    <line style=${lineStyle} x1=${xTo} y1=${yTo} x2=${xFrom} y2=${yFrom} />
+                    <line style=${dottedLine} x1=${xFrom} y1=${yFrom + 8} x2=${xTo} y2=${yTo + 8} />
+                </g>`
+        }
         </g>
         `)}
     </svg>`
 }
 
-const MessagesPositionsCompution = ({ vizData, addLine }) => {
+const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
 
     // depending on if messages are read or write messages,
     // they are placed on top (reads) or bottom (writes) of the lifeline
@@ -285,7 +312,7 @@ const MessagesPositionsCompution = ({ vizData, addLine }) => {
             const toCol = a2c.get(actor)
             // reads start at the beginning up to the middle
             const yRelativePosition = j / readMsgs.length / 2
-            return { fromCol, toCol, row, label: m.label, yRelativePosition }
+            return { fromCol, toCol, row, label: m.label, yRelativePosition, type: m.type }
         })
 
         const writeMsgPositions = writeMsgs.map((m, j) => {
@@ -293,7 +320,7 @@ const MessagesPositionsCompution = ({ vizData, addLine }) => {
             const toCol = a2c.get(m.to)
             // writes start at the end up to the middle
             const yRelativePosition = 1.0 - j / writeMsgs.length / 2
-            return { fromCol, toCol, row, label: m.label, yRelativePosition }
+            return { fromCol, toCol, row, label: m.label, yRelativePosition, type: m.type }
         })
 
         return [...readMsgPositions, ...writeMsgPositions]
@@ -301,22 +328,23 @@ const MessagesPositionsCompution = ({ vizData, addLine }) => {
 
     return vizData
         .flatMap(computeMessagePositions)
-        .map((p) => html`<${LinePositioning} ...${p} addLine=${addLine} />`)
+        .map((p) => html`<${LinePositioning} ...${p} lines=${lines} setLines=${setLines} />`)
 }
 
 
-const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
-    const vizData = prevEdges.map(e => edgeToVizData(e, varToActor))
+const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge }) => {
+    const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges
+    const vizData = edges.map(e => edgeToVizData(e, varToActor))
 
     const gridWrapperStyle = {
         position: "relative", // necessary for relative positioning of messages to this element
         display: "grid",
         width: "100%",
+        height: "min-content",
         gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
     }
 
     const [lines, setLines] = useState([])
-    const addLine = (line) => setLines([...lines, line])
 
     return [
         html`
@@ -324,7 +352,7 @@ const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
             ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
             ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
             ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-            <${MessagesPositionsCompution} vizData=${vizData} addLine=${addLine} />
+            <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
             <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
             <!-- last row with fixed height to still show some of the lifeline -->
             ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
@@ -333,36 +361,77 @@ const Diagram = ({ graph, prevEdges, setPrevEdges }) => {
     ]
 }
 
-const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges }) => {
-    const nextEdges = Object.entries(graph.outgoingEdges.get(currNode.id))
-
+const EdgePickerButton = (props) => {
     const buttonStyle = {
         padding: "4px",
         margin: "4px"
     }
 
+    useEffect(() => {
+        // onMouseLeave is not called if the button gets removed while the mouse is still on it
+        // so we need to manually call it
+        return () => {
+            if (props.onMouseLeave) props.onMouseLeave()
+        }
+    }, [])
+
     return html`
-        <div>
-            ${nextEdges.map(([to, e]) => html`
-                <button 
-                    style=${buttonStyle}
-                    onClick=${() => {
+        <button style=${buttonStyle} ...${props} />
+    `
+}
+
+const EdgePicker = ({ graph, currNode, setCurrNode, prevEdges, setPrevEdges, setPreviewEdge }) => {
+    const nextEdges = Object.entries(graph.outgoingEdges.get(currNode.id))
+
+    const selectNodeFn = ([to, e]) => {
+        return () => {
             setCurrNode(graph.nodes.get(to))
             setPrevEdges([...prevEdges, e])
-        }}>
-                    ${e.label + e.parameters}
-                </button>`)}
+        }
+    }
+
+    const containerStyle = {
+        width: "30%",
+        padding: "0 16px 16px 16px",
+        backgroundColor: "white",
+        borderLeft: "1px solid gray",
+        zIndex: 2,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between"
+    }
+
+    return html`
+        <div style=${containerStyle}>
+            <div>
+                <h3>State around Action</h3>
+                ${JSON.stringify(currNode)}
+            </div>
+            <div>
+                <h3>Choose Next Action</h3>
+                ${nextEdges.map(([to, e]) => html`
+                    <${EdgePickerButton} 
+                        onClick=${selectNodeFn([to, e])}
+                        onMouseEnter=${() => setPreviewEdge(e)}
+                        onMouseLeave=${() => setPreviewEdge(null)}
+                        >
+                        ${e.label + e.parameters}
+                    </${EdgePickerButton}>`)}
+            </div>
         </div>`
 }
 
 const State = ({ graph, initNode }) => {
     const [currNode, setCurrNode] = useState(initNode)
+    const [previewEdge, setPreviewEdge] = useState(null)
     const [prevEdges, setPrevEdges] = useState([])
 
-    return [
-        html`<${Diagram} ...${{ graph, prevEdges, setPrevEdges }} />`,
-        html`<${EdgePicker} ...${{ graph, currNode, setCurrNode, prevEdges, setPrevEdges }} />`
-    ]
+    return html`
+    <div style=${{ display: "flex", height: "100%" }}>
+        <${Diagram} ...${{ graph, prevEdges, setPrevEdges, previewEdge }} />
+        <${EdgePicker} ...${{ graph, currNode, setCurrNode, prevEdges, setPrevEdges, setPreviewEdge }} />
+    </div>
+    `
 }
 
 const GraphProvider = () => {

@@ -104,12 +104,8 @@ export class Editor extends HTMLElement {
     throw new Error("FIXME set selectionRange");
   }
 
-  get selected() {
-    return this.selection.lastEditable?.sbSelectedEditablePart();
-  }
-  set selected(node) {
-    throw new Error("FIXME set selected");
-  }
+  selected = null;
+
   get selectedText() {
     return this.sourceString.slice(...this.selectionRange);
   }
@@ -135,13 +131,17 @@ export class Editor extends HTMLElement {
 
     this.selection = new SBSelection();
 
-    this.selection.addEventListener(
-      "viewChange",
-      ({ detail: { view, node } }) => {
-        this.suggestions.onSelected(view);
-        if (node) this.extensionsDo((e) => e.process(["selection"], node));
-      }
-    );
+    this.selection.addEventListener("viewChange", () => {
+      const s = this.selection;
+      this.selected =
+        s.range && s.lastEditable?.tagName === "SB-SHARD"
+          ? s.lastEditable.findSelectedForRange(s.range)
+          : null;
+
+      this.suggestions.onSelected(this.selected);
+      if (this.selected?.node)
+        this.extensionsDo((e) => e.process(["selection"], this.selected.node));
+    });
     this.selection.addEventListener("caretChange", () => {
       this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
 
@@ -314,8 +314,10 @@ export class Editor extends HTMLElement {
     this.inlineExtensions.push(extension);
 
     extension.process(["extensionConnected"], this.source);
-    extension.process(["replacement"], this.source);
-    extension.process(["always"], this.source);
+    // need to process all extensions since the new extension may have
+    // introduced new shards
+    this.extensionsDo((e) => e.process(["replacement"], this.source));
+    this.extensionsDo((e) => e.process(["always"], this.source));
   }
 
   set inlineExtensions(extensions) {

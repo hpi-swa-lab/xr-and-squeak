@@ -82,7 +82,7 @@ export function List({
         } else if (e.key === "Backspace") {
           setFilterString("");
         } else if (e.key.length === 1 && !e.ctrlKey) {
-          setFilterString((s) => s + e.key);
+          setFilterString((s) => s + e.key.toLowerCase());
         } else {
           return;
         }
@@ -103,6 +103,16 @@ export function List({
         },
         highlightSubstring(labelFunc(item), filterString)
       )
-    )
+    ),
+    visibleItems.length < 1 &&
+      items.length > 0 &&
+      h(
+        "span",
+        { style: { fontStyle: "italic" } },
+        "No items matching ",
+        h("span", { class: "search-result" }, filterString),
+        h("br"),
+        "(Press backspace to clear)"
+      )
   );
 }

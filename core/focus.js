@@ -26,11 +26,11 @@ function nodeIsEditablePart(node) {
   );
 }
 
-function nodeIsEditable(node) {
+export function nodeIsEditable(node) {
   return !!node.getAttribute("sb-editable");
 }
 
-function nodeEditableForPart(node) {
+export function nodeEditableForPart(node) {
   return orParentThat(node, (p) => nodeIsEditable(p));
 }
 
@@ -77,7 +77,6 @@ function previousNodePreOrder(node) {
 // responsible for moving the cursor between those.
 export class SBSelection extends EventTarget {
   range = [0, 0];
-  view = null;
   lastEditable = null;
   lastRect = null;
   lastNode = null;
@@ -125,7 +124,11 @@ export class SBSelection extends EventTarget {
   viewForMove(editor, newRange = null) {
     newRange ??= this.range;
 
-    let best = this.lastEditable?.sbSelectedEditablePart();
+    let best;
+
+    if (this.lastEditable?.isConnected)
+      best = this.lastEditable.sbSelectedEditablePart();
+
     if (best) {
       console.assert(best.isConnected);
       return best;
@@ -303,6 +306,13 @@ function handleDelete(e) {
 }
 
 function _markInput(element) {
+  const getRange = () =>
+    element.range
+      ? [
+          element.selectionStart + element.range[0],
+          element.selectionEnd + element.range[0],
+        ]
+      : null;
   element.setAttribute("sb-editable-part", "true");
   element.sbCandidateForRange = (range) =>
     element.range && rangeContains(element.range, range)
@@ -314,10 +324,7 @@ function _markInput(element) {
       : null;
   element.sbUpdateRange = () => {
     if (element.range)
-      getEditor(element).selection.informChange(element, [
-        element.selectionStart + element.range[0],
-        element.selectionEnd + element.range[0],
-      ]);
+      getEditor(element).selection.informChange(element, getRange());
   };
   element.sbSelectAtBoundary = (part, atStart) => {
     const position = atStart ? 0 : element.value.length;
@@ -346,7 +353,7 @@ function _markInput(element) {
     return delta > 0 ? position === element.value.length : position === 0;
   };
   element.addEventListener("focus", () =>
-    getEditor(element).selection.informChange(element, null)
+    getEditor(element).selection.informChange(element, getRange())
   );
   element.sbSelectedEditablePart = () => (element.isConnected ? element : null);
 }
