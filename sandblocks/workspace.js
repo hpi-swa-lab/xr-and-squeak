@@ -4,7 +4,7 @@ import { languageFor } from "../core/languages.js";
 
 const extraExtensions = {
   markdown: ["markdown:calc"],
-  javascript: ["javascript:workspace", "copilot:base"],
+  javascript: [],
 };
 
 customElements.define(
@@ -100,8 +100,8 @@ export function Workspace() {
     sourceString: JSON.stringify(
       [
         { text: "text", language: "javascript" },
-        // { text: '{"language": 2}', language: "json" },
-        // { text: `# hi\n\n**2**+2\n32`, language: "markdown" },
+        { text: '{"language": 2}', language: "json" },
+        { text: `# hi\n\n**2**+2\n32`, language: "markdown" },
       ],
       null,
       2

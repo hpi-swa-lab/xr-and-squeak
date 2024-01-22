@@ -94,7 +94,7 @@ const configuration = [
 ];
 
 function sem(x) {
-  return x.context.project.semanticsForPath(x.context.path, configuration);
+  return x.context?.project.semanticsForPath(x.context.path, configuration);
 }
 
 export const base = new Extension()
