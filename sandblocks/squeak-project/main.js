@@ -413,7 +413,14 @@ const base = new Extension()
   .registerShortcut("printIt", async (x, view, e) => {
     const widget = e.createWidget("sb-print-result");
     widget.result = JSON.parse(
-      await sqEval(`(${x.editor.textForShortcut}) printString asJsonString`)
+      await sqEval(`
+        [| result |
+        result := Compiler evaluate: '${x.editor.textForShortcut.replaceAll("'", "''")}'.
+        [result printString asJsonString]
+          on: Error , Warning , Halt do: [:ex | ('<print error: {1}>' format: {ex}) asJsonString]]
+            on: UndeclaredVariableNotification do: [:ex | ('⚡ undeclared: ' , (ex instVarNamed: 'name')) asJsonString]
+            on: Error , Warning , Halt do: [:ex | ('⚡ ' , ex) asJsonString]`
+      )
     );
     ToggleableMutationObserver.ignoreMutation(() => {
       view.after(widget);
