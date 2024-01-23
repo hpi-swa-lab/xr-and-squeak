@@ -5,7 +5,7 @@ import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
 import { matchesKey, withDo } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
-import {} from "./file-project/search.js";
+import { } from "./file-project/search.js";
 import { RAGApp } from "./oRAGle/ragPrototype.js";
 import { SequenceDiagram } from "../extensions/tla/tlaSequenceDiagram.js";
 
@@ -72,7 +72,7 @@ const startUpOptions = {
       {
         doNotStartAttached: true,
         initialPosition: { x: 10, y: 10 },
-        initialSize: { x: 1000, y: 600 },
+        initialSize: { x: 1000, y: 800 },
       }
     );
   },

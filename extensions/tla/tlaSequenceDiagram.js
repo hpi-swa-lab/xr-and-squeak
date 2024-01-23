@@ -156,6 +156,7 @@ const Actor = ({ row, col, label }) => {
     `
 }
 
+const delayActionStartPx = 24
 const actionLineWidth = 3
 /** an action is the point where the diagram's lifeline is activated */
 const Action = ({ row, col, label, msgs }) => {
@@ -166,7 +167,7 @@ const Action = ({ row, col, label, msgs }) => {
         border: "1px solid gray",
         backgroundColor: "#eee",
         marginLeft: "calc(50% - 1.5%)",
-        marginTop: "12px",
+        marginTop: `${delayActionStartPx}px`,
     }
 
     const labelStyle = {
@@ -206,15 +207,14 @@ class LinePositioning extends Component {
         const xOffsetCenter = (widthFrom / 2)
         // in action we have a top margin of 12px such that there's some gap between
         // successive actions, which we need to account for
-        const delayOffset = 12
-        const yOffset = (heightFrom - delayOffset) * this.props.yRelativePosition
+        const yOffset = (heightFrom - delayActionStartPx) * this.props.yRelativePosition
 
 
         const line = {
             xFrom: xOffsetFrom + xOffsetCenter,
-            yFrom: yOffsetFrom + yOffset + delayOffset,
+            yFrom: yOffsetFrom + yOffset + delayActionStartPx,
             xTo: xOffsetTo + xOffsetCenter,
-            yTo: yOffsetTo + yOffset + delayOffset,
+            yTo: yOffsetTo + yOffset + delayActionStartPx,
             label: this.props.label,
             key: this.getLabelIdentifier(),
             type: this.props.type,
@@ -369,62 +369,11 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
 
     const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === a))
 
-
-    return html`
-        <div style=${{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div style=${gridWrapperStyle}>
-                ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
-                ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
-                ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-                <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
-                <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
-                <!-- last row with fixed height to still show some of the lifeline -->
-                ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
-            </div>
-            <div>
-                <h3>Choose Next Action</h3>
-                <div style=${gridWrapperStyle}>
-                    ${nextActionsPerActorIndex.map((actions, i) => html`
-                        <div style=${{ gridColumn: i + 1, gridRow: 1, display: "flex", flexDirection: "column" }}>
-                            ${actions.map(([to, e]) => html`
-                                <${EdgePickerButton} 
-                                    onClick=${selectNodeFn([to, e])}
-                                    onMouseEnter=${() => setPreviewEdge(e)}
-                                    onMouseLeave=${() => setPreviewEdge(null)}
-                                    >
-                                    ${e.label + e.parameters}
-                                </${EdgePickerButton}>`)}
-                        </div>
-                    `)}
-                </div>
-            </div>
-        </div>
-        `
-}
-
-const Sidebar = ({ currNode }) => {
-    const containerStyle = {
-        width: "30%",
-        padding: "0 16px 16px 16px",
-        backgroundColor: "white",
-        borderLeft: "1px solid gray",
-        zIndex: 2,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        overflowX: "scroll",
-    }
-
     const tableHeaderStyle = {
         textAlign: "left",
         fontWeight: "normal"
     }
 
-    /** TODOs
-     * 1. groub vars by actor
-     * 2. show vars as nested table under matching actor
-     * 3. show diffs between actions
-     */
     const keySeqs = nestedKeys(currNode.vars)
     const keySeqsActorPairsPerActor = actors.reduce((acc, a) =>
         acc.set(a, keySeqs.filter(keys => apply(varToActor, keys) === a)), new Map())
@@ -451,6 +400,62 @@ const Sidebar = ({ currNode }) => {
             </tr>`
     }
 
+
+    return html`
+        <div style=${{ display: "flex", flexDirection: "column", width: "100%", margin: "16px" }}>
+            <div>
+                    <div style=${{ ...gridWrapperStyle, gridGap: "16px" }}>
+                    ${actors.map((a, i) => html`
+                        <div style=${{ display: "flex", flexDirection: "column", gridColumn: i + 1, gridRow: 1, }}>
+                            <h4>${a}</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style=${tableHeaderStyle}>Scope</th>
+                                        <th style=${tableHeaderStyle}>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${keySeqsActorPairsPerActor.get(a).map(exportToHTML)}
+                                </tbody>
+                            </table>
+                        </div>`)}
+                    </div>
+            </div>
+            <div>
+                <h4>Choose Next Action</h4>
+                <div style=${gridWrapperStyle}>
+                    ${nextActionsPerActorIndex.map((actions, i) => html`
+                        <div style=${{ gridColumn: i + 1, gridRow: 1, display: "flex", flexDirection: "column" }}>
+                            ${actions.map(([to, e]) => html`
+                                <${EdgePickerButton} 
+                                    onClick=${selectNodeFn([to, e])}
+                                    onMouseEnter=${() => setPreviewEdge(e)}
+                                    onMouseLeave=${() => setPreviewEdge(null)}
+                                    >
+                                    ${e.label + e.parameters}
+                                </${EdgePickerButton}>`)}
+                        </div>
+                    `)}
+                </div>
+            </div>
+            <div style=${gridWrapperStyle}>
+                ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
+                ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
+                ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
+                <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
+                <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
+                <!-- last row with fixed height to still show some of the lifeline -->
+                ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
+            </div>
+        </div>
+        `
+}
+
+const Sidebar = ({ currNode }) => {
+
+
+
     return html`
         <div style=${containerStyle}>
             <div>
@@ -473,8 +478,6 @@ const Sidebar = ({ currNode }) => {
                 `)
         }
             </div>
-            <div>
-            </div>
         </div>`
 }
 
@@ -484,9 +487,8 @@ const State = ({ graph, initNode }) => {
     const [prevEdges, setPrevEdges] = useState([])
 
     return html`
-    <div style=${{ display: "flex", height: "100%" }}>
+    <div style=${{ display: "flex", height: "100%", width: "100%" }}>
         <${Diagram} ...${{ graph, prevEdges, setPrevEdges, previewEdge, setPreviewEdge, currNode, setCurrNode }} />
-        <${Sidebar} ...${{ graph, currNode, setCurrNode, prevEdges, setPrevEdges, }} />
     </div>
     `
 }
