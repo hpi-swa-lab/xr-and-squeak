@@ -266,6 +266,7 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
         strokeDasharray: "2 2",
     }
 
+
     return html`
     <svg style=${svgStyle}>
             <defs>
@@ -285,14 +286,7 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
         ${lines.map(({ xFrom, yFrom, xTo, yTo, label, type }) => html`
         <g>
             <text style=${textStyle} x=${xFrom + (xTo - xFrom) / 2} y=${yFrom + (yTo - yFrom) / 2 - 8}>${label}</text>
-            ${type === "write"
-            ? html`<line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />`
-            : html`
-                <g>
-                    <line style=${lineStyle} x1=${xTo} y1=${yTo} x2=${xFrom} y2=${yFrom} />
-                    <line style=${dottedLine} x1=${xFrom} y1=${yFrom + 8} x2=${xTo} y2=${yTo + 8} />
-                </g>`
-        }
+            <line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />
         </g>
         `)}
     </svg>`
