@@ -1,4 +1,11 @@
 import { Extension } from "../core/extension.js";
+import {
+  LanguageClient,
+  StdioTransport,
+  indexToPosition,
+  positionToIndex,
+  registerLsp,
+} from "./lsp.js";
 
 function getKey() {
   const key = localStorage.openAIKey ?? window.prompt("Key?");
@@ -91,4 +98,51 @@ Do not elide any code from your output. Do not insert comments or TODOs for bloc
     const code = res.choices[0].text.trim();
     editor.insertTextFromCommand(position, code);
   }
+);
+
+export const gh = new Extension().registerShortcut(
+  "autocompleteAI",
+  async (x) => {
+    const lsp = x.context.project.data("copilotGh");
+    const position = x.editor.selectionRange[0];
+    const source = x.root.sourceString;
+    const {
+      completions: [completion],
+    } = await lsp._request("getCompletions", {
+      doc: {
+        source,
+        tabSize: 2,
+        indentSize: 1,
+        insertSpaces: true,
+        path: x.context.path,
+        uri: `file://${x.context.path}`,
+        relativePath: x.context.path.slice(x.context.project.path.length),
+        languageId: x.language.name,
+        position: indexToPosition(x.root.sourceString, position),
+        version: lsp.textDocumentVersions.get(x.context),
+      },
+    });
+
+    if (completion) {
+      x.editor.replaceTextFromCommand(
+        [
+          positionToIndex(source, completion.range.start),
+          positionToIndex(source, completion.range.end),
+        ],
+        completion.text
+      );
+    }
+  }
+);
+registerLsp(
+  gh,
+  (project) =>
+    new StdioTransport(
+      "node",
+      [
+        (localStorage.copilotGhDistPath ??= prompt("dist path?")) +
+          "/dist/agent.js",
+      ],
+      "."
+    )
 );

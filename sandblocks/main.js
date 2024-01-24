@@ -5,9 +5,10 @@ import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { Workspace } from "./workspace.js";
 import { matchesKey, withDo } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
-import { } from "./file-project/search.js";
+import {} from "./file-project/search.js";
 import { RAGApp } from "./oRAGle/ragPrototype.js";
 import { SequenceDiagram } from "../extensions/tla/tlaSequenceDiagram.js";
+import { openPreferences } from "./preferences.js";
 
 const PROJECT_TYPES = {
   FileProject: {
@@ -25,11 +26,17 @@ const PROJECT_TYPES = {
       return {
         type,
         connectionOptions: {
-          "browser": () => ({ path: prompt("Path?", 'external/squeak-minimal.image') }),
-          "rpc": () => ({ port: withDo(prompt("Port?", 9823), (p) => parseInt(p)) }),
-          "yaros": () => ({
-            path: prompt("Path?", 'external/squeak-minimal-yaros.image'),
-            ports: withDo(prompt("Ports?", '8085/8084'), (p) => p.split('/').map(x => parseInt(x))),
+          browser: () => ({
+            path: prompt("Path?", "external/squeak-minimal.image"),
+          }),
+          rpc: () => ({
+            port: withDo(prompt("Port?", 9823), (p) => parseInt(p)),
+          }),
+          yaros: () => ({
+            path: prompt("Path?", "external/squeak-minimal-yaros.image"),
+            ports: withDo(prompt("Ports?", "8085/8084"), (p) =>
+              p.split("/").map((x) => parseInt(x))
+            ),
           }),
         }[type](),
       };
@@ -207,7 +214,8 @@ function Sandblocks() {
           },
         }),
         "mouse over for focus"
-      )
+      ),
+      button("Preferences", () => openPreferences())
     ),
     openProjects.map((project) => project.renderBackground?.()),
   ];

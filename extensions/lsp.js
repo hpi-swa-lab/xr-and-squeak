@@ -86,7 +86,7 @@ const configuration = [
         new StdioTransport(
           "typescript-language-server",
           ["--stdio"],
-          project.root.path
+          project.path
         )
       );
     },
@@ -95,6 +95,38 @@ const configuration = [
 
 function sem(x) {
   return x.context?.project.semanticsForPath(x.context.path, configuration);
+}
+
+export function registerLsp(extension, transport) {
+  const sem = (x) => x.context.project.data("copilotGh");
+  extension
+    .registerQuery("extensionConnected", (e) => [
+      (x) => x.isRoot,
+      (x) => !!x.context?.project,
+      (x) =>
+        x.context.project.data("copilotGh", () => {
+          const c = new LanguageClient(
+            x.context.project,
+            null,
+            transport(x.context.project)
+          );
+          c.start();
+          return c;
+        }),
+    ])
+    .registerQuery("extensionConnected", (e) => [
+      (x) => x.isRoot,
+      (x) => sem(x)?.didOpen(x),
+    ])
+    .registerQuery("extensionDisconnected", (e) => [
+      (x) => x.isRoot,
+      (x) => sem(x)?.didClose(x),
+    ])
+    .registerQuery("save", (e) => [(x) => x.isRoot, (x) => sem(x)?.didSave(x)])
+    .registerChangesApplied((changes, oldSource, newSource, root, _diff) => {
+      sem(root)?.didChange(root, oldSource, newSource, changes);
+    });
+  return extension;
 }
 
 export const base = new Extension()
@@ -185,14 +217,14 @@ function convertEdit(node, edit) {
   };
 }
 
-function positionToIndex(sourceString, { line, character }) {
+export function positionToIndex(sourceString, { line, character }) {
   let index = 0;
   for (let i = 0; i < line; i++) {
     index = sourceString.indexOf("\n", index) + 1;
   }
   return index + character;
 }
-function indexToPosition(sourceString, index) {
+export function indexToPosition(sourceString, index) {
   let line = 0;
   let character = 0;
   for (let i = 0; i < index; i++) {
@@ -289,7 +321,10 @@ export class StdioTransport extends Transport {
         this.appendData(data);
         this._processBuffer();
       })
-      .onStderr(this.onStderr);
+      .onStderr((e) => {
+        // FIXME should also buffer
+        this.onStderr(new TextDecoder().decode(e));
+      });
     await this.process.start(this.command, this.args, this.cwd, true);
   }
 
@@ -373,6 +408,7 @@ export class LanguageClient extends Semantics {
               preselectSupport: true,
               insertReplaceSupport: true,
               labelDetailsSupport: true,
+              snippetSupport: true,
               resolveSupport: {
                 properties: ["documentation", "detail", "additionalTextEdits"],
               },
@@ -384,6 +420,7 @@ export class LanguageClient extends Semantics {
         },
         workspace: {
           applyEdit: true,
+          workspaceFolders: true,
           workspaceEdit: {
             documentChanges: true,
           },
@@ -524,6 +561,18 @@ export class LanguageClient extends Semantics {
     return sourceString;
   }
 
+  notifyChangeWorkspaceFolders() {
+    // FIXME not used yet
+    this._notification("workspace/didChangeWorkspaceFolders", {
+      event: {
+        added: [
+          { uri: `file://${this.project.path}`, name: this.project.name },
+        ],
+        removed: [],
+      },
+    });
+  }
+
   diagnosticsFor(path) {
     return this.diagnostics.get(path) ?? [];
   }
@@ -546,6 +595,9 @@ export class LanguageClient extends Semantics {
         break;
       case "window/workDoneProgress/create":
         this._response(message.id, null);
+        break;
+      case "client/registerCapability":
+        await this._response(message.id, null);
         break;
       default:
         // if (!message.method.startsWith("$/"))

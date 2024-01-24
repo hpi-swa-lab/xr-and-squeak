@@ -87,11 +87,7 @@ export function FileEditor({
       { style: { overflowY: "scroll", padding: "2px", width: "100%" } },
       sourceString !== null &&
         editor({
-          extensions: [
-            "base:base",
-            "copilot:base",
-            ...language.defaultExtensions,
-          ],
+          extensions: ["base:base", ...language.defaultExtensions],
           inlineExtensions: [references, search],
           sourceString,
           editorRef,
