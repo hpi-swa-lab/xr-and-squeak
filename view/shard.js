@@ -19,6 +19,7 @@ import {
   followingElementThat,
   markAsEditableElement,
   nodeEditableForPart,
+  nodeIsEditable,
 } from "../core/focus.js";
 
 // A Shard is a self-contained editable element.
@@ -553,12 +554,12 @@ class _ShardSelection {
     if (selection.type === "None" || selection.rangeCount === 0)
       return this._deselect();
 
-    this.shard = orParentThat(
-      selection.anchorNode,
-      (x) => x.tagName === "SB-SHARD"
-    );
-    if (!this.shard) return this._deselect();
+    if (document.activeElement?.tagName !== "SB-SHARD") return this._deselect();
 
+    const e = orParentThat(selection.anchorNode, (x) => nodeIsEditable(x));
+    if (!e || e.tagName !== "SB-SHARD") return this._deselect();
+
+    this.shard = e;
     this.range = selection.getRangeAt(0);
 
     this.shard.takeSelection(this.range);

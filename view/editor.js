@@ -134,6 +134,8 @@ export class Editor extends HTMLElement {
   }
 
   onCaretChange() {
+    this.maybeViewChange();
+
     this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
 
     if (this.selection.isExact && !this.hideSelection.isConnected) {
@@ -141,8 +143,6 @@ export class Editor extends HTMLElement {
     } else if (!this.selection.isExact && this.hideSelection.isConnected) {
       this.removeChild(this.hideSelection);
     }
-
-    this.maybeViewChange();
   }
 
   maybeViewChange() {
