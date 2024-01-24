@@ -6,7 +6,7 @@ import { FileTree } from "./file-list.js";
 export class FileProject extends Project {
   static deserialize(obj) {
     if (typeof obj.path !== "string") return null;
-    return new FileProject(obj.path);
+    return new FileProject({ folder: obj.path });
   }
 
   constructor(options) {
