@@ -29,6 +29,20 @@ import {} from "../../view/widget-utils.js";
   "server destroy"
 */
 
+// Install Yaros from: https://github.com/LinqLover/yaros
+// Use Yaros with:
+/*
+  yaros1 := YarosServer new
+    connector: (YarosHTTPPollingServerConnector remoteName: 'localhost' clientPort: 8084 serverPort: 8085);
+    yourself.
+  "optional"
+  yaros1 debugLog: Transcript.
+  yaros1 startServer. yaros1 startClient.
+
+  "to stop"
+  yaros1 stop.
+*/
+
 export class SqueakProject extends Project {
   static deserialize({ sqType, connectionOptions, restore }) {
     return new SqueakProject({
