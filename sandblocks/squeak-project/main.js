@@ -30,14 +30,18 @@ import {} from "../../view/widget-utils.js";
 */
 
 export class SqueakProject extends Project {
-  static deserialize({ sqType, portOrPath, restore }) {
-    return new SqueakProject(sqType, portOrPath, restore);
+  static deserialize({ sqType, connectionOptions, restore }) {
+    return new SqueakProject({
+      type: sqType,
+      connectionOptions,
+      restore
+    });
   }
 
   serialize() {
     return {
       sqType: this.type,
-      portOrPath: this.port ?? this.path,
+      connectionOptions: this.connectionOptions,
       restore: [...document.body.querySelectorAll("[sq-restore]")].map((e) => {
         // TODO filter for windows that belong to this project
         const window = orParentThat(e, (p) => p.tagName === "SB-WINDOW");
@@ -50,33 +54,41 @@ export class SqueakProject extends Project {
     };
   }
 
-  constructor(type, portOrPath, restore) {
+  constructor(options) {
     super();
 
-    this.type = type;
-    if (this.type === "rpc") this.port = portOrPath;
-    else this.path = portOrPath;
-
-    this.restore = restore;
+    ({
+      type: this.type,
+      connectionOptions: this.connectionOptions,
+      restore: this.restore
+    } = options);
   }
 
   get name() {
-    return this.type === "rpc" ? `Squeak RPC ${this.port}` : this.path;
+    return ({
+      browser: () => this.connectionOptions.path,
+      rpc: () => `Squeak RPC ${this.connectionOptions.port}`,
+      yaros: () => `Yaros ${this.connectionOptions.path} (${this.connectionOptions.ports.join('/')})`,
+    }[this.type]());
   }
 
   async open() {
-    if (this.type === "rpc") {
-      window.sqEval = async (x) => {
-        const res = await fetch(`http://localhost:${this.port}/sbEval`, {
-          method: "POST",
-          body: x,
-        });
-        return await res.text();
-      };
-    } else {
-      await runHeadless(config.baseURL + this.path);
-      await wait(1000);
-    }
+    await ({
+      browser: () => this.openBrowser(),
+      rpc: () => this.openRPC(),
+      yaros: () => this.openYaros(),
+    }[this.type]());
+
+    // performance measurements
+    const _sqEval = window.sqEval;
+    window.sqEval = async (x) => {
+      const start = performance.now();
+      const res = await _sqEval(x);
+      const end = performance.now();
+      (window.times ??= []).push(end - start);
+      console.log(`sqEval ${x} took ${end - start}ms`);
+      return res;
+    };
 
     for (const window of (this.restore ?? [])) {
       console.assert(window.type === "browser");
@@ -93,6 +105,53 @@ export class SqueakProject extends Project {
         }
       );
     }
+  }
+
+  async openBrowser() {
+    await runHeadless(config.baseURL + this.connectionOptions.path);
+    await wait(1000);
+    // sqEval is now bootstrapped from the start-up logic in the image
+    // E.g., the image could contain the following in a startUp method or at the bottom of REPLCleaner class>>#cleanupImage (using https://github.com/hpi-swa-lab/cloud-squeak):
+    // JS window at: #sqEval put: [:text | Compiler evaluate: text].
+  }
+
+  async openRPC() {
+    window.sqEval = async (x) => {
+      const res = await fetch(`http://localhost:${this.connectionOptions.port}/sbEval`, {
+        method: "POST",
+        body: x,
+      });
+      return await res.text();
+    };
+  }
+
+  async openYaros() {
+    await this.openBrowser();
+
+    window.sqEvalBrowser = window.sqEval;
+    await window.sqEval(`
+      Transcript showln: 'Starting yaros...'.
+      Smalltalk at: #Yaros2 put: (YarosServer new
+        connector:
+          ((YarosHTTPPollingClientConnector remoteName: 'localhost' clientPort: ${this.connectionOptions.ports[0]} serverPort: ${this.connectionOptions.ports[1]})
+            webClientFactory: (MessageSend receiver: YarosJSWebClient selector: #new));
+        yourself).
+      Yaros2 start.
+      Transcript showln: 'Started ' , Yaros2.
+      JS Promise new: [:startResolve :startReject |
+        [[| remoteCompiler |
+        remoteCompiler := Yaros2 remoteObjectNamed: #Compiler.
+        Transcript showln: 'yaros: found remote compiler'.
+        startResolve call: nil with:
+          (JS window at: #sqEval put: [:text |
+            JS Promise new: [:resolve :reject |
+              [[resolve call: nil with: (remoteCompiler evaluate: text)]
+                on: Error do: [:ex | reject call: nil with: ex asString]]
+                  fork]])]
+          on: Error do: [:ex | startReject call: nil with: ex asString]]
+            fork].
+    `);
+    await wait(1000);
   }
 
   renderBackground() {

@@ -14,20 +14,25 @@ const PROJECT_TYPES = {
     path: "./file-project/main.js",
     name: "FileProject",
     label: "Open Folder",
-    createArgs: () => [prompt()],
+    createArgs: () => ({ folder: prompt() }),
   },
   SqueakProject: {
     path: "./squeak-project/main.js",
     name: "SqueakProject",
     label: "Squeak Image",
     createArgs: async () => {
-      const type = await choose(["browser", "rpc"]);
-      return [
+      const type = await choose(["browser", "rpc", "yaros"]);
+      return {
         type,
-        type === "rpc"
-          ? withDo(prompt("Port? (9823)"), (p) => (p ? parseInt(p) : 9823))
-          : prompt("Path?"),
-      ];
+        connectionOptions: {
+          "browser": () => ({ path: prompt("Path?", 'external/squeak-minimal.image') }),
+          "rpc": () => ({ port: withDo(prompt("Port?", 9823), (p) => parseInt(p)) }),
+          "yaros": () => ({
+            path: prompt("Path?", 'external/squeak-minimal-yaros.image'),
+            ports: withDo(prompt("Ports?", '8085/8084'), (p) => p.split('/').map(x => parseInt(x))),
+          }),
+        }[type](),
+      };
     },
   },
 };
@@ -167,7 +172,7 @@ function Sandblocks() {
         const desc = await choose(Object.values(PROJECT_TYPES), (i) => i.label);
         if (!desc) return;
         const project = new (await loadProjectType(desc))(
-          ...(await desc.createArgs())
+          await desc.createArgs()
         );
         await project.open();
         setOpenProjects((p) => [...p, project]);

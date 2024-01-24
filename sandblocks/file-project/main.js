@@ -9,9 +9,9 @@ export class FileProject extends Project {
     return new FileProject(obj.path);
   }
 
-  constructor(path) {
+  constructor(options) {
     super();
-    this.path = path;
+    ({ folder: this.path } = options);
   }
 
   get name() {
