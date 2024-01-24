@@ -50,9 +50,7 @@ class _EditableElement extends HTMLElement {
   }
 
   select() {
-    this.editor.changeSelection((selection) =>
-      selection.selectAllChildren(this)
-    );
+    this.editor.selectRange(...this.range);
   }
 
   findTextForCursor(cursor) {

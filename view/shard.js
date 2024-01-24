@@ -11,7 +11,6 @@ import {
   withDo,
   rangeDistance,
   rangeEqual,
-  parentWithTag,
   rangeShift,
 } from "../utils.js";
 import { Block } from "./elements.js";
@@ -217,11 +216,9 @@ export class Shard extends HTMLElement {
     // FIXME necessary? if so, creates a loop with the selection's focus logic
     // this.editor.focusShard(this);
     // super.focus();
-    if (this._lastSelectionRange) {
-      this.editor.changeSelection((selection) => {
-        selection.addRange(this._lastSelectionRange);
-      });
-    } else super.focus();
+    if (this._lastSelectionRange)
+      ShardSelection.change(this._lastSelectionRange);
+    else super.focus();
   }
 
   isMyMutation(mutation) {
@@ -255,41 +252,6 @@ export class Shard extends HTMLElement {
 
   get node() {
     return this.source;
-  }
-
-  // extract the current DOM selection.
-  // to be used only after DOM changes have been reconciled with the model.
-  _extractSelectionRange() {
-    const range = getSelection().getRangeAt(0);
-    this._lastSelectionRange = range;
-    return this._rangeForSelection(range);
-  }
-
-  _rangeForSelection(range) {
-    const start = this._indexForSelection(
-      range.startContainer,
-      range.startOffset
-    );
-    const end = this._indexForSelection(range.endContainer, range.endOffset);
-    const selectionRange = [start, end].sort((a, b) => a - b);
-    return {
-      selectionRange,
-      view: this.closestElementForRange(selectionRange),
-    };
-  }
-
-  _indexForSelection(node, offset) {
-    const ref =
-      node instanceof window.Text
-        ? node
-        : node.childNodes[Math.min(offset, node.childNodes.length - 1)];
-
-    const parent = ref.range
-      ? ref
-      : followingElementThat(ref, -1, (n) => !!n.range);
-    if (node.parentElement === parent && node instanceof window.Text)
-      return parent.range[0] + offset;
-    else return parent.range[offset >= node.childNodes.length ? 1 : 0];
   }
 
   // combined operation to find the source string and cursor range
@@ -440,6 +402,31 @@ export class Shard extends HTMLElement {
     return range;
   }
 
+  _indexForRange(node, offset) {
+    const ref =
+      node instanceof window.Text
+        ? node
+        : node.childNodes[Math.min(offset, node.childNodes.length - 1)];
+
+    const parent = ref.range
+      ? ref
+      : followingElementThat(ref, -1, (n) => !!n.range);
+    if (node.parentElement === parent && node instanceof window.Text)
+      return parent.range[0] + offset;
+    else return parent.range[offset >= node.childNodes.length ? 1 : 0];
+  }
+
+  takeSelection(range) {
+    const start = this._indexForRange(range.startContainer, range.startOffset);
+    const end = this._indexForRange(range.endContainer, range.endOffset);
+    const selectionRange = [start, end].sort((a, b) => a - b);
+
+    this.editor.selection.informChange(
+      this.closestElementForRange(selectionRange) ?? this,
+      selectionRange
+    );
+  }
+
   ////////////////////////////////////
   // Selection API
   ////////////////////////////////////
@@ -452,10 +439,7 @@ export class Shard extends HTMLElement {
     if (!view && range[0] === this.range[0]) view = this;
     console.assert(view);
 
-    if (!testOnly)
-      this.editor.changeSelection((selection) =>
-        selection.addRange(selectionRange)
-      );
+    if (!testOnly) ShardSelection.change(selectionRange);
     return view;
   }
   sbSelectAtBoundary(part, atStart) {
@@ -471,7 +455,7 @@ export class Shard extends HTMLElement {
       else sel.setStart(this, this.childNodes.length);
     }
     sel.collapse(true);
-    this.editor.changeSelection((selection) => selection.addRange(sel));
+    ShardSelection.change(sel);
 
     return { view: part ?? this.closestElementForRange(range), range };
   }
@@ -489,8 +473,10 @@ export class Shard extends HTMLElement {
       const currentSel = sel.getRangeAt(0).cloneRange();
       sel.modify("move", delta > 0 ? "forward" : "backward", "character");
       const newSel = sel.getRangeAt(0).cloneRange();
-      sel.removeAllRanges();
-      sel.addRange(currentSel);
+
+      ShardSelection.noteModification();
+      ShardSelection.change(currentSel);
+
       selectionChangesEditables =
         nodeEditableForPart(newSel.commonAncestorContainer) !== this;
     }
@@ -533,3 +519,57 @@ export class Shard extends HTMLElement {
     return el;
   }
 }
+
+// singleton listening to selection change sand associating them
+// with shards
+class _ShardSelection {
+  range = null;
+  shard = null;
+
+  _ignoreCounter = 0;
+
+  constructor() {
+    document.addEventListener("selectionchange", () =>
+      this.onSelectionChange()
+    );
+  }
+
+  _deselect() {
+    this.range = null;
+    this.shard = null;
+  }
+
+  noteModification() {
+    this._ignoreCounter++;
+  }
+
+  onSelectionChange() {
+    if (this._ignoreCounter > 0) {
+      this._ignoreCounter--;
+      return;
+    }
+
+    const selection = getSelection();
+    if (selection.type === "None" || selection.rangeCount === 0)
+      return this._deselect();
+
+    this.shard = orParentThat(
+      selection.anchorNode,
+      (x) => x.tagName === "SB-SHARD"
+    );
+    if (!this.shard) return this._deselect();
+
+    this.range = selection.getRangeAt(0);
+
+    this.shard.takeSelection(this.range);
+  }
+
+  change(newRange) {
+    const s = getSelection();
+    this._ignoreCounter += 2;
+    s.removeAllRanges();
+    s.addRange(newRange);
+  }
+}
+
+export const ShardSelection = new _ShardSelection();

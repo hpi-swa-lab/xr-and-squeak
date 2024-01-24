@@ -1,6 +1,6 @@
 "enable sandblocks";
 
-let a = 1;
+let a = 12;
 
 function hello() {
   const a = [

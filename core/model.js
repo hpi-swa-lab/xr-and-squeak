@@ -138,7 +138,8 @@ class SBNode {
   }
 
   get preferForSelection() {
-    return true;
+    // named or likely a keyword
+    return this.named || this.text.match(/^[A-Za-z]+$/);
   }
 
   updateModelAndView(text) {

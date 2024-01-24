@@ -130,27 +130,34 @@ export class Editor extends HTMLElement {
     this.interactionMode = "text";
 
     this.selection = new SBSelection();
+    this.selection.addEventListener("caretChange", () => this.onCaretChange());
+  }
 
-    this.selection.addEventListener("viewChange", () => {
-      const s = this.selection;
-      this.selected =
-        s.range && s.lastEditable?.tagName === "SB-SHARD"
-          ? s.lastEditable.findSelectedForRange(s.range)
-          : null;
+  onCaretChange() {
+    this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
 
+    if (this.selection.isExact && !this.hideSelection.isConnected) {
+      this.appendChild(this.hideSelection);
+    } else if (!this.selection.isExact && this.hideSelection.isConnected) {
+      this.removeChild(this.hideSelection);
+    }
+
+    this.maybeViewChange();
+  }
+
+  maybeViewChange() {
+    const s = this.selection;
+    const oldSelected = this.selected;
+    this.selected =
+      s.range && s.lastEditable?.tagName === "SB-SHARD"
+        ? s.lastEditable.findSelectedForRange(s.range)
+        : null;
+
+    if (this.selected !== oldSelected) {
       this.suggestions.onSelected(this.selected);
       if (this.selected?.node)
         this.extensionsDo((e) => e.process(["selection"], this.selected.node));
-    });
-    this.selection.addEventListener("caretChange", () => {
-      this.extensionsDo((e) => e.process(["caret"], this.selected?.node));
-
-      if (this.selection.isExact && !this.hideSelection.isConnected) {
-        this.appendChild(this.hideSelection);
-      } else if (!this.selection.isExact && this.hideSelection.isConnected) {
-        this.removeChild(this.hideSelection);
-      }
-    });
+    }
   }
 
   replaceSelection(text) {
@@ -383,16 +390,7 @@ export class Editor extends HTMLElement {
     // this.setText(sourceString, null, cursorRange);
   }
 
-  connectedCallback() {
-    document.addEventListener(
-      "selectionchange",
-      (this.selectionHandler = this.onSelectionChange.bind(this))
-    );
-  }
-
   disconnectedCallback() {
-    document.removeEventListener("selectionchange", this.selectionHandler);
-
     this.extensionsDo((e) => e.process(["extensionDisconnected"], this.source));
   }
 
@@ -456,26 +454,6 @@ export class Editor extends HTMLElement {
     }
 
     queueMicrotask(() => this.dispatchEvent(new CustomEvent("loaded")));
-  }
-
-  changeSelection(cb) {
-    const selection = getSelection();
-    selection.removeAllRanges();
-    cb(selection);
-  }
-
-  onSelectionChange() {
-    if (document.activeElement.tagName !== "SB-SHARD") return;
-
-    const selection = getSelection();
-    // no selection -- this typically means that we are in the process of changing selections
-    if (selection.type === "None") return;
-
-    const shard = parentWithTag(selection.anchorNode, "SB-SHARD");
-    if (shard?.editor !== this) return;
-
-    const { selectionRange, view } = shard._extractSelectionRange() ?? {};
-    this.selection.informChange(view ?? shard, selectionRange);
   }
 
   selectRange(start, end, scrollIntoView = true) {
