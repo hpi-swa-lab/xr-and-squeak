@@ -141,9 +141,7 @@ const Actor = ({ row, col, label }) => {
         ...gridElementStyle(col, row),
         fontWeight: 600,
         padding: "16px 16px",
-        borderRadius: "4px",
-        backgroundColor: "#eee",
-        border: "1px solid gray",
+        border: "1px solid black",
         margin: "0 8px",
         width: "fit-content",
         height: "min-content",
@@ -164,8 +162,8 @@ const Action = ({ row, col, label, msgs }) => {
         ...gridElementStyle(col, row),
         width: `${actionLineWidth}%`,
         height: `calc(2em * ${msgs.length + 1})`,
-        border: "1px solid gray",
-        backgroundColor: "#eee",
+        border: "1px solid black",
+        backgroundColor: "white",
         marginLeft: "calc(50% - 1.5%)",
         marginTop: `${delayActionStartPx}px`,
     }
@@ -250,7 +248,7 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
 
     const lineStyle = {
         stroke: "black",
-        strokeWidth: 2,
+        strokeWidth: 1.5,
         markerEnd: "url(#arrow)",
     }
 
@@ -261,12 +259,6 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
         paintOrder: "stroke",
     }
 
-    const dottedLine = {
-        ...lineStyle,
-        strokeDasharray: "2 2",
-    }
-
-
     return html`
     <svg style=${svgStyle}>
             <defs>
@@ -276,8 +268,8 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
                     viewBox="0 0 10 10"
                     refX="10"
                     refY="5"
-                    markerWidth="6"
-                    markerHeight="6"
+                    markerWidth="5"
+                    markerHeight="5"
                     orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10 z" />
                 </marker>
@@ -327,11 +319,6 @@ const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
 }
 
 const EdgePickerButton = (props) => {
-    const buttonStyle = {
-        padding: "4px",
-        margin: "4px"
-    }
-
     useEffect(() => {
         // onMouseLeave is not called if the button gets removed while the mouse is still on it
         // so we need to manually call it
@@ -341,8 +328,7 @@ const EdgePickerButton = (props) => {
     }, [])
 
     return html`
-        <button style=${buttonStyle} ...${props} />
-    `
+    <button class="edgepicker" ...${props} />`
 }
 
 const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCurrNode, setPreviewEdge }) => {
@@ -536,5 +522,25 @@ const GraphProvider = () => {
 
 export const SequenceDiagram = () => {
 
-    return html`<${GraphProvider} />`
+    return [
+        html`
+        <style>
+            .edgepicker {
+                background: white;
+                border: 1px solid black;
+                box-sizing: border-box;
+                padding: 8px;
+                margin: 0 4px 4px 4px;
+                text-align: center;
+                cursor: pointer;
+                touch-action: manipulation;
+            }
+
+            .edgepicker:hover {
+                background-color: rgb(240,240,241);
+            }
+        </style>
+        `,
+        html`<${GraphProvider} />`
+    ]
 }
