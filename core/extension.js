@@ -154,7 +154,7 @@ export class Extension {
 }
 
 export function needsSelection(x) {
-  return !!x.editor.selected;
+  return !!x.editor?.selected;
 }
 
 export class ExtensionInstance {

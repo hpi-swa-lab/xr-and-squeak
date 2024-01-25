@@ -9,10 +9,23 @@ export class Project extends EventTarget {
 
   get name() {}
 
-  async writeFile(path, source) {}
+  async writeFile(path, source) {
+    throw new Error("writeFile not implemented");
+  }
 
   async readFile(path) {
     return (await this.readFiles([path]))[0].data;
+  }
+
+  _data = new Map();
+  data(key, ifAbsent) {
+    if (this._data.has(key)) return this._data.get(key);
+    const value = ifAbsent();
+    this._data.set(key, value);
+    return value;
+  }
+  clearData(key) {
+    this._data.delete(key);
   }
 
   activeSemantics = [];

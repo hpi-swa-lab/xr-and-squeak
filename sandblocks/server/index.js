@@ -131,9 +131,10 @@ cp ${repoName}.wasm ${upToRoot}/../../../external/${repoName}.wasm"`);
     const weakProc = new WeakRef(proc);
     cleanup.push(() => weakProc.deref()?.kill());
 
-    const writeCallback = (req) => {
+    const writeCallback = (req, complete) => {
       if (req.pid === pid)
         proc.stdin.write(binary ? Buffer.from(req.data, "base64") : req.data);
+      complete({});
     };
     const closeCallback = (req) => {
       if (req.pid === pid) proc.stdin.end();
