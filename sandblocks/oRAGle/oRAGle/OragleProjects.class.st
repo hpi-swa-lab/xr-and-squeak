@@ -14,7 +14,27 @@ Class {
 }
 
 {
-	#category : #'class initialization',
+	#category : #'initialize-release',
+	#'squeak_changestamp' : 'ct 1/25/2024 18:16'
+}
+OragleProjects class >> cleanUp: aggressive [
+
+	aggressive ifTrue:
+		[self cleanUpObjects].
+]
+
+{
+	#category : #queries,
+	#'squeak_changestamp' : 'ct 1/25/2024 18:15'
+}
+OragleProjects class >> cleanUpObjects [
+
+	Objects removeAll.
+	ObjectsInversed removeAll.
+]
+
+{
+	#category : #'initialize-release',
 	#'squeak_changestamp' : 'ct 1/25/2024 12:22'
 }
 OragleProjects class >> initialize [
