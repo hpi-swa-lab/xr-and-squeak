@@ -1,4 +1,4 @@
-export const socket = io();
+export const socket = window.io ? io() : null;
 export function request(name, data) {
   return new Promise((resolve, reject) => {
     socket.emit(name, data, (ret) => {
