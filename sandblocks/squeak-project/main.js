@@ -100,7 +100,7 @@ export class SqueakProject extends Project {
       const res = await _sqEval(x);
       const end = performance.now();
       (window.times ??= []).push(end - start);
-      console.log(`sqEval ${x} took ${end - start}ms`);
+      console.debug(`sqEval ${x} took ${end - start}ms`);
       return res;
     };
 
