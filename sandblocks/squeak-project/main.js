@@ -119,8 +119,10 @@ export class SqueakProject extends Project {
         ^ result asJsonString
       `));
       Object.assign(result, {
-        _sqQuery: (query) => sqQuery(result, query),
-        _sqAppendQuery: (query) => Object.assign(result, result._sqQuery(query)),
+        _sqQuery: async (query) => await sqQuery(result, query),
+        _sqUpdateQuery: async (query) => Object.assign(result, await result._sqQuery(
+          // top-level structure must equal existing object
+          typeof query !== 'object' ? [query] : query)),
       });
       return result;
     };
