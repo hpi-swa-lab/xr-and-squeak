@@ -238,7 +238,7 @@ class LinePositioning extends Component {
     }
 
     /** yRelativePosition is the percentage [0,1] where the message starts and ends */
-    render({ fromCol, toCol, row, label, yRelativePosition, lines, setLines }) {
+    render({ fromCol, toCol, row, label, yRelativePosition, setLines }) {
         return html`
             <div ref=${this.refFrom} style=${gridElementStyle(fromCol, row)}></div>
             <div ref=${this.refTo} style=${gridElementStyle(toCol, row)}></div>
@@ -379,8 +379,8 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
                     ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
                     ${vizData.map((_, i) => html`<div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${i + 2}`, zIndex: 3 }} class="test" onClick=${() => toggle(i)}></div>`)}
                     ${inspectEdge !== null ? html`
-                        <div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${inspectEdge + 3}`, zIndex: 3, display: "flex" }}>
-                            <div style=${{ backgroundColor: "#eeeeee", display: "flex", flexDirection: "column", justifyContent: "flex-start", width: "100%", padding: "16px" }}>
+                        <div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${inspectEdge + 3} / 40`, zIndex: 3, display: "flex", pointerEvents: "none" }}>
+                            <div style=${{ backgroundColor: "#eeeeee", display: "flex", flexDirection: "column", justifyContent: "flex-start", width: "100%", padding: "16px", height: "min-content", pointerEvents: "auto" }}>
                                 <h4>${vizData[inspectEdge].label}</h4>
                                 <button>Reset to this action</button>
                             </div>
