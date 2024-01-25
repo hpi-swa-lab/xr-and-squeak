@@ -104,6 +104,27 @@ export class SqueakProject extends Project {
       return res;
     };
 
+    window.sqEscapeString = (string) => string.replaceAll("'", "''");
+
+    window.sqQuery = async (sqObjectOrrExpression, query = {}) => {
+      const result = JSON.parse(await sqEval(`
+        | object result |
+        object := '${sqEscapeString(JSON.stringify(sqObjectOrrExpression))}' parseAsJson.
+        object ifNotNil:
+          [object := (object respondsTo: #_sqId)
+            ifTrue: [OragleProjects objectForId: object _sqId]
+            ifFalse: [Compiler evaluate: object]].
+        query := '${sqEscapeString(JSON.stringify(query))}' parseAsJson.
+        result := OragleProjects resolveQuery: query for: object.
+        ^ result asJsonString
+      `));
+      Object.assign(result, {
+        _sqQuery: (query) => sqQuery(result, query),
+        _sqAppendQuery: (query) => Object.assign(result, result._sqQuery(query)),
+      });
+      return result;
+    };
+
     for (const window of (this.restore ?? [])) {
       console.assert(window.type === "browser");
       openComponentInWindow(
@@ -495,7 +516,7 @@ const base = new Extension()
     widget.result = JSON.parse(
       await sqEval(`
         [| result |
-        result := Compiler evaluate: '${x.editor.textForShortcut.replaceAll("'", "''")}'.
+        result := Compiler evaluate: '${sqEscapeString(x.editor.textForShortcut)}'.
         [result printString asJsonString]
           on: Error , Warning , Halt do: [:ex | ('<print error: {1}>' format: {ex}) asJsonString]]
             on: UndeclaredVariableNotification do: [:ex | ('⚡ undeclared: ' , (ex instVarNamed: 'name')) asJsonString]
