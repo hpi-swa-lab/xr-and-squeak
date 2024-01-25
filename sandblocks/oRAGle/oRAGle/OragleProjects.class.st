@@ -172,7 +172,7 @@ OragleProjects class >> resolveQuery: query for: anObject [
 			for: anObject].
 	
 	results := JsonObject new.
-	results _sqQuery: query.
+	results _sqOriginalQuery: query.
 	query keysAndValuesDo: [:key :value |
 		| expression nestedQuery result |
 		true caseOf:
@@ -231,7 +231,7 @@ OragleProjects class >> serialize: anObject [
 
 {
 	#category : #'queries-private',
-	#'squeak_changestamp' : 'ct 1/25/2024 14:05'
+	#'squeak_changestamp' : 'ct 1/25/2024 16:19'
 }
 OragleProjects class >> serialize: anObject ifNotPrimitiveObject: aBlock [
 
@@ -239,7 +239,7 @@ OragleProjects class >> serialize: anObject ifNotPrimitiveObject: aBlock [
 		ifTrue: [^ anObject].
 	anObject isCharacter
 		ifTrue: [^ anObject asString].
-	(anObject respondsTo: #_sqQuery)
+	(anObject respondsTo: #_sqId)
 		ifTrue: [^ anObject].
 	
 	^ aBlock value
