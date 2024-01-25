@@ -2,15 +2,25 @@ Extension { #name : #Collection }
 
 {
 	#category : #'*Oragle',
-	#'squeak_changestamp' : 'ct 1/25/2024 14:15'
+	#'squeak_changestamp' : 'ct 1/25/2024 18:54'
 }
-Collection >> oragleDefaultQuery [
+Collection >> oragleDefaultQuery: nonShallow [
 
 	^ Array streamContents: [:stream |
-		1 to: self size do: [:index |
-			| serialized |
-			serialized := OragleProjects serialize: (self at: index) ifNotPrimitiveObject: [Object].
-			serialized ~= Object ifTrue:
-				["primitive"
-				stream nextPut: index asString -> [serialized]]]]
+		self withIndexDo: [:ea :index |
+			| serialized value |
+			serialized := OragleProjects serialize: ea ifNotPrimitiveObject: [Object].
+			value := serialized ~= Object
+				ifTrue:
+					["primitive"
+					[serialized]]
+				ifFalse:
+					[nonShallow ifTrue:
+						[[(OragleProjects
+								resolveQuery: ea oragleDefaultQuery
+								for: ea)
+									removeKey: #_sqOriginalQuery;
+									yourself]]].
+			value ifNotNil:
+				[stream nextPut: index asString -> value]]]
 ]

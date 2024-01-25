@@ -129,6 +129,12 @@ OragleProjects
 OragleProjects class >> resolveQuery: query for: anObject [
 
 	| results |
+	query ifNil:
+		[^ (self
+			resolveQuery: (anObject oragleDefaultQuery: true)
+			for: anObject)
+				removeKey: #_sqOriginalQuery;
+				yourself].
 	query isString ifTrue:
 		[results := self resolveQuery: {query} for: anObject.
 		^ query = '[]'

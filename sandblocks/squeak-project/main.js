@@ -106,7 +106,7 @@ export class SqueakProject extends Project {
 
     window.sqEscapeString = (string) => string.replaceAll("'", "''");
 
-    window.sqQuery = async (sqObjectOrExpression, query = {}) => {
+    window.sqQuery = async (sqObjectOrExpression, query) => {
       const result = JSON.parse(await sqEval(`
         | object result |
         object := '${sqEscapeString(JSON.stringify(sqObjectOrExpression))}' parseAsJson.
@@ -114,7 +114,7 @@ export class SqueakProject extends Project {
           [object := (object respondsTo: #_sqId)
             ifTrue: [OragleProjects objectForId: object _sqId]
             ifFalse: [Compiler evaluate: object]].
-        query := '${sqEscapeString(JSON.stringify(query))}' parseAsJson.
+        query := '${sqEscapeString(JSON.stringify(query ?? null))}' parseAsJson.
         result := OragleProjects resolveQuery: query for: object.
         ^ result asJsonString
       `));
