@@ -107,6 +107,7 @@ export class SqueakProject extends Project {
     window.sqEscapeString = (string) => string.replaceAll("'", "''");
 
     window.sqQuery = async (sqObjectOrExpression, query) => {
+      if (query?._sqId) query = (({ _sqId }) => ({ _sqId }))(query); // optimization
       const result = JSON.parse(await sqEval(`
         | object result |
         object := '${sqEscapeString(JSON.stringify(sqObjectOrExpression))}' parseAsJson.
@@ -120,6 +121,7 @@ export class SqueakProject extends Project {
       `));
       Object.assign(result, {
         _sqQuery: async (query) => await sqQuery(result, query),
+        // FIXME: update should deep merge new values and abort for all nested objects not explicitly requested by query
         _sqUpdateQuery: async (query) => Object.assign(result, await result._sqQuery(
           // top-level structure must equal existing object
           typeof query !== 'object' ? [query] : query)),
