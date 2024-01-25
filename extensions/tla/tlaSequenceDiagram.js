@@ -349,6 +349,8 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
         position: "relative", // necessary for relative positioning of messages to this element
         display: "grid",
         gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
+        width: "100%",
+        height: "min-content",
     }
 
     const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === a))
@@ -385,14 +387,13 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
     }
 
     const diagramContainerStyle = {
-        position: "sticky", top: 0, zIndex: 3, background: "white",
         padding: "16px 32px 16px 16px",
         boxShadow: "rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px"
     }
 
 
     return html`
-        <div style=${{ display: "flex", flexDirection: "column" }}>
+        <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0" }}>
             <div style=${diagramContainerStyle}>
                 <div style=${{ ...gridWrapperStyle, gridGap: "16px" }}>
                     ${actors.map((a, i) => html`
@@ -427,14 +428,16 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
                     `)}
                 </div>
             </div>
-            <div style=${{ ...gridWrapperStyle, padding: "16px 32px 16px 16px" }}>
-                ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
-                ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
-                ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-                <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
-                <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
-                <!-- last row with fixed height to still show some of the lifeline -->
-                ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
+            <div style=${{ padding: "16px 32px 16px 16px", display: "flex", flex: "1 0 0", overflowY: "scroll" }}>
+                <div style=${{ ...gridWrapperStyle }}>
+                    ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
+                    ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
+                    ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
+                    <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
+                    <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
+                    <!-- last row with fixed height to still show some of the lifeline -->
+                    ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
+                </div>
             </div>
         </div>
         `
@@ -478,8 +481,7 @@ const State = ({ graph, initNode }) => {
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        height: 0, // don't know why, but this is necessary to make the diagram scroll
-        flexGrow: 1,
+        flex: "1 0 0",
         overflowY: "auto"
     }
 
