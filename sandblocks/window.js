@@ -164,6 +164,7 @@ export function Window({
   left: calc(50% - 8px);
   top: calc(50% - 8px);
   cursor: nwse-resize;
+  z-index: 999999999;
 }
 
 .sb-window-content {
