@@ -110,14 +110,14 @@ export class SqueakProject extends Project {
       if (query?._sqId) query = (({ _sqId }) => ({ _sqId }))(query); // optimization
       const result = JSON.parse(await sqEval(`
         | object result |
-        object := '${sqEscapeString(JSON.stringify(sqObjectOrExpression))}' parseAsJson.
+        object := '${sqEscapeString(JSON.stringify(sqObjectOrExpression))}' withSqueakLineEndings parseAsJson.
         object ifNotNil:
           [object := (object respondsTo: #_sqId)
             ifTrue: [OragleProjects objectForId: object _sqId]
             ifFalse: [Compiler evaluate: object]].
-        query := '${sqEscapeString(JSON.stringify(query ?? null))}' parseAsJson.
+        query := '${sqEscapeString(JSON.stringify(query ?? null))}' withSqueakLineEndings parseAsJson.
         result := OragleProjects resolveQuery: query for: object.
-        ^ result asJsonString
+        ^ result asJsonString copyReplaceAll: '\\r' with: '\\r\\n'
       `));
       Object.assign(result, {
         _sqQuery: async (query) => await sqQuery(result, query),
