@@ -161,102 +161,83 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 OragleProjects >> copilotWithoutScripts [
 <sandblocksExtensions: #(oragle:base)>
 
-| codeSample postcard handcrafted longPrompt module input inputs prefix |
+| codeSample postcard handcrafted longPrompt |
 longPrompt := 'You are an expert programmer, assisting in completing code snippets. You do not add comments, only complete statements. If the given prefix to be completed is the start of a function, you may complete the entire function but only do so, if you can complete it without elision. Answer only the code that is to be inserted.'.
 
 codeSample := Text codeSample.
 postcard := '''\\Example>>'' withCRs, codeSamle'.
 handcrafted := (Collection >> #do:) getSource.
 
-module := OragleSequenceModule new
-	separator: String cr , String cr;
-	children:
-		{OragleSequenceModule new
-			label: 'completion prefix';
-			state: #enabled;
+^ OragleProject new
+	root:
+		(OragleSequenceModule new
 			separator: String cr , String cr;
 			children:
-				{OragleAlternation new
+				{OragleSequenceModule new
+					label: 'completion prefix';
+					state: #enabled;
+					separator: String cr , String cr;
 					children:
-						{OragleLeafModule new
-							content:
-'toIsometric: aPoint
-
-	"Return a new point in isometric view"
-	^ '};
-						state: #enabled}.
-		OragleSequenceModule new
-			label: 'languageKnowledge';
-			state: #enabled;
-			separator: String cr , String cr;
-			children:
-				{OragleAlternation new
-					children: {
-						OragleLeafModule new
-							content: '';
-							label: 'noKnowledge';
-							state: #enabled.
-						OragleSequenceModule new
-							label: 'someKnowledge';
+						{OragleAlternation new
 							children:
 								{OragleLeafModule new
-									content: 'This is a of Smalltalk code:';
+									content:
+		'toIsometric: aPoint
+
+			"Return a new point in isometric view"
+			^ '};
+								state: #enabled}.
+				OragleSequenceModule new
+					label: 'languageKnowledge';
+					state: #enabled;
+					separator: String cr , String cr;
+					children:
+						{OragleAlternation new
+							children: {
+								OragleLeafModule new
+									content: '';
+									label: 'noKnowledge';
 									state: #enabled.
-								OragleAlternation new children: {OragleLeafModule new
-									content: postcard;
-									state: #enabled.OragleLeafModule new content: handcrafted}}
-					}}.
-		OragleSequenceModule new
-			label: 'context';
-			state: #enabled;
-			separator: String cr, String cr;
-			children:
-				{
-					OragleLeafModule new
-						label: 'context';
-						content: 
+								OragleSequenceModule new
+									label: 'someKnowledge';
+									children:
+										{OragleLeafModule new
+											content: 'This is a of Smalltalk code:';
+											state: #enabled.
+										OragleAlternation new children: {OragleLeafModule new
+											content: postcard;
+											state: #enabled.OragleLeafModule new content: handcrafted}}
+							}}.
+				OragleSequenceModule new
+					label: 'context';
+					state: #enabled;
+					separator: String cr, String cr;
+					children:
+						{
+							OragleLeafModule new
+								label: 'context';
+								content: 
 
-'"Smalltalk methods from the code base that are helpful: "
+		'"Smalltalk methods from the code base that are helpful: "
 
-	Point >> x
-		"Answer the x coordinate."
+			Point >> x
+				"Answer the x coordinate."
 
-		^x
+				^x
 
-	Point >> y
-		"Answer the y coordinate."
+			Point >> y
+				"Answer the y coordinate."
 
-		^y
+				^y
 
-	Point>>area
-		^ x * y
+			Point>>area
+				^ x * y
 
-	Point>>normalized
-		"Optimized for speed -- ar 8/26/2001"
-		| r |
-		r := ((x*x) + (y * y)) sqrt.
-		^(x / r) @ (y / r)'.
-				}.
-		}; label: 'copilot'.
-
-inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
-
-	(obj at: #name) -> {
-		prefix.
-		{#withSamples -> {
-			obj at: #languageKnowledge.
-			{'The following snippets from the {1} code base may help:' format: {obj at: #language}}.
-			obj at: #context}.
-		 #withoutSamples -> {}}.
-		{'This code is to be completed:'}.
-		{obj at: #complete}
-	}
-
-]) theThing theThing theThing theThing collect: [:pair | pair key -> ((pair value gather: #yourself) joinSeparatedBy: String cr, String cr)].
-
-(inputs concurrentCollect: [:prompt |
-	prompt key -> {(SemanticConversation new
-		addUserMessage: prompt value;
-		getAssistantReply). prompt}]) as: Dictionary
-
+			Point>>normalized
+				"Optimized for speed -- ar 8/26/2001"
+				| r |
+				r := ((x*x) + (y * y)) sqrt.
+				^(x / r) @ (y / r)'.
+						}.
+				}; label: 'copilot')
 ]
