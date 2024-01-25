@@ -40,6 +40,14 @@ function apply(obj, keys) {
     return result
 }
 
+
+const gridWrapperStyle = {
+    position: "relative", // necessary for relative positioning of messages to this element
+    display: "grid",
+    gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
+    height: "min-content",
+}
+
 /** gives all possible nested key sequences of varTree
  * 
  * @example
@@ -222,15 +230,15 @@ class LinePositioning extends Component {
 
     componentDidMount() {
         const line = this.calcLineData()
-        this.props.setLines([...this.props.lines, line])
+        this.props.setLines(lines => [...lines, line])
     }
 
     componentWillUnmount() {
-        this.props.setLines(this.props.lines.filter(l => l.key !== this.getLabelIdentifier()))
+        this.props.setLines(lines => lines.filter(l => l.key !== this.getLabelIdentifier()))
     }
 
     /** yRelativePosition is the percentage [0,1] where the message starts and ends */
-    render({ fromCol, toCol, row, label, yRelativePosition, lines, setLines }) {
+    render({ fromCol, toCol, row, label, yRelativePosition, setLines }) {
         return html`
             <div ref=${this.refFrom} style=${gridElementStyle(fromCol, row)}></div>
             <div ref=${this.refTo} style=${gridElementStyle(toCol, row)}></div>
@@ -336,6 +344,65 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
 
     const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges
     const vizData = edges.map(e => edgeToVizData(e, varToActor))
+
+    const [inspectEdge, setInspectEdge] = useState(null)
+
+    const toggle = (i) => {
+        setInspectEdge(v => {
+            if (v === i) {
+                return null
+            }
+            return i
+        })
+    }
+
+    return html`
+        <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0" }}>
+            <style>
+                .test {
+                }
+
+                .test:hover {
+                    transition: background-color 0.3s ease-in-out;
+                    background-color: rgb(240,240,241, 0.5);
+                    cursor: pointer;
+                }
+            </style>
+            <div style=${{ padding: "16px 32px 16px 16px", display: "flex", flex: "1 0 0", overflowY: "scroll" }}>
+                <div style=${{ ...gridWrapperStyle, width: "100%" }}>
+                    ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
+                    ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
+                    ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
+                    <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
+                    <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
+                    <!-- last row with fixed height to still show some of the lifeline -->
+                    ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
+                    ${vizData.map((_, i) => html`<div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${i + 2}`, zIndex: 3 }} class="test" onClick=${() => toggle(i)}></div>`)}
+                    ${inspectEdge !== null ? html`
+                        <div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${inspectEdge + 3} / 40`, zIndex: 3, display: "flex", pointerEvents: "none" }}>
+                            <div style=${{ backgroundColor: "#eeeeee", display: "flex", flexDirection: "column", justifyContent: "flex-start", width: "100%", padding: "16px", height: "min-content", pointerEvents: "auto" }}>
+                                <h4>${vizData[inspectEdge].label}</h4>
+                                <button>Reset to this action</button>
+                            </div>
+                        </div>
+                    ` : ""}
+                </div>
+            </div>
+        </div>
+        `
+}
+
+const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPrevEdges }) => {
+    const tableHeaderStyle = {
+        textAlign: "left",
+        fontWeight: "normal"
+    }
+
+    const diagramContainerStyle = {
+        padding: "16px 32px 16px 16px",
+        boxShadow: "rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px"
+    }
+
     const nextEdges = Object.entries(graph.outgoingEdges.get(currNode.id))
 
     const selectNodeFn = ([to, e]) => {
@@ -345,22 +412,13 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
         }
     }
 
-    const gridWrapperStyle = {
-        position: "relative", // necessary for relative positioning of messages to this element
-        display: "grid",
-        gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
-    }
-
     const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === a))
 
-    const tableHeaderStyle = {
-        textAlign: "left",
-        fontWeight: "normal"
-    }
 
     const keySeqs = nestedKeys(currNode.vars)
     const keySeqsActorPairsPerActor = actors.reduce((acc, a) =>
         acc.set(a, keySeqs.filter(keys => apply(varToActor, keys) === a)), new Map())
+
 
     const exportToHTML = (keys) => {
         const value = apply(currNode.vars, keys)
@@ -368,33 +426,26 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
         if (Array.isArray(value) && value.length > 0) {
             return value.map(
                 (v, i) => html`
-                        <tr>
-                            ${i === 0
+                            <tr>
+                                ${i === 0
                         ? html`<td style=${{ rowspan: value.length }}>${keys.join(".")}</td>`
                         : html`<td></td>`}
-                            <td>${JSON.stringify(v)}</td>
-                        </tr>
-                    `)
+                                <td>${JSON.stringify(v)}</td>
+                            </tr>
+                        `)
         }
 
         return html`
-            <tr>
-                <td>${keys.join(".")}</td>
-                <td>${JSON.stringify(value)}</td>
-            </tr>`
-    }
-
-    const diagramContainerStyle = {
-        position: "sticky", top: 0, zIndex: 3, background: "white",
-        padding: "16px 32px 16px 16px",
-        boxShadow: "rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px"
+                <tr>
+                    <td>${keys.join(".")}</td>
+                    <td>${JSON.stringify(value)}</td>
+                </tr>`
     }
 
 
     return html`
-        <div style=${{ display: "flex", flexDirection: "column" }}>
-            <div style=${diagramContainerStyle}>
-                <div style=${{ ...gridWrapperStyle, gridGap: "16px" }}>
+    <div style=${diagramContainerStyle}>
+        <div style=${{ ...gridWrapperStyle, gridGap: "16px" }}>
                     ${actors.map((a, i) => html`
                         <div style=${{ display: "flex", flexDirection: "column", gridColumn: i + 1, gridRow: 1, }}>
                             <h4>${a}</h4>
@@ -410,63 +461,24 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
                                 </tbody>
                             </table>
                         </div>`)}
-                </div>
-                <h4>Choose Next Action</h4>
-                <div style=${gridWrapperStyle}>
-                    ${nextActionsPerActorIndex.map((actions, i) => html`
-                        <div style=${{ gridColumn: i + 1, gridRow: 1, display: "flex", flexDirection: "column" }}>
-                            ${actions.map(([to, e]) => html`
-                                <${EdgePickerButton} 
-                                    onClick=${selectNodeFn([to, e])}
-                                    onMouseEnter=${() => setPreviewEdge(e)}
-                                    onMouseLeave=${() => setPreviewEdge(null)}
-                                    >
-                                    ${e.label + e.parameters}
-                                </${EdgePickerButton}>`)}
-                        </div>
-                    `)}
-                </div>
-            </div>
-            <div style=${{ ...gridWrapperStyle, padding: "16px 32px 16px 16px" }}>
-                ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
-                ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
-                ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-                <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
-                <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
-                <!-- last row with fixed height to still show some of the lifeline -->
-                ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
-            </div>
         </div>
-        `
-}
-
-const Sidebar = ({ currNode }) => {
-
-
-
-    return html`
-        <div style=${containerStyle}>
-            <div>
-                <h3>State around Action</h3>
-                ${actors.map((a, i) => html`
-                    <div style=${{ display: "flex", flexDirection: "column" }}>
-                        <h4>${a}</h4>
-                        <table>
-                            ${i === 0 ? html`<thead>
-                                        <tr>
-                                            <th style=${tableHeaderStyle}>Scope</th>
-                                            <th style=${tableHeaderStyle}>Value</th>
-                                        </tr>
-                                    </thead>` : ""}
-                            <tbody>
-                                ${keySeqsActorPairsPerActor.get(a).map(exportToHTML)}
-                            </tbody>
-                        </table>
-                    </div>
-                `)
-        }
-            </div>
-        </div>`
+        <h4>Choose Next Action</h4>
+        <div style=${gridWrapperStyle}>
+            ${nextActionsPerActorIndex.map((actions, i) => html`
+                <div style=${{ gridColumn: i + 1, gridRow: 1, display: "flex", flexDirection: "column" }}>
+                    ${actions.map(([to, e]) => html`
+                        <${EdgePickerButton} 
+                            onClick=${selectNodeFn([to, e])}
+                            onMouseEnter=${() => setPreviewEdge(e)}
+                            onMouseLeave=${() => setPreviewEdge(null)}
+                            >
+                            ${e.label + e.parameters}
+                        </${EdgePickerButton}>`)}
+                </div>
+            `)}
+        </div>
+    </div>
+    `
 }
 
 const State = ({ graph, initNode }) => {
@@ -478,14 +490,15 @@ const State = ({ graph, initNode }) => {
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        height: 0, // don't know why, but this is necessary to make the diagram scroll
-        flexGrow: 1,
-        overflowY: "auto"
+        flex: "1 0 0",
     }
+
+    const props = { graph, prevEdges, setPrevEdges, previewEdge, setPreviewEdge, currNode, setCurrNode }
 
     return html`
     <div style=${containerStyle}>
-        <${Diagram} ...${{ graph, prevEdges, setPrevEdges, previewEdge, setPreviewEdge, currNode, setCurrNode }} />
+        <${Topbar} ...${props}  />
+        <${Diagram} ...${props} />
     </div>
     `
 }
