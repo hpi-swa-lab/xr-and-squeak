@@ -264,6 +264,8 @@ window.sqSystemChangeCallback = function (e) {
   systemChangeSubscribers.forEach((s) => s(e));
 };
 
+// TODO: Fix order of entries inside panes (yes, valueList and filterMap answer correctly sorted data, order seems to be destroyed later)
+// TODO: Add true instance/class button instead of 'class@' prefixes, add support for meta class definitions
 function SqueakBrowserComponent({ initialClass }) {
   const evJson = async (x) => JSON.parse(await ev(x));
   const ev = async (x) => {
@@ -328,7 +330,7 @@ function SqueakBrowserComponent({ initialClass }) {
   useEffect(async () => {
     if (selectedClass) {
       const map = await evJson(
-        `(Smalltalk at: #${selectedClass}) organization elementCategoryDict asJsonString`
+        `((Smalltalk at: #${selectedClass}) organization elementCategoryDict , ((Smalltalk at: #${selectedClass}) class organization elementCategoryDict associations collect: [:assoc | 'class@' , assoc key -> ('class@' , assoc value)] as: Dictionary)) asJsonString`
       );
       setSelectorCategoryMap(map);
       setSelectedCategory(map[Object.keys(map).sort()[0]]);
@@ -340,7 +342,12 @@ function SqueakBrowserComponent({ initialClass }) {
   useEffect(async () => {
     if (selectedSelector) {
       const source = await evJson(
-        `((Smalltalk at: #${selectedClass}) sourceCodeAt: #${selectedSelector}) string withUnixLineEndings asJsonString`
+        `| selector string |
+        "selectedClass and selectedSelector are sometimes out of sync"
+        string := (((Smalltalk at: #${selectedClass}) ${selectedSelector.startsWith('class@') ? ' class' : ''}) sourceCodeAt: #${selectedSelector.startsWith('class@') ? selectedSelector.slice(6) : selectedSelector} ifAbsent: [])
+          ifNil: ['missing']
+          ifNotNil: [:source | source asString].
+        string withUnixLineEndings asJsonString`
       );
       setSourceString(source);
     } else if (selectedClass) {
@@ -439,7 +446,7 @@ function SqueakBrowserComponent({ initialClass }) {
         onSave: async (source) => {
           if (selectedSelector) {
             await ev(
-              `(Smalltalk at: #${selectedClass})
+              `(Smalltalk at: #${selectedClass}) ${selectedSelector.startsWith('class@') ? ' class' : ''}
               compile: ${saveString(source)}
               classified: ${saveString(selectedCategory)}`
             );
