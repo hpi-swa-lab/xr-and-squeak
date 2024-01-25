@@ -67,7 +67,7 @@ OragleProjects class >> objectForId: id [
 
 {
 	#category : #queries,
-	#'squeak_changestamp' : 'ct 1/25/2024 18:13'
+	#'squeak_changestamp' : 'ct 1/25/2024 19:32'
 }
 OragleProjects class >> queryExamples [
 
@@ -81,7 +81,8 @@ OragleProjects
 		'self extent...' -> {'z' -> {'z' -> 'className'} asDictionary} asDictionary.
 		'self extent....' -> {{'z' -> {'z' -> 'className'} asDictionary} asDictionary}.
 		'self extent.' -> 'self className'.
-		'rectangle' -> 'extent'
+		'rectangle' -> 'extent'.
+		'self extent.....' -> nil.
 		}
 	for: World.
 
@@ -444,7 +445,7 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 
 {
 	#category : #'as yet unclassified',
-	#'squeak_changestamp' : 'ct 1/25/2024 10:52'
+	#'squeak_changestamp' : 'ct 1/25/2024 20:20'
 }
 OragleProjects >> copilotWithoutScripts [
 <sandblocksExtensions: #(oragle:base)>
@@ -457,7 +458,8 @@ postcard := '''\\Example>>'' withCRs, codeSamle'.
 handcrafted := (Collection >> #do:) getSource.
 
 ^ OragleProject new
-	root:
+	label: 'Copilot (without scripts)';
+	rootModule:
 		(OragleSequenceModule new
 			separator: String cr , String cr;
 			children:
@@ -527,5 +529,6 @@ handcrafted := (Collection >> #do:) getSource.
 				r := ((x*x) + (y * y)) sqrt.
 				^(x / r) @ (y / r)'.
 						}.
-				}; label: 'copilot')
+				})
+
 ]

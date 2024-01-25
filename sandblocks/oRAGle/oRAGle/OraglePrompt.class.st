@@ -81,11 +81,12 @@ OraglePrompt >> defaultNumberOfOutputs [
 
 {
 	#category : #private,
-	#'squeak_changestamp' : 'ct 1/22/2024 16:53'
+	#'squeak_changestamp' : 'ct 1/25/2024 19:13'
 }
 OraglePrompt >> generateOutputs [
 
-	self notify: ('about to spend {1}' format: {self priceToGenerateOutputs}).
+	self priceToGenerateOutputs maxCents > 0 ifTrue:
+		[self notify: ('about to spend {1}' format: {self priceToGenerateOutputs})].
 	replies := SemanticConversation new
 		addUserMessage: input;
 		withConfigDo: [:config |

@@ -2,34 +2,53 @@ Class {
 	#name : #OragleProject,
 	#superclass : #Object,
 	#instVars : [
-		'root'
+		'label',
+		'rootModule'
 	],
 	#category : #oRAGle
 }
 
 {
 	#category : #visiting,
-	#'squeak_changestamp' : 'ct 1/25/2024 10:54'
+	#'squeak_changestamp' : 'ct 1/25/2024 20:38'
 }
 OragleProject >> expand [
 
-	^ self root expand
+	^ self rootModule expand
 ]
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'ct 1/25/2024 10:53'
+	#'squeak_changestamp' : 'ct 1/25/2024 20:10'
 }
-OragleProject >> root [
+OragleProject >> label [
 
-	^ root
+	^ label
 ]
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'ct 1/25/2024 10:53'
+	#'squeak_changestamp' : 'ct 1/25/2024 20:10'
 }
-OragleProject >> root: aModule [
+OragleProject >> label: aString [
 
-	root := aModule.
+	label := aString.
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/25/2024 20:10'
+}
+OragleProject >> rootModule [
+
+	^ rootModule
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/25/2024 20:11'
+}
+OragleProject >> rootModule: aModule [
+
+	rootModule := aModule.
 ]
