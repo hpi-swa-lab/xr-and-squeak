@@ -37,7 +37,7 @@ import {} from "../../view/widget-utils.js";
     yourself.
   "optional"
   yaros1 debugLog: Transcript.
-  yaros1 startServer. yaros1 startClient.
+  yaros1 start.
 
   "to stop"
   yaros1 stop.
