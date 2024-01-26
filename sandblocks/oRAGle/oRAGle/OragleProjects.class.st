@@ -14,7 +14,27 @@ Class {
 }
 
 {
-	#category : #'class initialization',
+	#category : #'initialize-release',
+	#'squeak_changestamp' : 'ct 1/25/2024 18:16'
+}
+OragleProjects class >> cleanUp: aggressive [
+
+	aggressive ifTrue:
+		[self cleanUpObjects].
+]
+
+{
+	#category : #queries,
+	#'squeak_changestamp' : 'ct 1/25/2024 18:15'
+}
+OragleProjects class >> cleanUpObjects [
+
+	Objects removeAll.
+	ObjectsInversed removeAll.
+]
+
+{
+	#category : #'initialize-release',
 	#'squeak_changestamp' : 'ct 1/25/2024 12:22'
 }
 OragleProjects class >> initialize [
@@ -47,18 +67,22 @@ OragleProjects class >> objectForId: id [
 
 {
 	#category : #queries,
-	#'squeak_changestamp' : 'ct 1/25/2024 14:53'
+	#'squeak_changestamp' : 'ct 1/25/2024 19:32'
 }
 OragleProjects class >> queryExamples [
 
 OragleProjects
 	resolveQuery:
-		{'extent0' -> 'extent'.
-		'extent' -> {'extent'. {'x'. 'y'}}.
-		'extent2' -> {'extent'.
-			{'x' -> 'x'.
-			'y' -> 'self y'.
-			'area' -> 'self area'}}
+		{'extent0' -> 'extent'. "key is for outer structure, value is message send"
+		'self extent..' -> #('area'). "key is for outer structure and context of nested query, nested query has values in context"
+		'extentFOO' -> {'extent' -> 'className'} asDictionary.
+		'extentBAR' -> {'extent' -> {'x'. 'y'. 'className'}} asDictionary.
+		'self extent' -> {'x'. 'y'. 'className'. {'z' -> 'area'} asDictionary}.
+		'self extent...' -> {'z' -> {'z' -> 'className'} asDictionary} asDictionary.
+		'self extent....' -> {{'z' -> {'z' -> 'className'} asDictionary} asDictionary}.
+		'self extent.' -> 'self className'.
+		'rectangle' -> 'extent'.
+		'self extent.....' -> nil.
 		}
 	for: World.
 
@@ -77,7 +101,7 @@ OragleProjects
 OragleProjects
 	resolveQuery:
 		{'owner' -> 'owner'.
-		'submorphs' -> {'submorphs'. {'1' -> 'self at: 1'}}}
+		'submorphs' -> {{'1' -> 'self at: 1'} asDictionary}}
 	for: World.
 
 OragleProjects
@@ -90,32 +114,55 @@ OragleProjects
 OragleProjects
 	resolveQuery:
 		{'owner' -> 'owner'.
-		'submorphs' -> {'submorphs first: 3'. '[]'}}
+		'submorphs' -> {{{'self first: 3' -> #('size')} asDictionary}}} "TODO: double nested array should exclude some key from result structure"
 	for: World.
 
 OragleProjects
 	resolveQuery:
 		{'owner' -> 'owner'.
-		'submorphs' -> {'submorphs'.
-			{'[]' -> {nil. {'self className'}}}}}
+		'submorphs' -> {{'self first: 3' -> '[]'} asDictionary}}
 	for: World.
 
 OragleProjects
 	resolveQuery:
 		{'owner' -> 'owner'.
-		'submorphs first' -> {'submorphs first'.
-			{'x' -> {nil. {'self className'}}}}}
+		'submorphs' -> 
+			{{'[]' -> 'self className'} asDictionary}}
 	for: World.
-
 
 OragleProjects
 	resolveQuery:
 		{'owner' -> 'owner'.
-		'submorphs' -> {'submorphs'.
+		'submorphs first' -> {'x' -> {'self'}} asDictionary}
+	for: World.
+
+OragleProjects
+	resolveQuery:
+		{'owner' -> 'owner'.
+		'submorphs' -> {
 			{'[]' -> 'self'.
-			'size' -> 'size'}}}
+			'size' -> 'size'} asDictionary}}
 	for: World.
-	
+
+OragleProjects
+	resolveQuery:
+		{'owner' -> 'owner'.
+		'submorphs' -> {
+			{'[]' -> {'self'. 'className'}.
+			'size' -> 'size'} asDictionary}}
+	for: World.
+
+OragleProjects
+	resolveQuery:
+		{'owner' -> 'owner'.
+		'submorphs' -> {
+			{'[]' ->
+				{'self' -> nil.
+				'className' -> 'className'.
+				'position' ->
+					{'x'. 'y'}}.
+			'size' -> 'size'} asDictionary}}
+	for: World.
 
 OragleProjects
 	resolveQuery: 'self first'
@@ -124,11 +171,33 @@ OragleProjects
 
 {
 	#category : #queries,
-	#'squeak_changestamp' : 'ct 1/25/2024 14:51'
+	#'squeak_changestamp' : 'ct 1/25/2024 18:15'
+}
+OragleProjects class >> queryTodos [
+
+	"
+	- dynamic dictionaries ('{}')?
+	- provide _jsTransform for parsing
+		example:
+			const imageFromBase64 = (base64) => {var image = new Image(); image.src = 'data:image/png;base64,' + base64; return image};
+			await sqQuery('Morph new', {image: {'': '(ByteArray streamContents: [:stream | PNGReadWriter putForm: self imageForm onStream: stream]) base64Encoded', _jsTransform: imageFromBase64}})
+	- garbabe collection for objects!
+	"
+]
+
+{
+	#category : #queries,
+	#'squeak_changestamp' : 'ct 1/25/2024 18:33'
 }
 OragleProjects class >> resolveQuery: query for: anObject [
 
 	| results |
+	query ifNil:
+		[^ (self
+			resolveQuery: (anObject oragleDefaultQuery: true)
+			for: anObject)
+				removeKey: #_sqOriginalQuery;
+				yourself].
 	query isString ifTrue:
 		[results := self resolveQuery: {query} for: anObject.
 		^ query = '[]'
@@ -146,7 +215,7 @@ OragleProjects class >> resolveQuery: query for: anObject [
 			for: anObject].
 	
 	results := JsonObject new.
-	results _sqQuery: query.
+	results _sqOriginalQuery: query.
 	query keysAndValuesDo: [:key :value |
 		| expression nestedQuery result |
 		true caseOf:
@@ -166,8 +235,8 @@ OragleProjects class >> resolveQuery: query for: anObject [
 				[expression := nil.
 				nestedQuery := value].
 			[true] ->
-				[expression := value first.
-				nestedQuery := value second.
+				[expression := key = '[]' ifFalse: [key].
+				nestedQuery := value.
 				self assert: nestedQuery notNil]}.
 		result := expression
 			ifNil: [anObject]
@@ -177,17 +246,26 @@ OragleProjects class >> resolveQuery: query for: anObject [
 					[true] ->
 						[(expression ~= 'self' and: [(Scanner isMessageSelector: expression)])
 							ifTrue: [expression := 'self ' , expression].
-						Compiler evaluate: expression for: anObject]}].
+						key = '[]'
+							ifTrue: [anObject collect: [:ea | Compiler evaluate: expression for: ea]]
+							ifFalse: [Compiler evaluate: expression for: anObject]]}].
 		nestedQuery ifNotNil:
 			[result := key = '[]'
 				ifTrue: [result collect: [:ea | self resolveQuery: nestedQuery for: ea]]
 				ifFalse: [self resolveQuery: nestedQuery for: result]].
 		
-		key = '[]'
-			ifTrue:
-				[result withIndexDo: [:ea :index |
-					results at: index asString put: (self serialize: ea)]]
-			ifFalse:
+		true
+			caseOf:
+				{[key = '[]'] ->
+					[result withIndexDo: [:ea :index |
+						results at: index asString put: (self serialize: ea)]].
+				[key = ''] ->
+					[self assert: query size = 1.
+					^ self serialize: result].
+				[key isDictionary] ->
+					[result keysAndValuesDo: [:eachKey :eachValue |
+						results at: eachKey put: eachValue]]}
+			otherwise:
 				[results at: key put: (self serialize: result)]].
 	results _sqId: (self makeIdFor: anObject).
 	^ results
@@ -195,17 +273,19 @@ OragleProjects class >> resolveQuery: query for: anObject [
 
 {
 	#category : #'queries-private',
-	#'squeak_changestamp' : 'ct 1/25/2024 14:05'
+	#'squeak_changestamp' : 'ct 1/25/2024 16:19'
 }
 OragleProjects class >> serialize: anObject [
 
 	^ self serialize: anObject ifNotPrimitiveObject:
-		[self resolveQuery: anObject oragleDefaultQuery for: anObject]
+		[(self resolveQuery: anObject oragleDefaultQuery for: anObject)
+			removeKey: #_sqOriginalQuery;
+			yourself]
 ]
 
 {
 	#category : #'queries-private',
-	#'squeak_changestamp' : 'ct 1/25/2024 14:05'
+	#'squeak_changestamp' : 'ct 1/25/2024 16:19'
 }
 OragleProjects class >> serialize: anObject ifNotPrimitiveObject: aBlock [
 
@@ -213,7 +293,7 @@ OragleProjects class >> serialize: anObject ifNotPrimitiveObject: aBlock [
 		ifTrue: [^ anObject].
 	anObject isCharacter
 		ifTrue: [^ anObject asString].
-	(anObject respondsTo: #_sqQuery)
+	(anObject respondsTo: #_sqId)
 		ifTrue: [^ anObject].
 	
 	^ aBlock value
@@ -365,7 +445,7 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 
 {
 	#category : #'as yet unclassified',
-	#'squeak_changestamp' : 'ct 1/25/2024 10:52'
+	#'squeak_changestamp' : 'ct 1/25/2024 20:20'
 }
 OragleProjects >> copilotWithoutScripts [
 <sandblocksExtensions: #(oragle:base)>
@@ -378,7 +458,8 @@ postcard := '''\\Example>>'' withCRs, codeSamle'.
 handcrafted := (Collection >> #do:) getSource.
 
 ^ OragleProject new
-	root:
+	label: 'Copilot (without scripts)';
+	rootModule:
 		(OragleSequenceModule new
 			separator: String cr , String cr;
 			children:
@@ -448,5 +529,6 @@ handcrafted := (Collection >> #do:) getSource.
 				r := ((x*x) + (y * y)) sqrt.
 				^(x / r) @ (y / r)'.
 						}.
-				}; label: 'copilot')
+				})
+
 ]

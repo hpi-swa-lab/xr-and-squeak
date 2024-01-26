@@ -100,27 +100,31 @@ export class SqueakProject extends Project {
       const res = await _sqEval(x);
       const end = performance.now();
       (window.times ??= []).push(end - start);
-      console.log(`sqEval ${x} took ${end - start}ms`);
+      console.debug(`sqEval ${x} took ${end - start}ms`);
       return res;
     };
 
     window.sqEscapeString = (string) => string.replaceAll("'", "''");
 
-    window.sqQuery = async (sqObjectOrrExpression, query = {}) => {
+    window.sqQuery = async (sqObjectOrExpression, query) => {
+      if (query?._sqId) query = (({ _sqId }) => ({ _sqId }))(query); // optimization
       const result = JSON.parse(await sqEval(`
         | object result |
-        object := '${sqEscapeString(JSON.stringify(sqObjectOrrExpression))}' parseAsJson.
+        object := '${sqEscapeString(JSON.stringify(sqObjectOrExpression))}' withSqueakLineEndings parseAsJson.
         object ifNotNil:
           [object := (object respondsTo: #_sqId)
             ifTrue: [OragleProjects objectForId: object _sqId]
             ifFalse: [Compiler evaluate: object]].
-        query := '${sqEscapeString(JSON.stringify(query))}' parseAsJson.
+        query := '${sqEscapeString(JSON.stringify(query ?? null))}' withSqueakLineEndings parseAsJson.
         result := OragleProjects resolveQuery: query for: object.
-        ^ result asJsonString
+        ^ result asJsonString copyReplaceAll: '\\r' with: '\\r\\n'
       `));
       Object.assign(result, {
-        _sqQuery: (query) => sqQuery(result, query),
-        _sqAppendQuery: (query) => Object.assign(result, result._sqQuery(query)),
+        _sqQuery: async (query) => await sqQuery(result, query),
+        // FIXME: update should deep merge new values and abort for all nested objects not explicitly requested by query
+        _sqUpdateQuery: async (query) => Object.assign(result, await result._sqQuery(
+          // top-level structure must equal existing object
+          typeof query !== 'object' ? [query] : query)),
       });
       return result;
     };
