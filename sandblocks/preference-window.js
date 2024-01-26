@@ -1,6 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { languageFor } from "../core/languages.js";
-import { asyncEval } from "../extensions/javascript.js";
+import { asyncDo } from "../extensions/javascript.js";
 import { preferences } from "../view/preferences.js";
 import {
   button,
@@ -24,7 +24,7 @@ async function readPreferences() {
 
 let _userPreferencesLoaded = false;
 export async function loadUserPreferences(source = null) {
-  await asyncEval(source ?? (await readPreferences()));
+  await asyncDo(source ?? (await readPreferences()));
   _userPreferencesLoaded = true;
 }
 
