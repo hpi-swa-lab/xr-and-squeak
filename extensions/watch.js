@@ -1,5 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { socket } from "../sandblocks/host.js";
+import { randomId } from "../utils.js";
 import { Replacement, h, shard } from "../view/widgets.js";
 
 function makeWatchExtension(config) {
@@ -117,7 +118,3 @@ window.sbWatch = function (value, id) {
   return value;
 };
 window.sbWatch.registry = new Map();
-
-function randomId() {
-  return Math.floor(Math.random() * 1e9);
-}

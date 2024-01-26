@@ -432,3 +432,7 @@ export function focusWithoutScroll(element, focusFn = (e) => e.focus()) {
   focusFn(element);
   parents.forEach((x, i) => (x.scrollTop = scrollPositions[i]));
 }
+
+export function randomId() {
+  return Math.floor(Math.random() * 1e9);
+}

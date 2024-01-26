@@ -6,12 +6,7 @@ import { Workspace } from "./workspace.js";
 import { matchesKey, withDo } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
 import {} from "./file-project/search.js";
-import {
-  getPreferenceOr,
-  loadUserPreferences,
-  openPreferences,
-  setUserPreference,
-} from "./preference-window.js";
+import { loadUserPreferences, openPreferences } from "./preference-window.js";
 
 await loadUserPreferences();
 

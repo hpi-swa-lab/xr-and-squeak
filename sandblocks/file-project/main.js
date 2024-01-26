@@ -1,6 +1,8 @@
 import { Project } from "../../core/project.js";
 import { button, h } from "../../view/widgets.js";
 import { request } from "../host.js";
+import { openComponentInWindow } from "../window.js";
+import { Workspace } from "../workspace.js";
 import { FileTree } from "./file-list.js";
 
 export class FileProject extends Project {

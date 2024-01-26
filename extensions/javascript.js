@@ -16,6 +16,8 @@ import {
 import {} from "../view/widget-utils.js";
 import { markAsEditableElement } from "../core/focus.js";
 import { useEffect } from "../external/preact-hooks.mjs";
+import { languageFor } from "../core/languages.js";
+import { last, randomId } from "../utils.js";
 
 export const objectToMap = (obj) =>
   Object.fromEntries(
@@ -113,10 +115,27 @@ export const textEntryTest = new Extension().registerShortcut(
   }
 );
 
-async function asyncEval(str) {
-  // TODO need to analyze the resulting tree an insert a return stmt for the last expression
-  // return await eval("(async () => {" + str + "})()");
-  return eval(str);
+// mount str as script into the head to allow imports and async code.
+// also modify the last expression such that it will be reported as
+// result of the evaluation.
+export async function asyncEval(str) {
+  const reportName = `jsEval${randomId()}`;
+  const module = await languageFor("javascript").parseOffscreen(str);
+  if (last(module.childBlocks).type === "expression_statement") {
+    last(module.childBlocks)
+      .childBlock(0)
+      .wrapWith(`window.${reportName}(`, ")");
+  }
+
+  return new Promise((resolve) => {
+    window[reportName] = resolve;
+
+    const s = document.createElement("script");
+    s.setAttribute("type", "module");
+    s.textContent = module.sourceString;
+    document.head.appendChild(s);
+    queueMicrotask(() => s.remove());
+  });
 }
 
 export const print = new Extension().registerShortcut(

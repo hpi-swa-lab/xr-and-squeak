@@ -1,5 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { languageFor } from "../core/languages.js";
+import { asyncEval } from "../extensions/javascript.js";
 import { preferences } from "../view/preferences.js";
 import {
   button,
@@ -17,13 +18,9 @@ const preferencesFilePath = "localStorage:///preferences.js";
 
 let _userPreferencesLoaded = false;
 export async function loadUserPreferences(source = null) {
-  const s = document.createElement("script");
-  s.setAttribute("type", "module");
-  s.textContent =
-    source ?? (await localStorageProject.readFile(preferencesFilePath));
-  document.head.appendChild(s);
-  queueMicrotask(() => s.remove());
-
+  await asyncEval(
+    source ?? (await localStorageProject.readFile(preferencesFilePath))
+  );
   _userPreferencesLoaded = true;
 }
 
