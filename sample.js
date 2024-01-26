@@ -12,8 +12,10 @@ function hello() {
         headers: { "Content-Type": "application/json" },
       }),
       e
-    ))("asdadasdasd"),
+    ))("asdadsd"),
   ][1];
+
+  sbWatch("adasd", 12);
   return a;
 }
 

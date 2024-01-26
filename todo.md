@@ -3,16 +3,16 @@
 - [ ] shift-tab
 - [ ] do not indent after newline when {
 - [ ] typeover detection: wrap {} with {
-- [ ] proceed with save, even if formatting fails (but notify)
-- [ ] editor.selectionRange in the presence of a watch
+- [x] proceed with save, even if formatting fails (but notify)
+- [x] editor.selectionRange in the presence of a watch
 - [x] shard focus and caret movement
-- [ ] don't error on malformed replacement source
+- [x] don't error on malformed replacement source
 - [ ] clear search field when refocusing
 - [ ] replacements break with a leading empty line?
 
 ## lower priority
 
-- [ ] unify global shortcut system
+- [x] unify global shortcut system
 - [ ] jsx replacements
 - [ ] lsp hover
 
