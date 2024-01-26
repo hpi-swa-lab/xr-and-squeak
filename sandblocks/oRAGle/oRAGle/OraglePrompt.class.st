@@ -4,7 +4,8 @@ Class {
 	#instVars : [
 		'modules',
 		'input',
-		'replies'
+		'replies',
+		'approvedPrice'
 	],
 	#category : #oRAGle
 }
@@ -41,7 +42,25 @@ OraglePrompt >> add: aPrompt separator: aString [
 ]
 
 {
-	#category : #private,
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/26/2024 22:07'
+}
+OraglePrompt >> approvedPrice [
+
+	^ approvedPrice
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 1/26/2024 22:07'
+}
+OraglePrompt >> approvedPrice: cents [
+
+	approvedPrice := cents.
+]
+
+{
+	#category : #accessing,
 	#'squeak_changestamp' : 'ct 1/22/2024 16:36'
 }
 OraglePrompt >> assureOutputs [
@@ -81,12 +100,15 @@ OraglePrompt >> defaultNumberOfOutputs [
 
 {
 	#category : #private,
-	#'squeak_changestamp' : 'ct 1/25/2024 19:13'
+	#'squeak_changestamp' : 'ct 1/26/2024 22:08'
 }
 OraglePrompt >> generateOutputs [
 
-	self priceToGenerateOutputs maxCents > 0 ifTrue:
-		[self notify: ('about to spend {1}' format: {self priceToGenerateOutputs})].
+	approvedPrice ifNotNil:
+		[| price |
+		(price := self priceToGenerateOutputs maxCents) > approvedPrice ifTrue:
+			[self notify: ('about to spend {1}' format: {self priceToGenerateOutputs})].
+		approvedPrice := 0].
 	replies := SemanticConversation new
 		addUserMessage: input;
 		withConfigDo: [:config |
@@ -96,7 +118,7 @@ OraglePrompt >> generateOutputs [
 
 {
 	#category : #'initialize-release',
-	#'squeak_changestamp' : 'ct 1/22/2024 16:04'
+	#'squeak_changestamp' : 'ct 1/26/2024 21:59'
 }
 OraglePrompt >> initialize [
 
@@ -104,6 +126,7 @@ OraglePrompt >> initialize [
 	
 	modules := OrderedCollection new.
 	input := String new.
+	approvedPrice := 0.
 ]
 
 {

@@ -432,3 +432,8 @@ export function focusWithoutScroll(element, focusFn = (e) => e.focus()) {
   focusFn(element);
   parents.forEach((x, i) => (x.scrollTop = scrollPositions[i]));
 }
+
+// usage: pluralString("prompt", numberOfPrompts)
+export function pluralString(string, number) {
+  return `${number} ${string}${number === 1 ? "" : "s"}`;
+}
