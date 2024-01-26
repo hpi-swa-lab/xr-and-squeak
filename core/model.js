@@ -26,6 +26,30 @@ const cyrb53 = (str, seed = 0) => {
 const hash = (str) => cyrb53(str);
 const hashCombine = (a, b) => a ^ (b + 0x9e3779b9 + (a << 6) + (a >> 2));
 
+export class SBEditor {
+  replaceTextFromCommand(range, text) {
+    throw new Error("to be implemented");
+  }
+
+  insertTextFromCommand(position, text) {
+    this.replaceTextFromCommand([position, position], text);
+  }
+}
+
+class OffscreenEditor extends SBEditor {
+  root = null;
+
+  constructor(root) {
+    super();
+    this.root = root;
+  }
+
+  replaceTextFromCommand([from, to], text) {
+    const s = this.root.sourceString;
+    this.root.updateModelAndView(s.slice(0, from) + text + s.slice(to));
+  }
+}
+
 export class SBLanguage {
   constructor({ name, extensions, defaultExtensions }) {
     this.name = name;
@@ -52,6 +76,15 @@ export class SBLanguage {
 
     text = this._ensureTrailingLineBreak(text);
     return this._assignState(this.parse(text), text);
+  }
+
+  async parseOffscreen(text) {
+    await this.ready();
+    const root = this.parse(text);
+    root._language = this;
+    root._sourceString = text;
+    root._editor = new OffscreenEditor(root);
+    return root;
   }
 
   updateModelAndView(text, oldRoot) {

@@ -15,6 +15,43 @@ import {} from "./suggestions.js";
 import { SBSelection } from "../core/focus.js";
 import { SandblocksExtensionInstance } from "./extension-instance.js";
 import { setConfig } from "../core/config.js";
+import { preferences } from "./preferences.js";
+
+preferences
+  .registerDefaultShortcut("save", "Ctrl-s")
+  .registerDefaultShortcut("undo", "Ctrl-z")
+  .registerDefaultShortcut("undo", "Ctrl-z")
+  .registerDefaultShortcut("redo", "Ctrl-Z")
+  .registerDefaultShortcut("save", "Ctrl-s")
+  .registerDefaultShortcut("cut", "Ctrl-x")
+  .registerDefaultShortcut("copy", "Ctrl-c")
+  .registerDefaultShortcut("dismiss", "Escape")
+  .registerDefaultShortcut("search", "Ctrl-f")
+  .registerDefaultShortcut("indentLess", "Shift-Tab")
+  .registerDefaultShortcut("indentMore", "Tab")
+  .registerDefaultShortcut("homeSelect", "Shift-Home")
+  .registerDefaultShortcut("home", "Home")
+
+  .registerDefaultShortcut("selectNodeUp", "Ctrl-ArrowUp")
+  .registerDefaultShortcut("selectNodeDown", "Ctrl-ArrowDown")
+  .registerDefaultShortcut("popNodeOut", "Ctrl-o")
+
+  .registerDefaultShortcut("insertFirstArg", "Alt-1")
+  .registerDefaultShortcut("insertSecondArg", "Alt-2")
+  .registerDefaultShortcut("insertThirdArg", "Alt-3")
+  .registerDefaultShortcut("insertFourthArg", "Alt-4")
+  .registerDefaultShortcut("insertFifthArg", "Alt-5")
+
+  .registerDefaultShortcut("highlightIt", "Ctrl-h")
+  .registerDefaultShortcut("wrapWithWatch", "Ctrl-q")
+  .registerDefaultShortcut("printIt", "Ctrl-p")
+  .registerDefaultShortcut("browseIt", "Ctrl-b")
+  .registerDefaultShortcut("browseSenders", "Alt-n")
+  .registerDefaultShortcut("browseImplementors", "Alt-m")
+  .registerDefaultShortcut("resetContents", "Ctrl-l")
+  .registerDefaultShortcut("addNewBlock", "Ctrl-Enter")
+
+  .addDefaultExtension("base:base", true, false);
 
 // An Editor manages the view for a single model.
 //
@@ -23,50 +60,11 @@ import { setConfig } from "../core/config.js";
 // Consequently, the Editor manages any state that is global to
 // the model, such as its undo/redo history and tracks selection.
 export class Editor extends HTMLElement {
-  static keyMap = {};
-  static registerKeyMap(map) {
-    this.keyMap = map;
-  }
-
   static init(baseUrl = null) {
     baseUrl ??= new URL(".", location.href).toString();
     setConfig({ baseUrl });
 
     Extension.clearRegistry();
-
-    this.registerKeyMap({
-      undo: "Ctrl-z",
-      redo: "Ctrl-Z",
-      save: "Ctrl-s",
-      cut: "Ctrl-x",
-      copy: "Ctrl-c",
-      dismiss: "Escape",
-      search: "Ctrl-f",
-      indentLess: "Shift-Tab",
-      indentMore: "Tab",
-      homeSelect: "Shift-Home",
-      home: "Home",
-
-      selectNodeUp: "Ctrl-ArrowUp",
-      selectNodeDown: "Ctrl-ArrowDown",
-      popNodeOut: "Ctrl-o",
-
-      insertFirstArg: "Alt-1",
-      insertSecondArg: "Alt-2",
-      insertThirdArg: "Alt-3",
-      insertFourthArg: "Alt-4",
-      insertFifthArg: "Alt-5",
-
-      highlightIt: "Ctrl-h",
-      wrapWithWatch: "Ctrl-q",
-      printIt: "Ctrl-p",
-      browseIt: "Ctrl-b",
-      browseSenders: "Alt-n",
-      browseImplementors: "Alt-m",
-      resetContents: "Ctrl-l",
-      addNewBlock: "Ctrl-Enter",
-      autocompleteAI: "Ctrl-.",
-    });
 
     customElements.define("sb-shard", Shard);
     customElements.define("sb-block", Block);
@@ -81,6 +79,10 @@ export class Editor extends HTMLElement {
 
   get shardTag() {
     return "sb-shard";
+  }
+
+  get preferences() {
+    return preferences;
   }
 
   extensionInstances = [];

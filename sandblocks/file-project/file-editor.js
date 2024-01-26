@@ -6,6 +6,7 @@ import { references } from "./references.js";
 import { Extension } from "../../core/extension.js";
 import { confirmUnsavedChanges } from "../window.js";
 import { wait } from "../../utils.js";
+import { preferences } from "../../view/preferences.js";
 
 const search = new Extension()
   .registerShortcut("search", (x) => {
@@ -26,6 +27,7 @@ export function FileEditor({
   project,
   path,
   style,
+  inlineExtensions,
   initialSearchString,
   initialSearchExact,
   initialSelection,
@@ -87,8 +89,11 @@ export function FileEditor({
       { style: { overflowY: "scroll", padding: "2px", width: "100%" } },
       sourceString !== null &&
         editor({
-          extensions: ["base:base", ...language.defaultExtensions],
-          inlineExtensions: [references, search],
+          extensions: [
+            ...preferences.getDefaultExtensions(),
+            ...language.defaultExtensions,
+          ],
+          inlineExtensions: [references, search, ...(inlineExtensions ?? [])],
           sourceString,
           editorRef,
           context: fileEditorRef.current,

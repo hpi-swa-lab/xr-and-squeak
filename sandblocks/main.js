@@ -6,9 +6,14 @@ import { Workspace } from "./workspace.js";
 import { matchesKey, withDo } from "../utils.js";
 import { choose, openComponentInWindow } from "./window.js";
 import {} from "./file-project/search.js";
-import { RAGApp } from "./oRAGle/ragPrototype.js";
-import { SequenceDiagram } from "../extensions/tla/tlaSequenceDiagram.js";
-import { openPreferences } from "./preferences.js";
+import {
+  getPreferenceOr,
+  loadUserPreferences,
+  openPreferences,
+  setUserPreference,
+} from "./preference-window.js";
+
+await loadUserPreferences();
 
 const PROJECT_TYPES = {
   FileProject: {
@@ -65,10 +70,14 @@ function projectEqual(a, b) {
 
 Editor.init();
 
+const rag = () => import("./oRAGle/ragPrototype.js").RAGApp;
+const tla = () =>
+  import("../extensions/tla/tlaSequenceDiagram.js").SequenceDiagram;
+
 const startUpOptions = {
-  rag: () => {
+  rag: async () => {
     openComponentInWindow(
-      RAGApp,
+      await rag(),
       {},
       {
         doNotStartAttached: true,
@@ -77,9 +86,9 @@ const startUpOptions = {
       }
     );
   },
-  tla: () => {
+  tla: async () => {
     openComponentInWindow(
-      SequenceDiagram,
+      await tla(),
       {},
       {
         doNotStartAttached: true,
@@ -194,26 +203,14 @@ function Sandblocks() {
         await project.open();
         setOpenProjects((p) => [...p, project]);
       }),
-      button("RAG", () => openComponentInWindow(RAGApp)),
-      button("TLA Sequence Diagram", () =>
-        openComponentInWindow(SequenceDiagram)
+      button("RAG", async () => openComponentInWindow(await rag())),
+      button("TLA Sequence Diagram", async () =>
+        openComponentInWindow(await tla())
       ),
       openProjects.map((project) =>
         project.renderItem({
           onClose: () => setOpenProjects((p) => p.filter((x) => x !== project)),
         })
-      ),
-      h(
-        "label",
-        {},
-        h("input", {
-          type: "checkbox",
-          checked: localStorage.sbUseMouseOverForFocus !== "false",
-          onchange: (e) => {
-            localStorage.sbUseMouseOverForFocus = e.target.checked;
-          },
-        }),
-        "mouse over for focus"
       ),
       button("Preferences", () => openPreferences())
     ),

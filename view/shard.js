@@ -82,56 +82,48 @@ export class Shard extends HTMLElement {
           break;
       }
 
-      for (const [action, key] of Object.entries(Editor.keyMap)) {
-        if (matchesKey(e, key)) {
-          let preventDefault = false;
-          let selected = this.editor.selected;
+      for (const action of this.editor.preferences.getShortcutsFor(e)) {
+        let preventDefault = false;
+        let selected = this.editor.selected;
 
-          // dispatch to extensions
-          let handled = false;
-          this.editor.extensionsDo((e) => {
-            if (!handled)
-              handled = e.dispatchShortcut(
-                action,
-                selected,
-                this.editor.source
+        // dispatch to extensions
+        let handled = false;
+        this.editor.extensionsDo((e) => {
+          if (!handled)
+            handled = e.dispatchShortcut(action, selected, this.editor.source);
+        });
+
+        if (!handled) {
+          preventDefault = true;
+          // built-in actions
+          switch (action) {
+            case "dismiss":
+              this.editor.clearSuggestions();
+              break;
+            case "save":
+              e.preventDefault();
+              e.stopPropagation();
+              await this.editor.asyncExtensionsDo((e) =>
+                e.processAsync("preSave", this.source)
               );
-          });
-
-          if (!handled) {
-            preventDefault = true;
-            // built-in actions
-            switch (action) {
-              case "dismiss":
-                this.editor.clearSuggestions();
-                break;
-              case "save":
-                e.preventDefault();
-                e.stopPropagation();
-                await this.editor.asyncExtensionsDo((e) =>
-                  e.processAsync("preSave", this.source)
-                );
-                this.editor.extensionsDo((e) =>
-                  e.process(["save"], this.source)
-                );
-                this.editor.dispatchEvent(
-                  new CustomEvent("save", { detail: this.editor.sourceString })
-                );
-                break;
-              default:
-                preventDefault = false;
-            }
-          } else {
-            preventDefault = true;
+              this.editor.extensionsDo((e) => e.process(["save"], this.source));
+              this.editor.dispatchEvent(
+                new CustomEvent("save", { detail: this.editor.sourceString })
+              );
+              break;
+            default:
+              preventDefault = false;
           }
-
-          if (preventDefault) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-
-          break;
+        } else {
+          preventDefault = true;
         }
+
+        if (preventDefault) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+
+        break;
       }
     });
   }

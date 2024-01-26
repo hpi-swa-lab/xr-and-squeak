@@ -32,7 +32,10 @@ export const shardList = (list) => {
 export const icon = (name) =>
   h(
     "span",
-    { class: "material-symbols-outlined", style: { fontSize: "inherit" } },
+    {
+      class: "material-symbols-outlined",
+      style: { fontSize: "inherit", verticalAlign: "bottom" },
+    },
     name
   );
 
@@ -275,6 +278,10 @@ function ensureReplacementTagDefined(tag) {
           // needs to be a stable reference, otherwise we keep rebuilding the
           // entire replacement
           this._component ??= (...args) => this.component(...args);
+
+          if (["key", "children"].some((k) => k in (this.props ?? {})))
+            throw new Error("used a prop name reserved for preact components");
+
           this.render(
             h(this._component, { node, replacement: this, ...this.props })
           );

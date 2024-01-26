@@ -1,7 +1,7 @@
 import { Extension } from "../core/extension.js";
 import { Semantics } from "../sandblocks/semantics.js";
 import { openComponentInWindow } from "../sandblocks/window.js";
-import { Process } from "../sandblocks/host.js";
+import { Process, hostAvailable } from "../sandblocks/host.js";
 import { FileEditor } from "../sandblocks/file-project/file-editor.js";
 import { sequenceMatch } from "../utils.js";
 
@@ -73,10 +73,11 @@ const configuration = [
   {
     handles(path) {
       return (
-        path.endsWith(".ts") ||
-        path.endsWith(".js") ||
-        path.endsWith(".tsx") ||
-        path.endsWith(".jsx")
+        hostAvailable() &&
+        (path.endsWith(".ts") ||
+          path.endsWith(".js") ||
+          path.endsWith(".tsx") ||
+          path.endsWith(".jsx"))
       );
     },
     create(project, handles) {
@@ -303,7 +304,9 @@ export class StdioTransport extends Transport {
     super();
     this.command = command;
     this.args = args;
-    this.cwd = cwd;
+    // if we get a browser-only url or similar, start the lsp
+    // in the server directory instead.
+    this.cwd = [".", "/"].includes(cwd[0]) ? cwd : ".";
     this.buffer = new Uint8Array();
   }
 

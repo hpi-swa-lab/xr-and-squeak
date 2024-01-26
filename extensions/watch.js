@@ -138,7 +138,7 @@ customElements.define(
   }
 );
 
-socket.on("sb-watch", ({ id, e }) => window.sbWatch(e, id));
+socket?.on("sb-watch", ({ id, e }) => window.sbWatch(e, id));
 window.sbWatch = function (value, id) {
   window.sbWatch.registry.get(id)?.reportValue(value);
   return value;

@@ -1,24 +1,28 @@
 import { Extension } from "../core/extension.js";
+import { getPreferenceOrAsk } from "../sandblocks/preference-window.js";
+import { preferences } from "../view/preferences.js";
 import {
-  LanguageClient,
   StdioTransport,
   indexToPosition,
   positionToIndex,
   registerLsp,
 } from "./lsp.js";
 
-function getKey() {
-  const key = localStorage.openAIKey ?? window.prompt("Key?");
-  localStorage.openAIKey = key;
-  return key;
+async function getKey() {
+  return await getPreferenceOrAsk("openAIKey");
 }
+
+preferences
+  .registerDefaultShortcut("autocompleteAI", "Ctrl-.")
+  .registerPreference("openAIKey", null)
+  .registerPreference("copilotGhDistPath", null);
 
 export async function chat(messages, model = "gpt-3.5-turbo-1106") {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getKey()}`,
+      Authorization: `Bearer ${await getKey()}`,
     },
     body: JSON.stringify({
       // response_format: { type: "json_object" },
@@ -39,7 +43,7 @@ export async function complete(prefix, suffix) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getKey()}`,
+      Authorization: `Bearer ${await getKey()}`,
     },
     body: JSON.stringify({
       model: "gpt-3.5-turbo-instruct",
@@ -134,15 +138,11 @@ export const gh = new Extension().registerShortcut(
     }
   }
 );
-registerLsp(
-  gh,
-  (project) =>
-    new StdioTransport(
-      "node",
-      [
-        (localStorage.copilotGhDistPath ??= prompt("dist path?")) +
-          "/dist/agent.js",
-      ],
-      "."
+
+getPreferenceOrAsk("copilotGhDistPath", () => prompt("Path to dist?")).then(
+  (path) =>
+    registerLsp(
+      gh,
+      () => new StdioTransport("node", [path + "/dist/agent.js"], ".")
     )
 );
