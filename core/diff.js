@@ -475,6 +475,7 @@ export class UpdateOp extends DiffOp {
     super();
     this.node = node;
     this.text = text;
+    this.oldText = node.text;
   }
   apply(_buffer, tx) {
     tx.updateNodeText(this.node, this.text);

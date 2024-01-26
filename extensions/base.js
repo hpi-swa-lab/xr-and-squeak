@@ -278,7 +278,7 @@ export const identifierSuggestions = new Extension()
   .registerChangesApplied((_changes, _oldSource, _newSource, _root, diff) => {
     diff.opsDo((op) => {
       if (op instanceof UpdateOp && op.node.isText) {
-        forgetWord(op.node.text);
+        forgetWord(op.oldText);
         noteWord(op.text);
       }
       if (op instanceof RemoveOp && op.node.isText) {
