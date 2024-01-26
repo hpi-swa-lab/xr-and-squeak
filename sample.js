@@ -8,14 +8,27 @@ function hello() {
     ((e) => (
       fetch("http://localhost:3000/sb-watch", {
         method: "POST",
-        body: JSON.stringify({ id: 412842763, e: e }),
+        body: JSON.stringify({ id: 412842763, e }),
         headers: { "Content-Type": "application/json" },
       }),
       e
     ))("asdadsd"),
   ][1];
 
-  sbWatch("adasd", 12);
+  sbWatch(
+    [
+      "sbWatch",
+      ((e) => (
+        fetch("http://localhost:3000/sb-watch", {
+          method: "POST",
+          body: JSON.stringify({ id: 313353399, e }),
+          headers: { "Content-Type": "application/json" },
+        }),
+        e
+      ))("adasd"),
+    ][1],
+    12
+  );
   return a;
 }
 

@@ -13,9 +13,9 @@ function makeWatchExtension(config) {
       let current = x;
       for (let i = 0; i < config.exprNesting; i++) current = current?.parent;
 
-      const currentWatch = current?.exec(...config.matcher);
+      const currentWatch = current?.matches(config.query);
       if (currentWatch) {
-        currentWatch.replaceWith(x.sourceString);
+        current.replaceWith(x.sourceString);
       } else {
         config.wrap(x, randomId());
       }
@@ -33,15 +33,16 @@ export const javascript = makeWatchExtension({
     ((e) => (
       fetch("http://localhost:3000/sb-watch", {
         method: "POST",
-        body: JSON.stringify({ id: $id, e: e }),
+        body: JSON.stringify({ id: $id, e }),
         headers: { "Content-Type": "application/json" },
       }), e))($expr),][1]`,
+
   exprNesting: 4,
   wrap: (x, id) => {
     const url = `${window.location.origin}/sb-watch`;
     const headers = `headers: {"Content-Type": "application/json"}`;
-    const opts = `{method: "POST", body: JSON.stringify({"id": ${id}, "e": e}), ${headers}}`;
-    x.wrapWith(`['sbWatch',((e) => (fetch("${url}", ${opts}), e))(`, `)][1]`);
+    const opts = `{method: "POST", body: JSON.stringify({id: ${id}, e}), ${headers},}`;
+    x.wrapWith(`["sbWatch",((e) => (fetch("${url}", ${opts}), e))(`, `),][1]`);
   },
 });
 
