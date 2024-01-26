@@ -107,7 +107,7 @@ Do not elide any code from your output. Do not insert comments or TODOs for bloc
 export const gh = new Extension().registerShortcut(
   "autocompleteAI",
   async (x) => {
-    const lsp = x.context.project.data("copilotGh");
+    const lsp = x.context.project.data("copilotGhLSP");
     const position = x.editor.selectionRange[0];
     const source = x.root.sourceString;
     const {
@@ -143,6 +143,7 @@ getPreferenceOrAsk("copilotGhDistPath", () => prompt("Path to dist?")).then(
   (path) =>
     registerLsp(
       gh,
+      "copilotGhLSP",
       () => new StdioTransport("node", [path + "/dist/agent.js"], ".")
     )
 );

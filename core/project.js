@@ -27,23 +27,8 @@ export class Project extends EventTarget {
   clearData(key) {
     this._data.delete(key);
   }
-
-  activeSemantics = [];
-  semanticsForPath(path, configuration) {
-    for (const semantics of this.activeSemantics) {
-      if (semantics.handles(path)) return semantics;
-    }
-
-    for (const { handles, create } of configuration) {
-      if (handles(path)) {
-        const instance = create(this, handles);
-        instance.start();
-        this.activeSemantics.push(instance);
-        return instance;
-      }
-    }
-
-    return null;
+  get allData() {
+    return this._data;
   }
 
   // return an array of { path: string, data: string }

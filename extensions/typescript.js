@@ -1,5 +1,14 @@
 import { Extension } from "../core/extension.js";
+import { StdioTransport, registerLsp } from "./lsp.js";
 import { base as jsBase } from "./javascript.js";
+
+export const lsp = new Extension();
+registerLsp(
+  lsp,
+  "tsLSP",
+  (project) =>
+    new StdioTransport("typescript-language-server", ["--stdio"], project.path)
+);
 
 export const base = new Extension()
   // (type_identifier) @type

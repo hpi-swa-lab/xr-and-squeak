@@ -142,7 +142,7 @@ export const print = new Extension().registerShortcut(
   "printIt",
   async (x, view, e) => {
     const widget = e.createWidget("sb-print-result");
-    const value = await asyncEval(x.sourceString);
+    const value = await asyncEval(x.editor.selectedText);
 
     let str;
     if (value === undefined) str = "undefined";

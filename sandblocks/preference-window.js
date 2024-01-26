@@ -16,18 +16,22 @@ import { openComponentInWindow } from "./window.js";
 
 const preferencesFilePath = "localStorage:///preferences.js";
 
+async function readPreferences() {
+  const s = await localStorageProject.readFile(preferencesFilePath);
+  if (!s) return "import { preferences } from '/view/preferences.js';\n\n";
+  return s;
+}
+
 let _userPreferencesLoaded = false;
 export async function loadUserPreferences(source = null) {
-  await asyncEval(
-    source ?? (await localStorageProject.readFile(preferencesFilePath))
-  );
+  await asyncEval(source ?? (await readPreferences()));
   _userPreferencesLoaded = true;
 }
 
 export async function setUserPreference(preference, value) {
   preferences.set(preference, value);
 
-  const source = await localStorageProject.readFile(preferencesFilePath);
+  const source = await readPreferences();
   const file = await languageFor("javascript").parseOffscreen(source);
   _setUserPreference(file, preference, value);
   localStorageProject.writeFile(preferencesFilePath, file.sourceString);

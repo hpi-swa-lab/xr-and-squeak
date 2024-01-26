@@ -6,9 +6,7 @@ class LocalStorageProject extends Project {
   async readFiles(list) {
     return list.map((path) => ({
       path,
-      data:
-        localStorage.getItem(path) ??
-        "import { preferences } from '/view/preferences.js';\n\n",
+      data: localStorage.getItem(path) ?? "",
     }));
   }
 

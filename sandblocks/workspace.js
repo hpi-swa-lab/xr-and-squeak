@@ -1,6 +1,9 @@
 import { Replacement, div, editor, h, shard } from "../view/widgets.js";
 import { Extension } from "../core/extension.js";
 import { languageFor } from "../core/languages.js";
+import { FileEditor } from "./file-project/file-editor.js";
+import { randomId } from "../utils.js";
+import { localStorageProject } from "./local-project.js";
 
 const extraExtensions = {
   markdown: ["markdown:calc"],
@@ -93,7 +96,7 @@ const nestedWorkspaceShortcuts = new Extension().registerShortcut(
   }
 );
 
-export function Workspace() {
+export function BlocksWorkspace() {
   return editor({
     inlineExtensions: [jsonWorkspace, workspaceShortcuts],
     extensions: [],
@@ -107,5 +110,12 @@ export function Workspace() {
       2
     ),
     language: "json",
+  });
+}
+
+export function Workspace() {
+  return h(FileEditor, {
+    project: localStorageProject,
+    path: `workspace-${randomId()}.js`,
   });
 }
