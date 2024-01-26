@@ -1,6 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { openComponentInWindow } from "../sandblocks/window.js";
-import { Process } from "../sandblocks/host.js";
+import { Process, hostAvailable } from "../sandblocks/host.js";
 import { FileEditor } from "../sandblocks/file-project/file-editor.js";
 import { sequenceMatch } from "../utils.js";
 
@@ -69,11 +69,12 @@ const LSP_TEXT_DOCUMENT_SYNC_KIND = {
 };
 
 export function registerLsp(extension, id, createTransport) {
-  const sem = (x) => x.context?.project.data(id);
+  const sem = (x) => (hostAvailable() ? x.context?.project.data(id) : null);
   extension
     .registerQuery("extensionConnected", (e) => [
       (x) => x.isRoot,
       (x) => !!x.context?.project,
+      (x) => hostAvailable(),
       (x) =>
         x.context.project.data(id, () => {
           const c = new LanguageClient(
