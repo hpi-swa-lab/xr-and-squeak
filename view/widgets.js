@@ -7,7 +7,7 @@ import {
   parentWithTag,
   rangeEqual,
 } from "../utils.js";
-import { useEffect } from "../external/preact-hooks.mjs";
+import { useEffect, useState } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
 import { SandblocksExtensionInstance } from "./extension-instance.js";
@@ -63,6 +63,13 @@ export const editor = ({
     onchange: (e) => onChange?.(e.detail),
     ...props,
   });
+
+export const useDebouncedEffect = (ms, fn, deps) => {
+  useEffect(() => {
+    let timer = setTimeout(fn, ms);
+    return () => clearTimeout(timer);
+  }, deps);
+};
 
 export const useAsyncEffect = (fn, deps) => {
   useEffect(() => {
@@ -213,10 +220,7 @@ export class Replacement extends Widget {
   }
 
   get sourceString() {
-    return this.editor.sourceString.slice(
-      this.source.range[0],
-      this.source.range[1]
-    );
+    return this.node.sourceString;
   }
 
   set selectable(v) {
@@ -279,7 +283,7 @@ function ensureReplacementTagDefined(tag) {
           // entire replacement
           this._component ??= (...args) => this.component(...args);
 
-          if (["key", "children"].some((k) => k in (this.props ?? {})))
+          if (["key"].some((k) => k in (this.props ?? {})))
             throw new Error("used a prop name reserved for preact components");
 
           this.render(

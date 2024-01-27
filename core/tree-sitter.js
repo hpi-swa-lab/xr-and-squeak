@@ -142,6 +142,9 @@ export class TreeSitterLanguage extends SBLanguage {
     node._tree = tree;
     // need to set the source string early for nested parsers
     node._sourceString = text;
+    // tree-sitter may skip leading whitespace in the root node,
+    // which confuses our system
+    node._range = [0, text.length];
     console.assert(node.range[1] === text.length, "root range is wrong");
     return node;
   }

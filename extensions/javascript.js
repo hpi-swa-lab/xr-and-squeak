@@ -115,6 +115,14 @@ export const textEntryTest = new Extension().registerShortcut(
   }
 );
 
+export function asyncDo(str) {
+  const s = document.createElement("script");
+  s.setAttribute("type", "module");
+  s.textContent = str;
+  document.head.appendChild(s);
+  queueMicrotask(() => s.remove());
+}
+
 // mount str as script into the head to allow imports and async code.
 // also modify the last expression such that it will be reported as
 // result of the evaluation.
@@ -126,15 +134,9 @@ export async function asyncEval(str) {
       .childBlock(0)
       .wrapWith(`window.${reportName}(`, ")");
   }
-
   return new Promise((resolve) => {
     window[reportName] = resolve;
-
-    const s = document.createElement("script");
-    s.setAttribute("type", "module");
-    s.textContent = module.sourceString;
-    document.head.appendChild(s);
-    queueMicrotask(() => s.remove());
+    asyncDo(module.sourceString);
   });
 }
 
@@ -142,7 +144,7 @@ export const print = new Extension().registerShortcut(
   "printIt",
   async (x, view, e) => {
     const widget = e.createWidget("sb-print-result");
-    const value = await asyncEval(x.sourceString);
+    const value = await asyncEval(x.editor.selectedText);
 
     let str;
     if (value === undefined) str = "undefined";

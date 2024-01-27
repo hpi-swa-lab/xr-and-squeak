@@ -291,7 +291,7 @@ window.sqSystemChangeCallback = function (e) {
 
 // TODO: Fix order of entries inside panes (yes, valueList and filterMap answer correctly sorted data, order seems to be destroyed later)
 // TODO: Add true instance/class button instead of 'class@' prefixes, add support for meta class definitions
-function SqueakBrowserComponent({ initialClass }) {
+function SqueakBrowserComponent({ initialClass, initialSelector }) {
   const evJson = async (x) => JSON.parse(await ev(x));
   const ev = async (x) => {
     const res = await sqEval(x);
@@ -301,6 +301,7 @@ function SqueakBrowserComponent({ initialClass }) {
     return res;
   };
 
+  const [initialized, setInitialized] = useState(false);
   const [selectedSystemCategory, setSelectedSystemCategory] = useState(null);
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -358,7 +359,14 @@ function SqueakBrowserComponent({ initialClass }) {
         `((Smalltalk at: #${selectedClass}) organization elementCategoryDict , ((Smalltalk at: #${selectedClass}) class organization elementCategoryDict associations collect: [:assoc | 'class@' , assoc key -> ('class@' , assoc value)] as: Dictionary)) asJsonString`
       );
       setSelectorCategoryMap(map);
-      setSelectedCategory(map[Object.keys(map).sort()[0]]);
+
+      let category;
+      if (initialSelector && !initialized) {
+        setInitialized(true);
+        category = map[initialSelector];
+      }
+      setSelectedCategory(category ?? map[Object.keys(map).sort()[0]]);
+      setSelectedSelector(initialSelector);
     } else {
       setSelectorCategoryMap(null);
     }

@@ -28,6 +28,7 @@ export function FileEditor({
   path,
   style,
   inlineExtensions,
+
   initialSearchString,
   initialSearchExact,
   initialSelection,

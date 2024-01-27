@@ -436,3 +436,8 @@ export function focusWithoutScroll(element, focusFn = (e) => e.focus()) {
 export function randomId() {
   return Math.floor(Math.random() * 1e9);
 }
+
+// usage: pluralString("prompt", numberOfPrompts)
+export function pluralString(string, number) {
+  return `${number} ${string}${number === 1 ? "" : "s"}`;
+}

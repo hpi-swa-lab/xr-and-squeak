@@ -9,6 +9,7 @@
 - [x] don't error on malformed replacement source
 - [ ] clear search field when refocusing
 - [ ] replacements break with a leading empty line?
+- [ ] comments break finding grammar rules
 
 ## lower priority
 

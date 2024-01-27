@@ -65,9 +65,9 @@ function projectEqual(a, b) {
 
 Editor.init();
 
-const rag = () => import("./oRAGle/ragPrototype.js").RAGApp;
-const tla = () =>
-  import("../extensions/tla/tlaSequenceDiagram.js").SequenceDiagram;
+const rag = async () => (await import("./oRAGle/ragPrototype.js")).RAGApp;
+const tla = async () =>
+  (await import("../extensions/tla/tlaSequenceDiagram.js")).SequenceDiagram;
 
 const startUpOptions = {
   rag: async () => {

@@ -122,7 +122,9 @@ customElements.define(
 
     show() {
       this.style.display = "block";
-      const rect = getSelection().getRangeAt(0).getClientRects()[0];
+      const rect =
+        getSelection().getRangeAt(0).getClientRects()[0] ??
+        this.anchor.getBoundingClientRect();
       this.style.top = `${rect.bottom + 5}px`;
       this.style.left = `${rect.left}px`;
       document.body.appendChild(this);

@@ -257,8 +257,7 @@ export class Editor extends HTMLElement {
     oldSource
   ) {
     this.extensionsDo((e) => e.process(["replacement"], this.source));
-    this.selection.moveToRange(this, selectionRange);
-    // console.assert(rangeEqual(this.selectionRange, selectionRange));
+    if (selectionRange) this.selection.moveToRange(this, selectionRange);
 
     this.clearSuggestions();
     if (this.selected)

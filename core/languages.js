@@ -28,14 +28,14 @@ registerLanguage(
     branch: "0c0b18de798a90cd22819cec4802a27b914e395c",
     extensions: ["js"],
     defaultExtensions: [
-      "lsp:base",
+      "javascript:base",
+      "typescript:lsp",
       "lsp:browse",
       "lsp:diagnostics",
-      "base:identifierSuggestions",
+      "lsp:suggestions",
       "prettier:javascript",
       "watch:javascript",
       "javascript:print",
-      "javascript:base",
     ],
   })
 );

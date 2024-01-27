@@ -1,5 +1,4 @@
 import { Extension } from "../core/extension.js";
-import { Semantics } from "../sandblocks/semantics.js";
 import { openComponentInWindow } from "../sandblocks/window.js";
 import { Process, hostAvailable } from "../sandblocks/host.js";
 import { FileEditor } from "../sandblocks/file-project/file-editor.js";
@@ -69,47 +68,18 @@ const LSP_TEXT_DOCUMENT_SYNC_KIND = {
   incremental: 2,
 };
 
-const configuration = [
-  {
-    handles(path) {
-      return (
-        hostAvailable() &&
-        (path.endsWith(".ts") ||
-          path.endsWith(".js") ||
-          path.endsWith(".tsx") ||
-          path.endsWith(".jsx"))
-      );
-    },
-    create(project, handles) {
-      return new LanguageClient(
-        project,
-        handles,
-        new StdioTransport(
-          "typescript-language-server",
-          ["--stdio"],
-          project.path
-        )
-      );
-    },
-  },
-];
-
-function sem(x) {
-  return x.context?.project.semanticsForPath(x.context.path, configuration);
-}
-
-export function registerLsp(extension, transport) {
-  const sem = (x) => x.context.project.data("copilotGh");
+export function registerLsp(extension, id, createTransport) {
+  const sem = (x) => (hostAvailable() ? x.context?.project.data(id) : null);
   extension
     .registerQuery("extensionConnected", (e) => [
       (x) => x.isRoot,
       (x) => !!x.context?.project,
+      (x) => hostAvailable(),
       (x) =>
-        x.context.project.data("copilotGh", () => {
+        x.context.project.data(id, () => {
           const c = new LanguageClient(
             x.context.project,
-            null,
-            transport(x.context.project)
+            createTransport(x.context.project)
           );
           c.start();
           return c;
@@ -130,85 +100,145 @@ export function registerLsp(extension, transport) {
   return extension;
 }
 
-export const base = new Extension()
-  .registerQuery("extensionConnected", (e) => [
-    (x) => x.isRoot,
-    (x) => sem(x)?.didOpen(x),
-  ])
-  .registerQuery("extensionDisconnected", (e) => [
-    (x) => x.isRoot,
-    (x) => sem(x)?.didClose(x),
-  ])
-  .registerQuery("save", (e) => [(x) => x.isRoot, (x) => sem(x)?.didSave(x)])
-  .registerChangesApplied((changes, oldSource, newSource, root, _diff) => {
-    sem(root)?.didChange(root, oldSource, newSource, changes);
-  });
+function lspDo(x, filter, cb) {
+  for (const entry of x.context?.project.allData.values()) {
+    if (entry instanceof LanguageClient && entry.initialized && filter(entry)) {
+      cb(entry);
+    }
+  }
+}
 
 export const formatting = new Extension().registerPreSave((e) => [
   (x) => x.isRoot,
-  (x) => sem(x)?.formatting(x),
+  (x) =>
+    lspDo(
+      x,
+      (sem) => !!sem.capabilities.documentFormattingProvider,
+      (sem) => sem.formatting(x)
+    ),
 ]);
 
 export const suggestions = new Extension().registerType((e) => [
-  async (x) => {
-    if (!sem(x)) return;
-    // always re-add our old suggestions while we wait for fresh ones
-    // to come in, to prevent a brief flash during wait
-    const current = e.data("lsp-current-completion") ?? [];
-    e.addSuggestions(x, current);
+  (x) =>
+    lspDo(
+      x,
+      (sem) => !!sem.capabilities.completionProvider,
+      async (sem) => {
+        // always re-add our old suggestions while we wait for fresh ones
+        // to come in, to prevent a brief flash during wait
+        const current = e.data("lsp-current-completion") ?? [];
+        e.addSuggestions(x, current);
 
-    const promise = sem(x).completion(x);
-    e.setData("lsp-completion", promise);
-    const suggestions = await promise;
-    // check that no other completion has been started since
-    if (e.data("lsp-completion") === promise) {
-      const list = suggestions
-        .sort((a, b) => a.sortText.localeCompare(b.sortText))
-        .filter((b) =>
-          sequenceMatch(
-            b.filterText?.toLowerCase() ?? x.text.toLowerCase(),
-            b.label.toLowerCase()
-          )
-        )
-        .slice(0, 30)
-        .map((b) => ({
-          insertText: b.insertText,
-          label: b.label,
-          icon: lspSymbolKindIcons[b.kind],
-          fetchDetail: async () => {
-            const full = await sem(x)?.completionItemResolve(b);
-            // update our old item with all info
-            Object.assign(b, full);
-            return full.detail;
-          },
-          use: (x) => {
-            x.replaceWith(b.insertText ?? b.label);
-            if (b.additionalTextEdits) {
-              const selection = x.editor.selectionRange;
-              const shard = x.editor.selectedShard;
+        const promise = sem.completion(x);
+        e.setData("lsp-completion", promise);
+        const suggestions = await promise;
+        // check that no other completion has been started since
+        if (e.data("lsp-completion") === promise) {
+          const list = suggestions
+            .sort((a, b) => a.sortText.localeCompare(b.sortText))
+            .filter((b) =>
+              sequenceMatch(
+                b.filterText?.toLowerCase() ?? x.sourceString.toLowerCase(),
+                b.label.toLowerCase()
+              )
+            )
+            .slice(0, 30)
+            .map((b) => ({
+              insertText: b.insertText,
+              label: b.label,
+              icon: lspSymbolKindIcons[b.kind],
+              fetchDetail: async () => {
+                // if we are no longer the active request, ignore
+                if (e.data("lsp-completion") !== promise) return null;
+                const full = await sem.completionItemResolve(b);
+                // update our old item with all info
+                Object.assign(b, full);
+                return full.detail;
+              },
+              use: (x) => {
+                x.replaceWith(b.insertText ?? b.label);
+                if (b.additionalTextEdits) {
+                  const selection = x.editor.selectionRange;
+                  const shard = x.editor.selectedShard;
 
-              const edits = b.additionalTextEdits.map((e) => convertEdit(x, e));
-              x.editor.applyChanges(edits, [0, 0]);
+                  const edits = b.additionalTextEdits.map((e) =>
+                    convertEdit(x, e)
+                  );
+                  x.editor.applyChanges(edits);
 
-              // potentially shift selection to accommodate inserts before the cursor
-              for (const edit of edits) {
-                if (edit.to < selection[0]) {
-                  selection[0] += edit.insert.length - (edit.to - edit.from);
-                  selection[1] += edit.insert.length - (edit.to - edit.from);
+                  // potentially shift selection to accommodate inserts before the cursor
+                  for (const edit of edits) {
+                    if (edit.to < selection[0]) {
+                      selection[0] +=
+                        edit.insert.length - (edit.to - edit.from);
+                      selection[1] +=
+                        edit.insert.length - (edit.to - edit.from);
+                    }
+                  }
+
+                  x.editor.selectRange(...selection, shard, false);
                 }
-              }
+              },
+            }));
 
-              x.editor.selectRange(...selection, shard, false);
-            }
-          },
-        }));
-
-      e.setData("lsp-current-completion", list);
-      x.editor.clearSuggestions();
-      e.addSuggestions(x, list);
-    }
-  },
+          e.setData("lsp-current-completion", list);
+          x.editor.clearSuggestions();
+          e.addSuggestions(x, list);
+        }
+      }
+    ),
 ]);
+
+export const browse = new Extension().registerShortcut("browseIt", (node) =>
+  lspDo(
+    node,
+    (sem) => !!sem.capabilities.workspaceSymbolProvider,
+    async (sem) => {
+      const symbols = sem.workspaceSymbols(node.text);
+      const top = symbols
+        .filter((sym) => sym.name === node.text)
+        .sort((a, b) => a.kind - b.kind)[0];
+
+      if (top) browseLocation(node.context.project, top.location);
+    }
+  )
+);
+
+export const diagnostics = new Extension().registerQuery(
+  "lsp-diagnostics",
+  (e) => [
+    (x) => x.isRoot,
+    (x) =>
+      lspDo(
+        x,
+        (sem) => {
+          return !!sem.capabilities.publishDiagnostics;
+        },
+        (sem) => {
+          for (const diagnostic of sem(x)?.diagnosticsFor(x.context.path) ??
+            []) {
+            const target = x.childEncompassingRange(
+              rangeToIndices(x.sourceString, diagnostic.range)
+            );
+            const severity = ["", "error", "warning", "info", "hint"][
+              diagnostic.severity
+            ];
+            e.ensureClass(target, `diagnostic-${severity}`);
+            for (const tag of diagnostic.tags ?? []) {
+              const t = ["", "unnecessary", "deprecated"][tag];
+              e.ensureClass(target, `diagnostic-${t}`);
+            }
+            e.attachData(
+              target,
+              "diagnostic",
+              (v) => (v.title = diagnostic.message),
+              (v) => (v.title = null)
+            );
+          }
+        }
+      ),
+  ]
+);
 
 function convertEdit(node, edit) {
   return {
@@ -216,6 +246,10 @@ function convertEdit(node, edit) {
     to: positionToIndex(node.root.sourceString, edit.range.end),
     insert: edit.newText,
   };
+}
+
+function rangeToIndices(source, { start, end }) {
+  return [positionToIndex(source, start), positionToIndex(source, end)];
 }
 
 export function positionToIndex(sourceString, { line, character }) {
@@ -250,46 +284,6 @@ async function browseLocation(project, { uri, range: { start, end } }) {
     path,
   });
 }
-
-export const browse = new Extension().registerShortcut(
-  "browseIt",
-  async (node, view, e) => {
-    const symbols = await sem(node)?.workspaceSymbols(node.text);
-    const top = symbols
-      .filter((sym) => sym.name === node.text)
-      .sort((a, b) => a.kind - b.kind)[0];
-
-    if (top) browseLocation(node.context.project, top.location);
-  }
-);
-
-export const diagnostics = new Extension().registerQuery(
-  "lsp-diagnostics",
-  (e) => [
-    (x) => x.isRoot,
-    (x) => {
-      for (const diagnostic of sem(x)?.diagnosticsFor(x.context.path) ?? []) {
-        const start = positionToIndex(x.sourceString, diagnostic.range.start);
-        const end = positionToIndex(x.sourceString, diagnostic.range.end);
-        const target = x.childEncompassingRange([start, end]);
-        const severity = ["", "error", "warning", "info", "hint"][
-          diagnostic.severity
-        ];
-        e.ensureClass(target, `diagnostic-${severity}`);
-        for (const tag of diagnostic.tags ?? []) {
-          const t = ["", "unnecessary", "deprecated"][tag];
-          e.ensureClass(target, `diagnostic-${t}`);
-        }
-        e.attachData(
-          target,
-          "diagnostic",
-          (v) => (v.title = diagnostic.message),
-          (v) => (v.title = null)
-        );
-      }
-    },
-  ]
-);
 
 class Transport {
   constructor(request) {
@@ -360,7 +354,7 @@ export class StdioTransport extends Transport {
   }
 }
 
-export class LanguageClient extends Semantics {
+export class LanguageClient {
   lastRequestId = 0;
   pending = new Map();
   textDocumentVersions = new Map();
@@ -368,9 +362,8 @@ export class LanguageClient extends Semantics {
   queuedRequests = [];
   initialized = false;
 
-  constructor(project, handles, transport) {
-    super(project, handles);
-
+  constructor(project, transport) {
+    this.project = project;
     this.transport = transport;
     transport.onMessage = (message) => {
       if (message.method) {
@@ -432,7 +425,7 @@ export class LanguageClient extends Semantics {
       workDoneToken: "1d546990-40a3-4b77-b134-46622995f6ae",
     });
 
-    this.serverCapabilities = res.capabilities;
+    this.capabilities = res.capabilities;
 
     await this._notification("initialized", {});
 
@@ -466,11 +459,9 @@ export class LanguageClient extends Semantics {
   }
 
   get serverChangeKind() {
-    if (
-      typeof this.serverCapabilities?.textDocumentSync?.change === "undefined"
-    )
-      return this.serverCapabilities?.textDocumentSync;
-    return this.serverCapabilities?.textDocumentSync?.change;
+    if (typeof this.capabilities?.textDocumentSync?.change === "undefined")
+      return this.capabilities?.textDocumentSync;
+    return this.capabilities?.textDocumentSync?.change;
   }
 
   async didChange(node, oldSource, newSource, changes) {
