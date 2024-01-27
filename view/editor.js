@@ -88,7 +88,7 @@ export class Editor extends HTMLElement {
   extensionInstances = [];
 
   focus() {
-    this.focusShard(this.editHistory?.lastView?.shard);
+    this.focusShard(this.editHistory?.lastView?.shard ?? this.shard);
   }
 
   focusShard(shard) {
@@ -259,12 +259,6 @@ export class Editor extends HTMLElement {
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     if (selectionRange) this.selection.moveToRange(this, selectionRange);
 
-    this.clearSuggestions();
-    if (this.selected)
-      this.extensionsDo((e) => e.process(["type"], this.selected.node));
-    this.extensionsDo((e) =>
-      e.process(["always"], this.selected?.node ?? this.source)
-    );
     if (diff)
       this.extensionsDo((e) =>
         e.changesApplied(
@@ -275,6 +269,12 @@ export class Editor extends HTMLElement {
           diff
         )
       );
+    this.clearSuggestions();
+    if (this.selected)
+      this.extensionsDo((e) => e.process(["type"], this.selected.node));
+    this.extensionsDo((e) =>
+      e.process(["always"], this.selected?.node ?? this.source)
+    );
 
     if (!doNotCommitToHistory && oldSelected !== this.selected) {
       this.editHistory.push(oldSource, oldRange, this.selected);

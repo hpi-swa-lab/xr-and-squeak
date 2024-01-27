@@ -179,7 +179,7 @@ export class Replacement extends Widget {
   }
 
   uninstall(prepareCb = null) {
-    const source = this.source.toHTML();
+    const source = this.source.toHTMLExpanded();
     prepareCb?.(source);
     this.editor.changeDOM(() => this.replaceWith(source));
     return source;
@@ -201,6 +201,11 @@ export class Replacement extends Widget {
 
   get node() {
     return this.source;
+  }
+
+  set node(n) {
+    this.source = n;
+    this.update(n);
   }
 
   init(source) {

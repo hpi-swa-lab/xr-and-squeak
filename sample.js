@@ -2,7 +2,9 @@
 
 let a = 12;
 
-function hello() {
+function hello(b) {
+  () => ({ sbExample: "example1", args: [123], self: null });
+
   const a = [
     "sbWatch",
     ((e) => (
@@ -15,6 +17,7 @@ function hello() {
     ))("asdadsd"),
   ][1];
 
+  console.log(b);
   sbWatch(
     [
       "sbWatch",
@@ -31,5 +34,3 @@ function hello() {
   );
   return a;
 }
-
-hello();

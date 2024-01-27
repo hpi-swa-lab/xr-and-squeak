@@ -127,6 +127,7 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
   }
 
   destroyReplacement(r) {
-    r.replaceWith(r.source.toHTML());
+    // check if our node is still connected or we got unmounted entirely
+    if (r.source.root.isRoot) r.replaceWith(r.source.toHTML());
   }
 }

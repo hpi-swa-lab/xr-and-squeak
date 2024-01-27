@@ -10,76 +10,50 @@ import {
 import { chat, complete } from "../../extensions/copilot.js";
 import { cascadedConstructorShardsFor } from "../../extensions/smalltalk.js";
 
-export const base = new Extension()
-  .registerDoubleClick((e) => [
-    (x) => true,
-    (x) => x.named,
-    (x) => {
-      x.viewsDo((v) =>
-        // TODO: should only replace the view that was clicked on
-        installReplacementPreact(e, v, "sb-collapse", ({ replacement }) =>
-          h(
-            "span",
-            {
-              onClick: () => replacement.uninstall(),
-              style: {
-                background: "#eee",
-                border: "1px solid #ccc",
-                borderRadius: "6px",
-                padding: "0 0.5rem",
-              },
+export const base = new Extension().registerReplacement((e) => [
+  (x) =>
+    cascadedConstructorShardsFor(x, "Module", {
+      disabled: { default: "false", noShard: true },
+      title: { prefix: "'", placeholder: "title", suffix: "'" },
+      text: { prefix: "'", placeholder: "text", suffix: "'" },
+    }),
+  ([x, data]) =>
+    ensureReplacementPreact(
+      e,
+      x,
+      "rag-module",
+      ({ title, text, disabled, replacement }) =>
+        h(
+          "div",
+          {
+            style: {
+              display: "inline-flex",
+              border: "2px solid #333",
+              borderRadius: "2px",
+              minWidth: "200px",
+              flexDirection: "column",
+              padding: "0.25rem",
+              gap: "0.25rem",
             },
-            "…"
-          )
-        )
-      );
-      e.stopPropagation();
-    },
-  ])
-  .registerReplacement((e) => [
-    (x) =>
-      cascadedConstructorShardsFor(x, "Module", {
-        disabled: { default: "false", noShard: true },
-        title: { prefix: "'", placeholder: "title", suffix: "'" },
-        text: { prefix: "'", placeholder: "text", suffix: "'" },
-      }),
-    ([x, data]) =>
-      ensureReplacementPreact(
-        e,
-        x,
-        "rag-module",
-        ({ title, text, disabled, replacement }) =>
+          },
+          title,
+          h("hr"),
+          text,
           h(
             "div",
-            {
-              style: {
-                display: "inline-flex",
-                border: "2px solid #333",
-                borderRadius: "2px",
-                minWidth: "200px",
-                flexDirection: "column",
-                padding: "0.25rem",
-                gap: "0.25rem",
-              },
-            },
-            title,
-            h("hr"),
-            text,
-            h(
-              "div",
-              { style: { display: "flex" } },
-              h("input", {
-                type: "checkbox",
-                checked: disabled.get() === "true",
-                onChange: (e) => disabled.set(e.target.checked.toString()),
-              }),
-              "Disable ",
-              button("Delete", () => replacement.node.replaceWith(""))
-            )
-          ),
-        data
-      ),
-  ]);
+            { style: { display: "flex" } },
+            h("input", {
+              type: "checkbox",
+              checked: disabled.get() === "true",
+              onChange: (e) => disabled.set(e.target.checked.toString()),
+            }),
+            "Disable ",
+            button("Delete", () => replacement.node.replaceWith(""))
+          )
+        ),
+      data
+    ),
+]);
 
 let id = 0;
 
