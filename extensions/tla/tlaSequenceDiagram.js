@@ -1,4 +1,5 @@
 import { h } from "../../view/widgets.js";
+import ewd998Small from "../../assets/JsonStateWriter.json" assert {type: "json"}
 import specExport from "../../assets/tla2PCExport.json" assert {type: "json"}
 import { useCallback, useEffect, useRef, useState } from "../../external/preact-hooks.mjs";
 import htm from '../../external/htm.mjs';
@@ -6,7 +7,7 @@ import { Component, createRef } from "../../external/preact.mjs";
 const html = htm.bind(h);
 
 // TODO put this data in some global state accessible to all components
-const varToActor = {
+const varToActor2 = {
     "tmState": "Transaction Manager",
     "tmPrepared": "Transaction Manager",
     "rmState": {
@@ -15,7 +16,41 @@ const varToActor = {
     },
     "msgs": "messages",
 }
-const actors = ["Transaction Manager", "messages", "RM 1", "RM 2"]
+const actors2 = ["Transaction Manager", "messages", "RM 1", "RM 2"]
+
+
+const varToActor = {
+    "color": {
+        "0": "Node 0",
+        "1": "Node 1",
+        "2": "Node 2"
+    },
+    "pending": {
+        "0": "Node 0",
+        "1": "Node 1",
+        "2": "Node 2"
+    },
+    "active": {
+        "0": "Node 0",
+        "1": "Node 1",
+        "2": "Node 2"
+    },
+    "counter": {
+        "0": "Node 0",
+        "1": "Node 1",
+        "2": "Node 2"
+    },
+}
+
+"0 > 'Node 0'"
+"1 > 'Node 1'"
+"2 > 'Node 2'"
+
+"color.%"
+"token:token.pos=%"
+
+const actors = ["Node 0", "Node 1", "Node 2"]
+
 /** actor to column map */
 const a2c = actors.reduce((acc, a, i) => acc.set(a, i + 1), new Map())
 
@@ -97,7 +132,12 @@ function edgeToVizData({ reads, readsDuringWrites, writes, label }, varToActor) 
     const keysActorPairsRead = readKeys.map(keys => ({ keys, actor: apply(varToActor, keys) }))
     const keysActorPairsReadDuringWrite = readsDuringWritesKeys.map(keys => ({ keys, actor: apply(varToActor, keys) }))
 
-    const keysActorPairs = [...keysActorPairsWrite, ...keysActorPairsRead, ...keysActorPairsReadDuringWrite]
+    let keysActorPairs = [...keysActorPairsWrite, ...keysActorPairsRead, ...keysActorPairsReadDuringWrite]
+
+
+    // TODO what should we do with unmapped vars?
+    // TODO what if only unmapped vars? or one action not mapped?
+    keysActorPairs = keysActorPairs.filter(p => p.actor !== undefined)
 
     const freqs = {}
     keysActorPairs.forEach(({ actor }) => freqs[actor] ? freqs[actor] += 1 : freqs[actor] = 1)
@@ -292,6 +332,69 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
     </svg>`
 }
 
+const ActionInspector = ({ actionVizData, startRow, close }) => {
+    const gridElementStyle = {
+        gridColumn: `1 / span ${actors.length}`,
+        gridRow: `${startRow} / 40`, // doesn't actually span 40 rows, instead goes to the end of the grid
+        zIndex: 3,
+        display: "flex",
+        pointerEvents: "none"
+    }
+
+    const [opacity, setOpacity] = useState(0)
+
+    const containerStyle = {
+        backgroundColor: "rgb(249 249 249)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        width: "100%",
+        padding: "16px",
+        height: "min-content",
+        transition: "opacity 0.2s ease-out",
+        opacity: opacity,
+        pointerEvents: "auto",
+        boxShadow: "rgba(50, 50, 93, 0.25) 0px 2px 5px -1px, rgba(0, 0, 0, 0.3) 0px 1px 3px -1px"
+    }
+
+    useEffect(() => {
+        setOpacity(1)
+        return () => setOpacity(0)
+    }, [])
+
+    const delayedClose = () => {
+        setOpacity(0)
+        setTimeout(close, 100)
+    }
+
+    return html`
+    <div style=${gridElementStyle}>
+        <div style=${containerStyle}>
+            <style>
+                .close {
+                    transition: background-color 0.1s ease-in-out;
+                    background-color: rgba(212, 212, 212, 0);
+                    height: min-content;
+                    width: min-content;
+                    padding: 0 0.3em;
+                    border-radius: 50%;
+                    cursor: pointer;
+                }
+                
+                .close:hover {
+                    background-color: rgba(212, 212, 212, 1);
+                }
+            </style>
+            <div style=${{ display: "flex", justifyContent: "space-between", flexDirection: "row", alignItems: "flex-start", padding: "0 0 8px 0" }}>
+                <h4 style=${{ margin: "0" }}>${actionVizData.label}</h4>
+                <div class="close" onClick=${delayedClose}>${"\u{2715}"}</div>
+            </div>
+            <button>Reset to this action</button>
+        </div>
+    </div>
+    `
+}
+
 const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
 
     // depending on if messages are read or write messages,
@@ -318,7 +421,9 @@ const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
             return { fromCol, toCol, row, label: m.label, yRelativePosition, type: m.type }
         })
 
-        return [...readMsgPositions, ...writeMsgPositions]
+        const msgsWithoutSelfReferences = [...readMsgPositions, ...writeMsgPositions].filter(m => m.fromCol !== m.toCol)
+
+        return msgsWithoutSelfReferences
     }
 
     return vizData
@@ -359,10 +464,10 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
     return html`
         <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0" }}>
             <style>
-                .test {
+                .field {
                 }
 
-                .test:hover {
+                .field:hover {
                     transition: background-color 0.3s ease-in-out;
                     background-color: rgb(240,240,241, 0.5);
                     cursor: pointer;
@@ -377,15 +482,8 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
                     <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
                     <!-- last row with fixed height to still show some of the lifeline -->
                     ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
-                    ${vizData.map((_, i) => html`<div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${i + 2}`, zIndex: 3 }} class="test" onClick=${() => toggle(i)}></div>`)}
-                    ${inspectEdge !== null ? html`
-                        <div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${inspectEdge + 3} / 40`, zIndex: 3, display: "flex", pointerEvents: "none" }}>
-                            <div style=${{ backgroundColor: "#eeeeee", display: "flex", flexDirection: "column", justifyContent: "flex-start", width: "100%", padding: "16px", height: "min-content", pointerEvents: "auto" }}>
-                                <h4>${vizData[inspectEdge].label}</h4>
-                                <button>Reset to this action</button>
-                            </div>
-                        </div>
-                    ` : ""}
+                    ${vizData.map((_, i) => html`<div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${i + 2}`, zIndex: 3 }} class="field" onClick=${() => toggle(i)}></div>`)}
+                    ${inspectEdge !== null ? html`<${ActionInspector} actionVizData=${vizData[inspectEdge]} startRow=${inspectEdge + 3} close=${() => setInspectEdge(null)} />` : ""}
                 </div>
             </div>
         </div>
@@ -413,7 +511,16 @@ const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPr
     }
 
     const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === a))
+    // TODO how to handle actions without actor?
+    const nextActionsWithoutActor = nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === undefined)
 
+    if (nextActionsWithoutActor.length > 0) {
+        console.warn("next action without actor", nextActionsWithoutActor)
+    }
+
+    if (nextActionsPerActorIndex.flat().length !== nextEdges.length) {
+        console.warn("next action without actor", nextActionsWithoutActor)
+    }
 
     const keySeqs = nestedKeys(currNode.vars)
     const keySeqsActorPairsPerActor = actors.reduce((acc, a) =>
@@ -442,6 +549,28 @@ const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPr
                 </tr>`
     }
 
+    const mergeTrees = (acc, n) => {
+        const varsTree = n.vars
+
+        const dfs = (accChild, child) => {
+            if (Array.isArray(child) || typeof child !== "object") {
+                return
+            }
+
+            for (const k of Object.keys(child)) {
+                if (accChild[k] === undefined) {
+                    accChild[k] = {}
+                }
+                dfs(accChild[k], child[k])
+            }
+        }
+
+        dfs(acc, varsTree)
+
+        return acc
+    }
+
+    //const allVarScopes = graph.nodesList.reduce(mergeTrees, {})
 
     return html`
     <div style=${diagramContainerStyle}>
@@ -505,9 +634,9 @@ const State = ({ graph, initNode }) => {
 
 const GraphProvider = () => {
     // only do computation-heavy operations on whole graph once
-    const nodesList = specExport.graph.filter(n => n.$type === "node" || n.$type === "init-node")
+    const nodesList = ewd998Small.graph.filter(n => n.$type === "node" || n.$type === "init-node")
     const nodes = nodesList.reduce((acc, n) => acc.set(n.id, n), new Map())
-    const edges = specExport.graph.filter(e => e.$type === "edge")
+    const edges = ewd998Small.graph.filter(e => e.$type === "edge")
     const initNode = nodesList.find(n => n.$type === "init-node")
 
     const computeOutgoingEdges = () => {
@@ -528,7 +657,7 @@ const GraphProvider = () => {
     }
     const outgoingEdges = computeOutgoingEdges()
 
-    const graph = { nodes, edges, outgoingEdges }
+    const graph = { nodes, edges, outgoingEdges, nodesList }
 
     return html`<${State} graph=${graph} initNode=${initNode}/>`
 }
