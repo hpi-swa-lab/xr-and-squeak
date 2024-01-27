@@ -1,6 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { choose } from "../sandblocks/window.js";
-import { h, icon, replacement } from "../view/widgets.js";
+import { h, icon, replacement, useDebouncedEffect } from "../view/widgets.js";
 import { AutoSizeTextArea } from "../view/widgets/auto-size-text-area.js";
 import { ShardArray } from "../view/widgets/shard-array.js";
 import {
@@ -8,7 +8,24 @@ import {
   cascadedConstructorShardsFor,
 } from "./smalltalk.js";
 import { pluralString } from "../utils.js";
-import { useState, useEffect } from "../external/preact-hooks.mjs";
+import { useEffect, useState } from "../external/preact-hooks.mjs";
+
+const parseSqArray = (obj) => {
+  const arr = new Array(
+    Math.max(
+      0,
+      Math.max(
+        ...Object.keys(obj)
+          .map((k) => parseInt(k))
+          .filter((i) => !isNaN(i))
+      )
+    )
+  );
+  for (const [k, v] of Object.entries(obj)) {
+    if (!isNaN(parseInt(k))) arr[k - 1] = v;
+  }
+  return arr;
+};
 
 export const base = new Extension()
 
@@ -35,80 +52,68 @@ export const base = new Extension()
         rootModule: { default: "OragleSequenceModule new" },
       }),
     replacement(e, "oragle-project", ({ label, rootModule, replacement }) => {
-      const [metrics, setMetrics] = useState(0);
+      const [bufferedMetrics, setMetrics] = useState(null);
+      const [promptsObj, setPromptsObj] = useState(null);
 
-      const asyncPromptObj = (async () => {
-        // TODO: debounce!
-        // FIXME: this is just to keep at least short inputs responsive ... no debounce yet
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return await sqQuery(
-          `
-          | project |
-          project := Compiler evaluate: '${sqEscapeString(
-            replacement.sourceString
-          )}'.
+      useDebouncedEffect(
+        500,
+        async () => {
+          const input = sqEscapeString(replacement.sourceString);
+          const promptsObj = await sqQuery(
+            `| project |
+          project := Compiler evaluate: '${input}'.
           project expand.
           `,
-          {
-            "[]": {
-              input: "input",
-              defaultNumberOfOutputs: "defaultNumberOfOutputs",
-              priceToGenerateOutputs: ["maxCents"],
-            },
-          }
-        );
-      })();
-      const parseSqArray = (obj) => {
-        const arr = new Array(
-          Math.max(
-            0,
-            Math.max(
-              ...Object.keys(obj)
-                .map((k) => parseInt(k))
-                .filter((i) => !isNaN(i))
-            )
-          )
-        );
-        for (const [k, v] of Object.entries(obj)) {
-          if (!isNaN(parseInt(k))) arr[k - 1] = v;
-        }
-        return arr;
-      };
-      const asyncMetrics = (async () => {
-        const promptsObj = await asyncPromptObj;
-        const prompts = parseSqArray(promptsObj);
+            {
+              "[]": {
+                input: "input",
+                defaultNumberOfOutputs: "defaultNumberOfOutputs",
+                priceToGenerateOutputs: ["maxCents"],
+              },
+            }
+          );
 
-        const totalPrice = prompts.reduce(
-          (acc, prompt) => acc + prompt.priceToGenerateOutputs.maxCents,
-          0
-        );
-        return {
-          numberOfPrompts: prompts.length,
-          // single number if all prompts have the same number of outputs, otherwise `null`
-          defaultNumberOfOutputs: prompts.every(
-            (prompt) =>
-              prompt.defaultNumberOfOutputs ===
-              prompts[0].defaultNumberOfOutputs
-          )
-            ? prompts[0].defaultNumberOfOutputs
-            : null,
-          totalPrice: totalPrice,
-          totalPriceFormatted:
-            totalPrice > 100
-              ? `$${(totalPrice / 100).toFixed(2)}`
-              : `¢${totalPrice.toFixed(
-                  totalPrice > 0.01 || totalPrice === 0
-                    ? 2
-                    : Math.min(
-                        Math.max(0, -Math.floor(Math.log10(totalPrice))),
-                        100
-                      )
-                )}`,
-        };
-      })();
-      useEffect(async () => {
-        setMetrics(await asyncMetrics);
-      });
+          const prompts = parseSqArray(promptsObj);
+
+          const totalPrice = prompts.reduce(
+            (acc, prompt) => acc + prompt.priceToGenerateOutputs.maxCents,
+            0
+          );
+
+          setPromptsObj(promptsObj);
+          setMetrics({
+            sourceString: replacement.sourceString,
+            numberOfPrompts: prompts.length,
+            // single number if all prompts have the same number of outputs, otherwise `null`
+            defaultNumberOfOutputs: prompts.every(
+              (prompt) =>
+                prompt.defaultNumberOfOutputs ===
+                prompts[0].defaultNumberOfOutputs
+            )
+              ? prompts[0].defaultNumberOfOutputs
+              : null,
+            totalPrice: totalPrice,
+            totalPriceFormatted:
+              totalPrice > 100
+                ? `$${(totalPrice / 100).toFixed(2)}`
+                : `¢${totalPrice.toFixed(
+                    totalPrice > 0.01 || totalPrice === 0
+                      ? 2
+                      : Math.min(
+                          Math.max(0, -Math.floor(Math.log10(totalPrice))),
+                          100
+                        )
+                  )}`,
+          });
+        },
+        [replacement.sourceString]
+      );
+
+      // check if we're still up-to-date
+      const metrics =
+        bufferedMetrics?.sourceString === replacement.sourceString
+          ? bufferedMetrics
+          : null;
 
       return h(
         OragleProject,
@@ -141,11 +146,9 @@ export const base = new Extension()
                     borderRadius: "6px",
                   },
                   onClick: async () => {
-                    const promptsObj = await asyncPromptObj;
                     if (metrics) {
                       // price has been seen by user, so we can use it
                     } else {
-                      const metrics = await asyncMetrics;
                       if (
                         !confirm(
                           `About to spend ${
