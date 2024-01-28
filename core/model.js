@@ -165,7 +165,7 @@ class SBNode {
   }
 
   get isRoot() {
-    return !!this._sourceString;
+    return !!this._language;
   }
 
   get sourceString() {

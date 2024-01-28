@@ -110,6 +110,7 @@ export class SBSelection extends EventTarget {
         node = followingEditablePart(node, direction);
       } while (node);
     }
+    this.informChange(null, targetRange, editor);
   }
 
   focusEditable(editable) {
@@ -192,8 +193,8 @@ export class SBSelection extends EventTarget {
       view.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
-  informChange(view, range) {
-    const editor = getEditor(view);
+  informChange(view, range, editor = null) {
+    editor ??= getEditor(view);
     const newEditable = nodeEditableForPart(view);
 
     if (this.lastEditable !== newEditable) {

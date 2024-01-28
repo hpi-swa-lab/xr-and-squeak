@@ -447,6 +447,7 @@ export class Editor extends HTMLElement {
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     this.extensionsDo((e) => e.process(["always"], this.source));
     this.initializing = false;
+    this._queuedViewUpdate = false;
 
     if (this.queuedUpdate) {
       let update = this.queuedUpdate;
@@ -462,6 +463,16 @@ export class Editor extends HTMLElement {
     this.selection.moveToRange(this, [start, end], scrollIntoView);
   }
 
+  queueViewUpdate() {
+    if (this._queuedViewUpdate) return;
+    this._queuedViewUpdate = true;
+    queueMicrotask(() => {
+      this._queuedViewUpdate = false;
+      this.extensionsDo((e) => e.process(["replacement"], this.source));
+      this.extensionsDo((e) => e.process(["always"], this.source));
+    });
+  }
+
   _shards = [];
 
   createShardFor(node) {
@@ -473,6 +484,7 @@ export class Editor extends HTMLElement {
 
   registerShard(shard) {
     this._shards.push(shard);
+    this.queueViewUpdate();
   }
 
   deregisterShard(shard) {

@@ -1,11 +1,14 @@
 sb-editor {
-  display: block;
+  display: flex;
+  flex-direction: column;
   justify-content: stretch;
+  align-items: stretch;
 }
-.sb-editor-content {
-  display: block;
-  white-space: pre;
+sb-editor > sb-shard {
+  display: inline-block;
+  flex: 1;
 }
+
 sb-block {
   display: inline;
   margin: 0;
@@ -32,10 +35,6 @@ sb-shard {
   tab-size: 2;
   outline: none;
   background: #fff;
-}
-sb-editor > sb-shard {
-  display: inline-block;
-  min-width: 100%;
 }
 
 table {
