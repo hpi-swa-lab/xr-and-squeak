@@ -285,7 +285,7 @@ export class Editor extends HTMLElement {
   // update the text buffer and resync selection and replacements
   // returns either the diff on success or null if the change was
   // denied
-  _setText(text) {
+  _setText(text, cleanupView = null) {
     const { diff, tx } = this.source.updateModelAndView(text);
 
     let mayCommit = true;
@@ -300,6 +300,8 @@ export class Editor extends HTMLElement {
       this.selection.moveToRange(this, this.selection.range);
       this.notifyAtCursor("Blocked as change damages a structure");
       return null;
+    } else {
+      tx.commit();
     }
 
     return diff;

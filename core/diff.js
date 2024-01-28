@@ -118,6 +118,7 @@ export class TrueDiff {
 
     const tx = new Transaction();
     diff.apply(tx);
+    tx.onCommit = () => diff.applyView(tx);
     this.recurseParallel(b, root, (b, a) => {
       tx.set(a, "_range", b.range);
       if (a._field !== b._field) tx.set(a, "_field", b._field);
@@ -405,7 +406,10 @@ export class DetachOp extends DiffOp {
   }
   apply(buffer, tx) {
     buffer.notePendingDetached(this.node);
-
+    if (!this.detachingFromRoot)
+      tx.removeNodeChild(this.node.parent, this.node);
+  }
+  applyView(buffer, tx) {
     if (this.detachingFromRoot) {
       this.node.viewsDo((view) => {
         buffer.rememberDetached(view, view.shard);
@@ -413,7 +417,6 @@ export class DetachOp extends DiffOp {
         tx.removeDOMChild(view.parentElement, view);
       });
     } else {
-      tx.removeNodeChild(this.node.parent, this.node);
       // view may have already been removed
       this.updateViews(this.node, (view) => {
         if (view.parentElement) {
@@ -444,9 +447,9 @@ export class AttachOp extends DiffOp {
   }
   apply(buffer, tx) {
     buffer.forgetPendingDetached(this.node);
-
     if (this.parent) tx.insertNodeChild(this.parent, this.node, this.index);
-
+  }
+  applyView(buffer, tx) {
     // FIXME do we still need detachedRootShards?
     if (this.attachingToRoot && buffer.detachedRootShards.size > 0) {
       buffer.detachedRootShards.forEach((shard) => {
@@ -479,6 +482,8 @@ export class UpdateOp extends DiffOp {
   }
   apply(_buffer, tx) {
     tx.updateNodeText(this.node, this.text);
+  }
+  applyView(_buffer, tx) {
     this.updateViews(this.node, (view) => {
       tx.setDOMAttribute(view, "text", this.text);
     });
@@ -493,6 +498,7 @@ export class RemoveOp extends DiffOp {
   apply(buffer) {
     buffer.forgetPendingDetached(this.node);
   }
+  applyView() {}
 }
 
 export class LoadOp extends DiffOp {
@@ -503,6 +509,7 @@ export class LoadOp extends DiffOp {
   apply(buffer) {
     buffer.notePendingLoaded(this.node);
   }
+  applyView() {}
 }
 
 class EditBuffer {
@@ -575,6 +582,10 @@ class EditBuffer {
     this.posBuf.forEach((f) => f.apply(this, tx));
     this.assertNoPendingDetached();
   }
+  applyView(tx) {
+    this.negBuf.forEach((f) => f.applyView(this, tx));
+    this.posBuf.forEach((f) => f.applyView(this, tx));
+  }
   getDetachedOrConstruct(node, shard) {
     return (
       this.shardBuffer.get(shard)?.find((view) => view.node === node) ??
@@ -600,8 +611,10 @@ class EditBuffer {
 
 class Transaction {
   undo = [];
+  onCommit = null;
 
   commit() {
+    this.onCommit();
     this.undo = null;
   }
   rollback() {
