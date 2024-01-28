@@ -27,6 +27,16 @@ export const shard = (node, props = {}) => {
   if (!node.editor) throw new Error("node has become disconnected");
   return h(node.editor.shardTag, { initNode: [node], key: node.id, ...props });
 };
+function StickyShard({ node, ...props }) {
+  useEffect(() => {
+    const editor = node.editor;
+    editor.markSticky(node, true);
+    return () => editor.markSticky(node, false);
+  }, [node]);
+  return shard(node, props);
+}
+export const stickyShard = (node, props = {}) =>
+  h(StickyShard, { node, ...props });
 export const shardList = (list) => {
   const node = new SBList(list);
   return h(node.editor.shardTag, { initNode: [node], key: node.id });

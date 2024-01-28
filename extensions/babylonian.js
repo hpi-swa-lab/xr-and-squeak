@@ -9,22 +9,26 @@ const example = (x) =>
 export const javascript = new Extension()
   .registerReplacement((e) => [
     example,
-    replacement(e, "sb-example", ({ name, args, self }) =>
-      h(
-        "div",
-        {
-          style: {
-            backgroundColor: "#333",
-            display: "inline-flex",
-            gap: "0.25rem",
-            padding: "0.25rem",
-            borderRadius: "4px",
+    replacement(
+      e,
+      "sb-example",
+      ({ name, args, self }) =>
+        h(
+          "div",
+          {
+            style: {
+              backgroundColor: "#333",
+              display: "inline-flex",
+              gap: "0.25rem",
+              padding: "0.25rem",
+              borderRadius: "4px",
+            },
           },
-        },
-        shard(name.childBlock(0)),
-        shard(args),
-        shard(self)
-      )
+          shard(name.childBlock(0)),
+          shard(args),
+          shard(self)
+        ),
+      { isSticky: true }
     ),
   ])
   .registerSave((e) => [
