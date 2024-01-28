@@ -44,9 +44,13 @@ export function List({
   const [filterString, setFilterString] = useState("");
 
   const visibleItems = useMemo(() => {
-    return items
-      .filter((item) => labelFunc(item).toLowerCase().includes(filterString))
-      .sort((a, b) => labelFunc(a).length - labelFunc(b).length);
+    return filterString === ""
+      ? items
+      : items
+          .filter((item) =>
+            labelFunc(item).toLowerCase().includes(filterString)
+          )
+          .sort((a, b) => labelFunc(a).length - labelFunc(b).length);
   }, [items, filterString]);
 
   useEffect(() => {

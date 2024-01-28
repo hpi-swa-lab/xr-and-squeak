@@ -181,6 +181,10 @@ class SBNode {
     return this.parent ? this.parent.depth + 1 : 0;
   }
 
+  get connected() {
+    return this.root.isRoot;
+  }
+
   toHTMLExpanded() {
     // return this.toHTML(this.depth + 2);
     return this.toHTML();
@@ -230,6 +234,10 @@ class SBNode {
 
   atField(field) {
     return this.children.find((child) => child.field === field);
+  }
+
+  atType(type) {
+    return this.children.find((child) => child.type === type);
   }
 
   print(level = 0, namedOnly = false) {

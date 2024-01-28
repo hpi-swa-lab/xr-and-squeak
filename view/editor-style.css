@@ -1,5 +1,7 @@
 sb-editor {
-  display: flex;
+  /* has to be display: block for content-editable to work
+     correctly (inserts div instead of br otherwise) */
+  display: block;
   flex-direction: column;
   justify-content: stretch;
   align-items: stretch;
@@ -7,6 +9,7 @@ sb-editor {
 sb-editor > sb-shard {
   display: inline-block;
   flex: 1;
+  width: 100%;
 }
 
 sb-block {

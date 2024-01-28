@@ -1,12 +1,10 @@
 import { Extension } from "../core/extension.js";
 import {
   ToggleableMutationObserver,
-  clampRange,
   findChange,
   getSelection,
   last,
   parentWithTag,
-  rangeEqual,
 } from "../utils.js";
 import { Block, Text, ViewList } from "./elements.js";
 import { Shard } from "./shard.js";
@@ -294,6 +292,9 @@ export class Editor extends HTMLElement {
     this.extensionsDo(
       (e) => (mayCommit = mayCommit && e.processStickyReplacements(this.source))
     );
+    for (const node of this.stickyNodes) {
+      mayCommit = mayCommit && node.connected;
+    }
     if (!mayCommit) {
       tx.rollback();
       this.selection.moveToRange(this, this.selection.range);
@@ -301,6 +302,16 @@ export class Editor extends HTMLElement {
     }
 
     return diff;
+  }
+
+  stickyNodes = [];
+  markSticky(node, sticky) {
+    if (sticky) {
+      this.stickyNodes.push(node);
+    } else {
+      const index = this.stickyNodes.indexOf(node);
+      if (index !== -1) this.stickyNodes.splice(index, 1);
+    }
   }
 
   changeDOM(cb) {
