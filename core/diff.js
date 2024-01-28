@@ -461,7 +461,6 @@ export class AttachOp extends DiffOp {
         // insertNode is overridden as a no-op for replacements --> they
         // will insert nodes as needed when their shards update
         parentView.insertNode(
-          this,
           buffer.getDetachedOrConstruct(this.node, shard),
           this.index
         );

@@ -167,7 +167,7 @@ export class Shard extends HTMLElement {
         let change;
         // our findChange method can only identify singular changes, so
         // if we have pending changes, we need to replace the entire range
-        if (this.hasPendingChanges) {
+        if (this.pendingCleanups.length > 0) {
           change = {
             from: this.range[0],
             to: this.range[1],
@@ -191,14 +191,11 @@ export class Shard extends HTMLElement {
           e.filterChange(change, this.sourceString, this.source)
         );
 
-        if (
-          !this.editor.applyChanges([change], false, () => {
-            this.pendingCleanups.reverse().forEach((c) => c());
-            this.pendingCleanups = [];
-          })
-        ) {
-          this.pendingCleanups.push(undo);
-        }
+        this.pendingCleanups.push(undo);
+        this.editor.applyChanges([change], false, () => {
+          this.pendingCleanups.reverse().forEach((c) => c());
+          this.pendingCleanups = [];
+        });
       });
     });
   }
