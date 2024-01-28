@@ -206,3 +206,12 @@ td {
     transform: scale(1, 1);
   }
 }
+
+.sb-pending-add,
+.sb-pending-remove {
+  background: #fcc;
+  outline: 1px solid #faa;
+}
+.sb-pending-remove:before {
+  content: "\00a0";
+}

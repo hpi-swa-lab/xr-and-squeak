@@ -169,7 +169,7 @@ export class Editor extends HTMLElement {
     });
   }
 
-  replaceTextFromTyping({ range, text, selectionRange }) {
+  replaceTextFromTyping({ range, text, selectionRange, cleanupView }) {
     const change = findChange(
       this.sourceString.slice(...range),
       text,
@@ -187,7 +187,7 @@ export class Editor extends HTMLElement {
       );
     }
 
-    this.applyChanges([change]);
+    this.applyChanges([change], false, cleanupView);
   }
 
   insertTextFromCommand(position, text) {
@@ -220,7 +220,7 @@ export class Editor extends HTMLElement {
 
   // apply a change to the text buffer and notify all interested parties
   // NOTE: the change may be denied if it would destroy a sticky replacement
-  applyChanges(changes, doNotCommitToHistory = false) {
+  applyChanges(changes, doNotCommitToHistory = false, cleanupView = null) {
     const oldSelected = this.editHistory.lastView;
     const oldRange = this.selectionRange ?? [0, 0];
     const oldSource = this.sourceString;
@@ -231,7 +231,7 @@ export class Editor extends HTMLElement {
         newSource.slice(0, from) + (insert ?? "") + newSource.slice(to);
     }
 
-    const diff = this._setText(newSource);
+    const diff = this._setText(newSource, cleanupView);
     if (diff && !this.suspendViewChanges) {
       this.updateViewAfterChange(
         last(changes).selectionRange,
@@ -242,7 +242,9 @@ export class Editor extends HTMLElement {
         oldRange,
         oldSource
       );
+      return true;
     }
+    return false;
   }
 
   updateViewAfterChange(
@@ -297,10 +299,11 @@ export class Editor extends HTMLElement {
     }
     if (!mayCommit) {
       tx.rollback();
-      this.selection.moveToRange(this, this.selection.range);
+      // this.selection.moveToRange(this, this.selection.range);
       this.notifyAtCursor("Blocked as change damages a structure");
       return null;
     } else {
+      cleanupView?.();
       tx.commit();
     }
 

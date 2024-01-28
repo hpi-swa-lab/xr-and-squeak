@@ -12,6 +12,7 @@ import {
   rangeDistance,
   rangeEqual,
   rangeShift,
+  findChange,
 } from "../utils.js";
 import { Block } from "./elements.js";
 import {
@@ -155,19 +156,54 @@ export class Shard extends HTMLElement {
       if (mutations.some((m) => m.type === "attributes")) return;
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
+      const undo = () => {
+        for (const mutation of mutations) this.observer.undoMutation(mutation);
+      };
+
       ToggleableMutationObserver.ignoreMutation(() => {
         const { selectionRange, sourceString } =
           this._extractSourceStringAndSelectionRangeAfterMutation();
-        for (const mutation of mutations) this.observer.undoMutation(mutation);
 
-        this.editor.replaceTextFromTyping({
-          range: this.range,
-          text: sourceString,
-          selectionRange,
-        });
+        let change;
+        // our findChange method can only identify singular changes, so
+        // if we have pending changes, we need to replace the entire range
+        if (this.hasPendingChanges) {
+          change = {
+            from: this.range[0],
+            to: this.range[1],
+            insert: sourceString,
+            selectionRange,
+          };
+        } else {
+          change = findChange(
+            this.editor.sourceString.slice(...this.range),
+            sourceString,
+            this.editor.selectionRange[1] - this.range[0]
+          );
+          if (!change) return;
+
+          change.from += this.range[0];
+          change.to += this.range[0];
+          change.selectionRange = selectionRange;
+        }
+
+        this.editor.extensionsDo((e) =>
+          e.filterChange(change, this.sourceString, this.source)
+        );
+
+        if (
+          !this.editor.applyChanges([change], false, () => {
+            this.pendingCleanups.reverse().forEach((c) => c());
+            this.pendingCleanups = [];
+          })
+        ) {
+          this.pendingCleanups.push(undo);
+        }
       });
     });
   }
+
+  pendingCleanups = [];
 
   disconnectedCallback() {
     this.observer.destroy();

@@ -414,13 +414,13 @@ export class DetachOp extends DiffOp {
       this.node.viewsDo((view) => {
         buffer.rememberDetached(view, view.shard);
         buffer.rememberDetachedRootShard(view.shard);
-        tx.removeDOMChild(view.parentElement, view);
+        view.parentElement.removeChild(view);
       });
     } else {
       // view may have already been removed
       this.updateViews(this.node, (view) => {
         if (view.parentElement) {
-          tx.removeDOMChild(view.parentElement, view);
+          view.parentElement.removeChild(view);
         }
       });
       // recurse so that, if any parents are replaced but
@@ -454,17 +454,14 @@ export class AttachOp extends DiffOp {
     if (this.attachingToRoot && buffer.detachedRootShards.size > 0) {
       buffer.detachedRootShards.forEach((shard) => {
         tx.set(shard, "source", this.node);
-        tx.appendDOMChild(
-          shard,
-          buffer.getDetachedOrConstruct(this.node, shard)
-        );
+        shard.appendChild(buffer.getDetachedOrConstruct(this.node, shard));
       });
     } else {
       this.updateViews(this.parent, (parentView, shard) => {
         // insertNode is overridden as a no-op for replacements --> they
         // will insert nodes as needed when their shards update
-        tx.insertDOMChild(
-          parentView,
+        parentView.insertNode(
+          this,
           buffer.getDetachedOrConstruct(this.node, shard),
           this.index
         );
@@ -485,7 +482,7 @@ export class UpdateOp extends DiffOp {
   }
   applyView(_buffer, tx) {
     this.updateViews(this.node, (view) => {
-      tx.setDOMAttribute(view, "text", this.text);
+      view.setAttribute("text", this.text);
     });
   }
 }
@@ -620,31 +617,6 @@ class Transaction {
   rollback() {
     this.undo.reverse().forEach((f) => f());
     this.undo = null;
-  }
-
-  setDOMAttribute(node, attr, value) {
-    this.log("setDOMAttribute", node, attr, value);
-    const oldValue = node.getAttribute(attr);
-    this.undo.push(() => node.setAttribute(attr, oldValue));
-    node.setAttribute(attr, value);
-  }
-
-  insertDOMChild(parent, child, index) {
-    this.log("insertDOMChild", parent, child, index);
-    parent.insertNode(this, child, index);
-  }
-
-  removeDOMChild(parent, child) {
-    this.log("removeDOMChild", parent, child);
-    const oldAfter = child.nextElementSibling;
-    this.undo.push(() => parent.insertBefore(child, oldAfter));
-    parent.removeChild(child);
-  }
-
-  appendDOMChild(parent, child) {
-    this.log("appendDOMChild", parent, child);
-    this.undo.push(() => parent.removeChild(child));
-    parent.appendChild(child);
   }
 
   updateNodeText(node, text) {
