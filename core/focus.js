@@ -97,6 +97,22 @@ export class SBSelection extends EventTarget {
     );
   }
 
+  get notificationPoint() {
+    const s = getSelection();
+    if (s.rangeCount > 0) {
+      return withDo(s.getRangeAt(0).getBoundingClientRect(), (r) => [
+        r.x + r.width,
+        r.y,
+      ]);
+    }
+    return this.lastRect
+      ? [this.lastRect.x + this.lastRect.width, this.lastRect.y]
+      : withDo(getEditor(this.lastEditable).getBoundingClientRect(), (r) => [
+          r.x,
+          r.y,
+        ]);
+  }
+
   moveToRange(editor, targetRange, scrollIntoView = true) {
     const start = this.viewForMove(editor, targetRange);
     for (const direction of [1, -1]) {

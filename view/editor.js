@@ -298,6 +298,7 @@ export class Editor extends HTMLElement {
     if (!mayCommit) {
       tx.rollback();
       this.selection.moveToRange(this, this.selection.range);
+      this.notifyAtCursor("Blocked as change damages a structure");
       return null;
     }
 
@@ -375,6 +376,16 @@ export class Editor extends HTMLElement {
     ToggleableMutationObserver.ignoreMutation(() => {
       ext.process([trigger], this.selected?.node ?? this.source);
     });
+  }
+
+  notifyAtCursor(message) {
+    const notification = document.createElement("div");
+    notification.textContent = message;
+    notification.classList.add("sb-notification");
+    notification.style.left = `${this.selection.notificationPoint[0]}px`;
+    notification.style.top = `calc(${this.selection.notificationPoint[1]}px - 1em - 8px)`;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 2000);
   }
 
   undo() {

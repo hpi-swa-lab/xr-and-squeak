@@ -71,12 +71,14 @@ export class Shard extends HTMLElement {
         case "ArrowUp":
           if (this.editor.suggestions.canMove(-1)) {
             e.preventDefault();
+            e.stopPropagation();
             this.editor.suggestions?.moveSelected(-1);
           }
           break;
         case "ArrowDown":
           if (this.editor.suggestions.canMove(1)) {
             e.preventDefault();
+            e.stopPropagation();
             this.editor.suggestions?.moveSelected(1);
           }
           break;
