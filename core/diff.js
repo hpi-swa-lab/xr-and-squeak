@@ -414,15 +414,10 @@ export class DetachOp extends DiffOp {
       this.node.viewsDo((view) => {
         buffer.rememberDetached(view, view.shard);
         buffer.rememberDetachedRootShard(view.shard);
-        view.parentElement.removeChild(view);
+        view.remove();
       });
     } else {
-      // view may have already been removed
-      this.updateViews(this.node, (view) => {
-        if (view.parentElement) {
-          view.parentElement.removeChild(view);
-        }
-      });
+      this.updateViews(this.node, (view) => view.remove());
       // recurse so that, if any parents are replaced but
       // children are in shards, we still catch the children
       this.updateViewsRecurse(this.node, (view, shard) => {

@@ -22,13 +22,18 @@ export const javascript = new Extension()
               gap: "0.25rem",
               padding: "0.25rem",
               borderRadius: "4px",
+              color: "#fff",
             },
           },
-          shard(name.childBlock(0)),
-          shard(args),
-          shard(self)
+          shard(name.childBlock(0), {
+            style: { padding: "0.1rem", color: "#000" },
+          }),
+          "args:",
+          shard(args, { style: { padding: "0.1rem" } }),
+          "self:",
+          shard(self, { style: { padding: "0.1rem" } })
         ),
-      { isSticky: true }
+      { sticky: true }
     ),
   ])
   .registerSave((e) => [

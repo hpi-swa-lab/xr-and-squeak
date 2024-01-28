@@ -105,7 +105,7 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
       node.root.allNodesDo((node) => this.runQueries("replacement", node));
 
       for (const view of this.currentReplacements) {
-        if (!this.newReplacements.has(view) && view.isSticky) {
+        if (!this.newReplacements.has(view) && view.sticky) {
           throw new StickyReplacementRemoved();
         }
       }

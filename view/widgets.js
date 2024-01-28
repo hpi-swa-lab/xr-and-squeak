@@ -147,8 +147,6 @@ export class Widget extends HTMLElement {
 export class Replacement extends Widget {
   shards = [];
 
-  // isSticky = true;
-
   constructor() {
     super();
     this.hash = nextHash();
@@ -300,7 +298,7 @@ function ensureReplacementTagDefined(tag) {
           // entire replacement
           this._component ??= (...args) => this.component(...args);
 
-          if (["key"].some((k) => k in (this.props ?? {})))
+          if (["key", "id"].some((k) => k in (this.props ?? {})))
             throw new Error("used a prop name reserved for preact components");
 
           this.render(

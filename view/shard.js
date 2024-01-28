@@ -166,7 +166,9 @@ export class Shard extends HTMLElement {
 
         let change;
         // our findChange method can only identify singular changes, so
-        // if we have pending changes, we need to replace the entire range
+        // if we have pending changes, we need to replace the entire range.
+        // FIXME should replace all visible ranges, otherwise we override
+        // pending changes in nested shards
         if (this.pendingCleanups.length > 0) {
           change = {
             from: this.range[0],
@@ -188,7 +190,7 @@ export class Shard extends HTMLElement {
         }
 
         this.editor.extensionsDo((e) =>
-          e.filterChange(change, this.sourceString, this.source)
+          e.filterChange(change, this.editor.sourceString, this.source)
         );
 
         this.pendingCleanups.push(undo);
