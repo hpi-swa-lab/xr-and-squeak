@@ -21,7 +21,7 @@ function nodeIsEditablePart(node) {
     node instanceof Element &&
     (node.tagName === "SB-TEXT" ||
       // nodeIsEditable(node) ||
-      !!node.getAttribute("role") === "presentation" ||
+      (node.getAttribute("role") === "presentation" && node.tagName === 'SPAN') ||
       !!node.getAttribute("sb-editable-part"))
   );
 }
@@ -39,7 +39,7 @@ export function followingEditablePart(node, direction) {
   return followingElementThat(
     node,
     direction,
-    (n) => nodeIsEditablePart(n) && n !== currentEditable
+    (n) => nodeIsEditablePart(n) && n !== currentEditable && !hasParent(n, node) && nodeEditableForPart(n) !== currentEditable
   );
 }
 
@@ -51,12 +51,30 @@ export function followingElementThat(node, direction, predicate) {
   return null;
 }
 
+function parent(node) {
+  return node.parentNode ?? node.getRootNode()?.host;
+}
+
+function lastChild(node) {
+  if (node.shadowRoot) return node.shadowRoot.lastElementChild
+  else return node.lastElementChild
+}
+  
+function hasParent(node, p) {
+  while (p) {
+    if (node === p) return true;
+    p = parent(p);
+  }
+  return false;
+}
+
 function nextNodePreOrder(node) {
+  if (node.shadowRoot) return node.shadowRoot.firstElementChild;
   if (node.firstElementChild) return node.firstElementChild;
   if (node.nextElementSibling) return node.nextElementSibling;
 
   let current = node;
-  while ((current = current.parentNode)) {
+  while ((current = parent(current))) {
     if (current.nextElementSibling) return current.nextElementSibling;
   }
   return null;
@@ -65,10 +83,10 @@ function nextNodePreOrder(node) {
 function previousNodePreOrder(node) {
   if (node.previousElementSibling) {
     let current = node.previousElementSibling;
-    while (current.lastElementChild) current = current.lastElementChild;
+    while (lastChild(current)) current = lastChild(current);
     return current;
   }
-  return node.parentNode;
+  return parent(node);
 }
 
 // Manages selection and caret position for an editor.
