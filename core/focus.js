@@ -21,7 +21,8 @@ function nodeIsEditablePart(node) {
     node instanceof Element &&
     (node.tagName === "SB-TEXT" ||
       // nodeIsEditable(node) ||
-      (node.getAttribute("role") === "presentation" && node.tagName === 'SPAN') ||
+      (node.getAttribute("role") === "presentation" &&
+        node.tagName === "SPAN") ||
       !!node.getAttribute("sb-editable-part"))
   );
 }
@@ -34,12 +35,20 @@ export function nodeEditableForPart(node) {
   return orParentThat(node, (p) => nodeIsEditable(p));
 }
 
-export function followingEditablePart(node, direction) {
+export function followingEditablePart(
+  node,
+  direction,
+  sameShardAllowed = false
+) {
   const currentEditable = nodeEditableForPart(node);
   return followingElementThat(
     node,
     direction,
-    (n) => nodeIsEditablePart(n) && n !== currentEditable && !hasParent(n, node) && nodeEditableForPart(n) !== currentEditable
+    (n) =>
+      nodeIsEditablePart(n) &&
+      n !== currentEditable &&
+      !hasParent(n, node) &&
+      (sameShardAllowed || nodeEditableForPart(n) !== currentEditable)
   );
 }
 
@@ -56,10 +65,10 @@ function parent(node) {
 }
 
 function lastChild(node) {
-  if (node.shadowRoot) return node.shadowRoot.lastElementChild
-  else return node.lastElementChild
+  if (node.shadowRoot) return node.shadowRoot.lastElementChild;
+  else return node.lastElementChild;
 }
-  
+
 function hasParent(node, p) {
   while (p) {
     if (node === p) return true;

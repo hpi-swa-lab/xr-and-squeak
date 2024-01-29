@@ -517,7 +517,7 @@ export class Shard extends HTMLElement {
     // otherwise, fallback to just comparing the selected editable
     if (me) {
       const newRange = rangeShift(this.editor.selection.range, delta);
-      const following = me && followingEditablePart(me, delta);
+      const following = me && followingEditablePart(me, delta, true);
       if (
         (!rangeContains(me.range, newRange) || selectionChangesEditables) &&
         following?.shard !== me.shard
