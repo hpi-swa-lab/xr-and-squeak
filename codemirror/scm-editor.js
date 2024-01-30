@@ -91,49 +91,53 @@ export class SCMShard extends HTMLElement {
   async update(node) {
     this.source = node
     if (!this.livelyCM) {
-      this.livelyCM = await (<lively-code-mirror 
-                               style="display:inline-block; border: 1px solid gray" 
-                               class={node == node.root ? "" : "shard"}></lively-code-mirror>)
-      if(node === node.root) {
-        this.livelyCM.style.width = "100%"
-        this.livelyCM.style.height = "100%"
-      }
-      
-      this.livelyCM.addEventListener("change", (e) => {
-        if (!this.editor || this.nextSource === this.livelyCM.value) return;
-        this.editor.replaceTextFromTyping({
-          range: this.range,
-          text: this.livelyCM.value,
-        });
-      });
-
-      this.livelyCM.editor.on("beforeSelectionChange", (cm, e, sel) => {
-        if (!this.editor || e.origin !== '+move') return;
-        let delta = Math.sign(cm.indexFromPos(e.ranges[0].head) - cm.indexFromPos(cm.getCursor("from")));
-        
-        // if we hit a boundary, codemirror reports this via hitSide but does not move the ranges
-        if (delta === 0) {
-          console.assert(e.ranges[0].head.hitSide);
-          delta = cm.indexFromPos(e.ranges[0].head) === 0 ? -1 : 1;
-        }
-        
-        if (e.ranges[0].head.hitSide || this.sbIsMoveAtBoundary(delta)) {
-          this.editor.selection.moveToNext(this.editor, delta);
-        } else {
-          this.editor.selection.informChange(this, 
-                                             [cm.indexFromPos(cm.getCursor("from")),
-                                              cm.indexFromPos(cm.getCursor("to"))]);
-        }
-      });
-      
-      this.appendChild(this.livelyCM)
+      await this.initEditor(node);
     }
     
     if (node.sourceString !== this.livelyCM.value) {
       this.nextSource = node.sourceString
       this.livelyCM.value = node.sourceString
     }
-  }  
+  }
+  
+  async initEditor(node) {
+    this.livelyCM = await (<lively-code-mirror 
+                             style="display:inline-block; border: 1px solid gray" 
+                             class={node == node.root ? "" : "shard"}></lively-code-mirror>)
+    if(node.isRoot) {
+      this.livelyCM.style.width = "100%"
+      this.livelyCM.style.height = "100%"
+    }
+
+    this.livelyCM.addEventListener("change", (e) => {
+      if (!this.editor || this.nextSource === this.livelyCM.value) return;
+      this.editor.replaceTextFromTyping({
+        range: this.range,
+        text: this.livelyCM.value,
+      });
+    });
+
+    this.livelyCM.editor.on("beforeSelectionChange", (cm, e, sel) => {
+      if (!this.editor || e.origin !== '+move') return;
+      let delta = Math.sign(cm.indexFromPos(e.ranges[0].head) - cm.indexFromPos(cm.getCursor("from")));
+
+      // if we hit a boundary, codemirror reports this via hitSide but does not move the ranges
+      if (delta === 0) {
+        console.assert(e.ranges[0].head.hitSide);
+        delta = cm.indexFromPos(e.ranges[0].head) === 0 ? -1 : 1;
+      }
+
+      if (e.ranges[0].head.hitSide || this.sbIsMoveAtBoundary(delta)) {
+        this.editor.selection.moveToNext(this.editor, delta);
+      } else {
+        this.editor.selection.informChange(this, 
+                                           [cm.indexFromPos(cm.getCursor("from")),
+                                            cm.indexFromPos(cm.getCursor("to"))]);
+      }
+    });
+
+    this.appendChild(this.livelyCM)
+  }
 
   sbSelectedEditablePart() {
     const cm = this.livelyCM.editor
@@ -223,6 +227,10 @@ export class SCMEditor extends HTMLElement {
     this.source.updateModelAndView(newText)
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     
+    // #TODO need to update the root codemirror. However, as this overrides
+    // the entire source code, we remove all markers (i.e. replacements)
+    this.shard.update(this.source)
+    
     // TODO these also have to trigger
     // if (this.selected)
     //     this.extensionsDo((e) => e.process(["type"], this.selected.node));
@@ -293,7 +301,8 @@ export class SCMEditor extends HTMLElement {
       
       root._editor = this
 
-      this.appendChild(await this.createShardFor(root));
+      this.shard = await this.createShardFor(root);
+      this.appendChild(this.shard);
 
       this.extensionInstances = extensions.map((e) =>
         e.instance(CodeMirrorExtensionInstance)
