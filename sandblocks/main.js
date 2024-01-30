@@ -42,6 +42,12 @@ const PROJECT_TYPES = {
       };
     },
   },
+  VRProject: {
+    path: "./vr-project/main.js",
+    name: "VRProject",
+    label: "VR Project",
+    createArgs: async () => [prompt("Path?", "external/squeak-minimal.image")],
+  },
 };
 
 async function loadProjectType(desc) {
