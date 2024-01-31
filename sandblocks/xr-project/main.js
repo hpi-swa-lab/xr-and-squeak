@@ -1,4 +1,5 @@
 import { SqueakProject, ensureSystemChangeCallback, sqCompile } from "../squeak-project/main.js";
+import { button, h } from "../../view/widgets.js";
 
 export class XRProject extends SqueakProject {
   static deserialize(options) {
@@ -27,7 +28,10 @@ export class XRProject extends SqueakProject {
   async open() {
     await super.open();
     await ensureSystemChangeCallback(true);
+    await this.updateFromRemote();
+  }
 
+  async updateFromRemote() {
     const source = await fetch(`http://localhost:${this.connectionOptions.port}/source`)
       .then(response => response.json());
 
@@ -40,5 +44,12 @@ export class XRProject extends SqueakProject {
         sqCompile(cls.name, method);
       }
     }
+  }
+
+  renderBackground() {
+    return h("Fragment", {}, [
+      super.renderBackground(),
+      button("Update SqueakXR", () => this.updateFromRemote()),
+    ]);
   }
 }
