@@ -1,0 +1,14 @@
+{
+	"category" : "SqueakXR",
+	"classinstvars" : [
+		 ],
+	"classvars" : [
+		"CurrentService" ],
+	"commentStamp" : "",
+	"instvars" : [
+		"server" ],
+	"name" : "XRRemoteService",
+	"pools" : [
+		 ],
+	"super" : "Object",
+	"type" : "normal" }
