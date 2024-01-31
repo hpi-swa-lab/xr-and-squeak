@@ -289,7 +289,7 @@ export function markAsEditableElement(element) {
 }
 
 function handleKeyDown(e) {
-  if (document.activeElement !== this) return;
+  if (document.activeElement !== this || e.shiftKey) return;
 
   switch (e.key) {
     case "ArrowLeft":
