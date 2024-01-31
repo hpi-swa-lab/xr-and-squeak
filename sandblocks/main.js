@@ -42,11 +42,13 @@ const PROJECT_TYPES = {
       };
     },
   },
-  VRProject: {
-    path: "./vr-project/main.js",
-    name: "VRProject",
-    label: "VR Project",
-    createArgs: async () => [prompt("Path?", "external/squeak-minimal.image")],
+  XRProject: {
+    path: "./xr-project/main.js",
+    name: "XRProject",
+    label: "XR Project",
+    createArgs: async () => ({
+      path: prompt("Path?", "external/squeak-minimal.image"),
+      port: prompt("Port?", 9824)}),
   },
 };
 

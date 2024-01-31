@@ -218,13 +218,13 @@ function saveString(s) {
   return `(Json readFrom: '${s}' readStream) withSqueakLineEndings`;
 }
 
-async function sqCompile(cls, source) {
+export async function sqCompile(cls, source) {
   await sqEval(`${cls} compile: ${saveString(source)}`);
 }
 
 let systemChangeSubscribers = [];
 let systemChangeCallbackInit = false;
-async function ensureSystemChangeCallback(needsPatches) {
+export async function ensureSystemChangeCallback(needsPatches) {
   if (!systemChangeCallbackInit) {
     systemChangeCallbackInit = true;
 
