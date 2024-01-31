@@ -491,9 +491,11 @@ export class Editor extends HTMLElement {
   }
 
   queueViewUpdate() {
-    if (this._queuedViewUpdate) return;
+    if (this._queuedViewUpdate || !this.shard) return;
     this._queuedViewUpdate = true;
     queueMicrotask(() => {
+      // if we are not loaded yet, we can ignore this request as we will refresh once loaded
+      if (!this.shard) return;
       this._queuedViewUpdate = false;
       this.extensionsDo((e) => e.process(["replacement"], this.source));
       this.extensionsDo((e) => e.process(["always"], this.source));
