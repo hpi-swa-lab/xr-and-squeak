@@ -64,11 +64,13 @@ export class Editor extends HTMLElement {
 
     Extension.clearRegistry();
 
-    customElements.define("sb-shard", Shard);
-    customElements.define("sb-block", Block);
-    customElements.define("sb-view-list", ViewList);
-    customElements.define("sb-text", Text);
-    customElements.define("sb-editor", Editor);
+    if (!customElements.get("sb-editor")) {
+      customElements.define("sb-shard", Shard);
+      customElements.define("sb-block", Block);
+      customElements.define("sb-view-list", ViewList);
+      customElements.define("sb-text", Text);
+      customElements.define("sb-editor", Editor);
+    }
   }
 
   // may be set by external parties to provide e.g. a file path or similar to
