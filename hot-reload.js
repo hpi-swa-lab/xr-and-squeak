@@ -1,4 +1,5 @@
 import { options, Component } from "../external/preact.mjs";
+import { Extension } from "./core/extension.js";
 
 const instances = {};
 const idMapping = {};
@@ -44,6 +45,37 @@ export function register(componentFunc, id) {
   });
 }
 
-window.io().on("hot-reload", ({ url }) => {
-  import(url);
+export function updateExtension(extension, baseUrl, name) {
+  const id =
+    baseUrl.replace("/extensions/", "").replace(/\.js$/, "") + ":" + name;
+  const current = Extension.extensionRegistry.get(id);
+
+  for (const editor of document.querySelectorAll("sb-editor")) {
+    let didChange = false;
+    for (const instance of editor.extensionInstances) {
+      if (instance.extension === current) {
+        instance.extension = extension;
+        didChange = true;
+      }
+    }
+    if (didChange) {
+      editor.extensionsDo((e) => e.process(["replacement"], editor.source));
+      editor.extensionsDo((e) => e.process(["always"], editor.source));
+    }
+  }
+
+  Extension.extensionRegistry.set(id, extension);
+}
+
+// Our server informed us that the module at the given url changed.
+// `url` is cache-busted, baseUrl is the original.
+//
+// Preact components are not exported, so we use code rewriting on the
+// server to pass it to the `register` function.
+// Extensions are exported, so we can reload them here, no rewriting needed.
+window.io().on("hot-reload", async ({ url, baseUrl }) => {
+  const exports = await import(url);
+  for (const [key, value] of Object.entries(exports)) {
+    if (value instanceof Extension) updateExtension(value, baseUrl, key);
+  }
 });

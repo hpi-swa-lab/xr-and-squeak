@@ -11,11 +11,11 @@ parser.setLanguage(JavaScript);
 
 export function hotReload(app, rootPath, io) {
   watch(rootPath).on("change", (path) => {
+    if (!path.endsWith(".js")) return;
+    const baseUrl = path.slice(rootPath.length);
     io.sockets.emit("hot-reload", {
-      url:
-        path.slice(rootPath.length) +
-        "?v=" +
-        crypto.randomBytes(8).toString("hex"),
+      url: baseUrl + "?v=" + crypto.randomBytes(8).toString("hex"),
+      baseUrl,
     });
   });
 
