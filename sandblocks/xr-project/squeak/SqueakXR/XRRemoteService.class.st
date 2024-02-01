@@ -55,8 +55,10 @@ XRRemoteService >> source [
 		{
 			#name -> (cls name).
 			#definition -> (cls definition).
-			#methods -> (cls selectors collect: [:selector |
+			#instanceMethods -> (cls selectors collect: [:selector |
 				cls sourceCodeAt: selector]).
+			#classMethods -> (cls class selectors collect: [:selector |
+				cls class sourceCodeAt: selector])
 		} as: Dictionary]
 ]
 
