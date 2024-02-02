@@ -38,33 +38,46 @@ XRWorld class >> start [
 	self new start
 ]
 
-{ #category : #'as yet unclassified' }
-XRWorld >> renderTime: time frame: frame [
+{ #category : #setup }
+XRWorld >> createCamera [
 
-	cube rotation y: time / 1000.
-	renderer render: scene camera: camera
-]
-
-{ #category : #'as yet unclassified' }
-XRWorld >> start [
-	| light resize |
-	scene := Three Scene new.
-	scene background: (Three Color new: 16r505050).
-	
 	camera := Three PerspectiveCamera
 		new: 50
 		aspect: self class aspect
 		near: 0.1
 		far: 100.
 	camera position set: 0 y: 1.6 z: 3.
-	scene add: camera.
+	^ camera
+]
+
+{ #category : #setup }
+XRWorld >> createRenderer [
+	renderer := Three WebGLRenderer new: ({#antialias -> true} as: Dictionary).
+	renderer
+		setPixelRatio: JS window devicePixelRatio;
+		setSize: self class canvasWidth height: self class canvasHeight.
+	renderer xr enabled: true.
+	
+	renderer setAnimationLoop: [:time :frame | self renderTime: time frame: frame].
+]
+
+{ #category : #setup }
+XRWorld >> createScene [
+	| light |
+	scene := Three Scene new.
+	scene background: (Three Color new: 16r505050).
 	
 	light := Three DirectionalLight new: 16rffffff intensity: 0.5.
-	light position set: 1 y: 1 z: 1;
+	light position
+		set: 1 y: 1 z: 1;
  		normalize.
-	scene add: light.
-	scene add: (Three AmbientLight new: 16rffffff intensity: 0.5).
+	scene
+		add: light;
+		add: (Three AmbientLight new: 16rffffff intensity: 0.5).
 	
+	self createCamera.
+	
+	"temporary"
 	cube := Three Mesh
 		new: (Three BoxGeometry
 			new: 1
@@ -74,14 +87,20 @@ XRWorld >> start [
 			new: ({#color -> 16rff0000} as: Dictionary)).
 	cube position set: 0 y: 1.5 z: -10.
 	scene add: cube.
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld >> renderTime: time frame: frame [
+
+	cube rotation y: time / 1000.
+	renderer render: scene camera: camera
+]
+
+{ #category : #setup }
+XRWorld >> setupDocument [
+	| resize |
 	
-	renderer := Three WebGLRenderer new: ({#antialias -> true} as: Dictionary).
-	renderer
-		setPixelRatio: JS window devicePixelRatio;
-		setSize: self class canvasWidth height: self class canvasHeight.
-	renderer xr enabled: true.
-	
-	renderer setAnimationLoop: [:time :frame | self renderTime: time frame: frame].
+	self assert: renderer notNil.
 	
 	JS window document body appendChild: renderer domElement.
 	JS window document body
@@ -96,4 +115,13 @@ XRWorld >> start [
 		addEventListener: 'resize'
 		do: resize
 		useCapture: false
+]
+
+{ #category : #setup }
+XRWorld >> start [
+
+	self
+		createScene;
+		createRenderer;
+		setupDocument.
 ]
