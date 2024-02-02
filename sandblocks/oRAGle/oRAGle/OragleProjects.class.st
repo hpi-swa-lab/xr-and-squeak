@@ -301,12 +301,12 @@ OragleProjects class >> serialize: anObject ifNotPrimitiveObject: aBlock [
 
 {
 	#category : #rpc,
-	#'squeak_changestamp' : 'ct 1/25/2024 14:53'
+	#'squeak_changestamp' : 'ct 2/2/2024 12:48'
 }
 OragleProjects class >> startRpc [
 
 	Server := WebServer new
-		listenOn: 9824;
+		listenOn: 9823;
 		addService: '/sbEval' action: [:req |
 			Transcript showln: req content.
 			req
