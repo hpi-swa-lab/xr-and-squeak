@@ -7,7 +7,8 @@ import {
   cascadedConstructorFor,
   cascadedConstructorShardsFor,
 } from "./smalltalk.js";
-import { pluralString } from "../utils.js";
+import { makeUUID, pluralString } from "../utils.js";
+import { Component } from "../external/preact.mjs";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 
 const parseSqArray = (obj) => {
@@ -29,23 +30,56 @@ const parseSqArray = (obj) => {
   return arr;
 };
 
-const OutputExplorer = ({ prompts }) => {
-  const text = prompts.map((prompt, i) => {
-    return prompt.outputs
-      .map((output, j) => `Prompt #${i + 1} - Output #${j + 1}\n${output}`)
-      .join("\n");
-  }).join("\n\n");
+class OutputWindow extends Component {
+  constructor(props) {
+    super(props);
+    this.projectId = props.projectId;
 
-  return [
-    h("textarea", {
-      value: text,
-      readOnly: true,
-      style: {
-        width: "100%",
-        height: "100%",
+    this.state = {
+      prompts: []
+    }
+  }
+
+  async update() {
+    const promptsObj = await sqQuery(`OragleProjects promptsForProjectId: '${this.projectId}'`,{
+      "[]": {
+        modules: [{
+          "[]": ["uuid"],
+        }],
+        outputs: `outputs`,
       },
-    })
-  ];
+    });
+    const prompts = parseSqArray(promptsObj);
+    prompts.forEach((prompt) => {
+      prompt.modules &&= parseSqArray(prompt.modules);
+      prompt.outputs &&= parseSqArray(prompt.outputs);
+    });
+
+    this.setState({ prompts })
+  }
+
+  render() {
+    return h(
+      "div",
+      {
+        style: {
+          overflowY: "scroll",
+        },
+      },
+      ...this.state.prompts.map((prompt, promptIndex) =>
+        h(
+          "div",
+          { },
+          ...prompt.outputs.map((output, outputIndex) =>
+            h(
+              "div",
+              {},
+              h("div", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1}`),
+              h("pre", { style: { whiteSpace: "pre-wrap" } }, output)
+            ))
+        ))
+    );
+  }
 }
 
 export const base = new Extension()
@@ -69,16 +103,19 @@ export const base = new Extension()
   .registerReplacement((e) => [
     (x) =>
       cascadedConstructorShardsFor(x, "OragleProject", {
+        // TODO @ tom: avoid naming clashes with default props (we wanted to capture instvar named 'id' or 'key' here, but it clashes with default props)
+        uuid: { mode: "literal", default: makeUUID() },
         label: { prefix: "'", placeholder: "label", suffix: "'" },
-        rootModule: { default: "OragleSequenceModule new" },
+        rootModule: { default: `OragleSequenceModule new uuid: '${makeUUID()}'` },
       }),
-    replacement(e, "oragle-project", ({ label, rootModule, replacement }) => {
+    replacement(e, "oragle-project", ({ uuid, label, rootModule, replacement }) => {
       const [bufferedMetrics, setMetrics] = useState(null);
       const [promptsObj, setPromptsObj] = useState(null);
 
       useDebouncedEffect(
         500,
         async () => {
+          // TODO: get rid of separate compilation?; support token counting/price estimation per module
           const input = sqEscapeString(replacement.sourceString);
           const promptsObj = await sqQuery(
             `| project |
@@ -136,6 +173,35 @@ export const base = new Extension()
           ? bufferedMetrics
           : null;
 
+      let outputWindows = [];
+
+      const assureOutputWindow = () => {
+        outputWindows = outputWindows.filter(([component, window]) => document.body.contains(window));
+
+        if (outputWindows.length) return;
+
+        return openOutputWindow();
+      };
+
+      const openOutputWindow = () => {
+        const id = uuid.get().replace(/'/g, "");
+        const [component, window] = openComponentInWindow(
+          OutputWindow,
+          { projectId: id },
+          {
+            doNotStartAttached: true,
+            initialPosition: { x: 210, y: 10 },
+            initialSize: { x: 300, y: 400 },
+          }
+        );
+        outputWindows.push([component, window]);
+        return [component, window];
+      };
+
+      const updateOutputWindows = async () => {
+        await Promise.all(outputWindows.map(([component, window]) => component.update()))
+      };
+
       return h(
         OragleProject,
         { node: replacement.node, type: "OragleProject" },
@@ -182,7 +248,16 @@ export const base = new Extension()
                         return;
                     }
 
-                    await promptsObj._sqUpdateQuery({
+                    const shard = replacement.editor.children[0];
+                    await shard.save();
+
+                    const selector = shard.sourceString.split(/\s/)[0];
+                    await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
+
+                    assureOutputWindow();
+                    await updateOutputWindows();
+
+                    /* await promptsObj._sqUpdateQuery({
                       "[]": {
                         outputs: `self approvedPrice: ${metrics.totalPrice}; assureOutputs`,
                       },
@@ -218,11 +293,11 @@ export const base = new Extension()
                     };
 
                     logOutputs(prompts);
-                    await showOutputs(prompts);
+                    await showOutputs(prompts); */
                   },
                 },
                 icon("play_arrow"),
-                "Generate",
+                "Save",
                 metrics
                   ? ` (${pluralString("prompt", metrics.numberOfPrompts)} × ${
                       metrics.defaultNumberOfOutputs !== null
@@ -396,7 +471,7 @@ function OragleModule({ children, node, type }) {
 
         const wrapItem = (name, cls) => ({
           label: `Wrap in ${name}`,
-          action: () => node.wrapWith(`${cls} new children: {`, "}"),
+          action: () => node.wrapWith(`${cls} new uuid: '${makeUUID()}'; children: {`, "}"),
         });
 
         choose([
@@ -432,5 +507,5 @@ function OragleModule({ children, node, type }) {
 }
 
 function insertModule({ insert }, i) {
-  insert(i, "OragleLeafModule new");
+  insert(i, `OragleLeafModule new uuid: '${makeUUID()}'`);
 }

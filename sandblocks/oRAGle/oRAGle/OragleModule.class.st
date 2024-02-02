@@ -2,6 +2,7 @@ Class {
 	#name : #OragleModule,
 	#superclass : #Object,
 	#instVars : [
+		'uuid',
 		'label',
 		'children',
 		'state'
@@ -197,4 +198,22 @@ OragleModule >> state: aSymbol [
 OragleModule >> type [
 
 	^ self subclassResponsibility
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/2/2024 17:00'
+}
+OragleModule >> uuid [
+
+	^ uuid
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/2/2024 17:00'
+}
+OragleModule >> uuid: anObject [ 
+
+	uuid := anObject
 ]

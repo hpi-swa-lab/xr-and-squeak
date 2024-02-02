@@ -52,8 +52,11 @@ function updateFocus(target) {
 export function openComponentInWindow(component, props, windowProps) {
   const window = document.createElement("sb-window");
   window.props = windowProps ?? {};
-  render(h(component, { ...props, window }), window);
+  const result = h(component, { ...props, window });
+  render(result, window);
   document.body.appendChild(window);
+  // HACKED: find an official way to access built component
+  return [result.__c, window];
 }
 
 export function Window({
@@ -176,6 +179,7 @@ export function Window({
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  min-height: 0;
 }`
     ),
     h(

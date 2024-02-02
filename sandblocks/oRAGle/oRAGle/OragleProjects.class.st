@@ -7,6 +7,7 @@ Class {
 	#classVars : [
 		'Objects',
 		'ObjectsInversed',
+		'Projects',
 		'Server'
 	],
 	#category : #oRAGle,
@@ -63,6 +64,28 @@ OragleProjects class >> makeIdFor: anObject [
 OragleProjects class >> objectForId: id [
 
 	^ Objects at: id
+]
+
+{
+	#category : #projects,
+	#'squeak_changestamp' : 'ct 2/2/2024 18:05'
+}
+OragleProjects class >> projects [
+
+	^ Projects ifNil: [Projects := Dictionary new]
+]
+
+{
+	#category : #projects,
+	#'squeak_changestamp' : 'ct 2/2/2024 18:09'
+}
+OragleProjects class >> promptsForProjectId: projectId [
+
+	self flag: #todo. "cache"
+	
+	^ (self projects at: projectId) expand
+		collect: [:prompt |
+			prompt assureOutputs; yourself]
 ]
 
 {
@@ -327,6 +350,19 @@ OragleProjects class >> stopRpc [
 ]
 
 {
+	#category : #projects,
+	#'squeak_changestamp' : 'ct 2/2/2024 18:07'
+}
+OragleProjects class >> updateProjectNamed: selector approvedPrice: totalCents [
+
+	| project |
+	self flag: #todo. "caches"
+	
+	project := self new perform: selector.
+	self projects at: project uuid put: project.
+]
+
+{
 	#category : #'as yet unclassified',
 	#'squeak_changestamp' : 'ct 1/22/2024 12:43'
 }
@@ -445,70 +481,51 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 
 {
 	#category : #'as yet unclassified',
-	#'squeak_changestamp' : 'ct 1/25/2024 20:20'
+	#'squeak_changestamp' : 'ct 2/2/2024 18:49'
 }
 OragleProjects >> copilotWithoutScripts [
-<sandblocksExtensions: #(oragle:base)>
-
-| codeSample postcard handcrafted longPrompt |
-longPrompt := 'You are an expert programmer, assisting in completing code snippets. You do not add comments, only complete statements. If the given prefix to be completed is the start of a function, you may complete the entire function but only do so, if you can complete it without elision. Answer only the code that is to be inserted.'.
-
-codeSample := Text codeSample.
-postcard := '''\\Example>>'' withCRs, codeSamle'.
-handcrafted := (Collection >> #do:) getSource.
-
-^ OragleProject new
-	label: 'Copilot (without scripts)';
-	rootModule:
-		(OragleSequenceModule new
-			separator: String cr , String cr;
-			children:
-				{OragleSequenceModule new
-					label: 'completion prefix';
-					state: #enabled;
-					separator: String cr , String cr;
-					children:
-						{OragleAlternation new
-							children:
-								{OragleLeafModule new
-									content:
-		'toIsometric: aPoint
+	| codeSample postcard handcrafted longPrompt |
+	<sandblocksExtensions: #(oragle:base)>
+	longPrompt := 'You are an expert programmer, assisting in completing code snippets. You do not add comments, only complete statements. If the given prefix to be completed is the start of a function, you may complete the entire function but only do so, if you can complete it without elision. Answer only the code that is to be inserted!'.
+	codeSample := Text codeSample.
+	postcard := '''\\Example>>'' withCRs , codeSample'.
+	handcrafted := (Collection >> #do:) getSource.
+	^ OragleProject new uuid: 'c6784713-05f4-394d-aa8d-d191ed371a95';
+		 label: 'Copilot (without scripts)';
+		 rootModule: (OragleSequenceModule new uuid: 'a1982e9b-06de-584b-8dbc-7acabb74117c';
+			 separator: String cr , String cr;
+			 children: {OragleSequenceModule new uuid: 'be3d13b7-51b9-0648-a6aa-10573205d3bb';
+				 label: 'completion prefix';
+				 state: #enabled;
+				 separator: String cr , String cr;
+				 children: {OragleAlternation new uuid: 'ac0fa7f1-28d2-c241-88f8-752e29eac33d';
+					 children: {OragleLeafModule new uuid: '6ce1488e-1279-2240-ad7e-dac4a3d4170d';
+						 content: 'toIsometric2: aPoint
 
 			"Return a new point in isometric view"
-			^ '};
-								state: #enabled}.
-				OragleSequenceModule new
-					label: 'languageKnowledge';
-					state: #enabled;
-					separator: String cr , String cr;
-					children:
-						{OragleAlternation new
-							children: {
-								OragleLeafModule new
-									content: '';
-									label: 'noKnowledge';
-									state: #enabled.
-								OragleSequenceModule new
-									label: 'someKnowledge';
-									children:
-										{OragleLeafModule new
-											content: 'This is a of Smalltalk code:';
-											state: #enabled.
-										OragleAlternation new children: {OragleLeafModule new
-											content: postcard;
-											state: #enabled.OragleLeafModule new content: handcrafted}}
-							}}.
-				OragleSequenceModule new
-					label: 'context';
-					state: #enabled;
-					separator: String cr, String cr;
-					children:
-						{
-							OragleLeafModule new
-								label: 'context';
-								content: 
-
-		'"Smalltalk methods from the code base that are helpful: "
+			^ '. OragleLeafModule new uuid: '3b5c15dc-225d-47de-893e-a1af1899eaa3';
+						 content: 'toIso3'};
+					 state: #enabled}. OragleSequenceModule new uuid: '5002757e-9e13-4242-b317-41d474c39e17';
+				 label: 'languageKnowledge';
+				 state: #enabled;
+				 separator: String cr , String cr;
+				 children: {OragleAlternation new uuid: '03e6065a-5a66-6544-9844-772f516dfbc6';
+					 children: {OragleLeafModule new uuid: 'ef751794-b91e-f345-9b45-7d9e5232f7b1';
+						 content: '';
+						 label: 'noKnowledge';
+						 state: #enabled. OragleSequenceModule new uuid: '2e988215-5483-124b-b2a0-dc2b1cac98aa';
+						 label: 'someKnowledge';
+						 children: {OragleLeafModule new uuid: '8b06a43d-e88a-d040-97a7-cc10bba9ab67';
+							 content: 'This is a of Smalltalk code:';
+							 state: #enabled. OragleAlternation new children: {OragleLeafModule new uuid: '0a7ef53a-58ef-4e4a-a555-bf66b8a70e18';
+								 content: postcard;
+								 state: #enabled. OragleLeafModule new content: handcrafted}}}}. OragleSequenceModule new uuid: '2162a794-9759-f448-9eb6-dc857688d6fd';
+				 label: 'context';
+				 state: #enabled;
+				 separator: String cr , String cr;
+				 children: {OragleLeafModule new uuid: '3ab8b143-1b76-4945-beb6-c499288dfc46';
+					 label: 'context';
+					 content: '"Smalltalk methods from the code base that are helpful: "
 
 			Point >> x
 				"Answer the x coordinate."
@@ -527,8 +544,6 @@ handcrafted := (Collection >> #do:) getSource.
 				"Optimized for speed -- ar 8/26/2001"
 				| r |
 				r := ((x*x) + (y * y)) sqrt.
-				^(x / r) @ (y / r)'.
-						}.
-				})
+				^(x / r) @ (y / r)'}})
 
 ]

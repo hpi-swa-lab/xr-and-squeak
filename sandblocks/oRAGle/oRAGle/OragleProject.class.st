@@ -2,6 +2,7 @@ Class {
 	#name : #OragleProject,
 	#superclass : #Object,
 	#instVars : [
+		'uuid',
 		'label',
 		'rootModule'
 	],
@@ -51,4 +52,22 @@ OragleProject >> rootModule [
 OragleProject >> rootModule: aModule [
 
 	rootModule := aModule.
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/2/2024 17:01'
+}
+OragleProject >> uuid [
+
+	^ uuid
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/2/2024 17:01'
+}
+OragleProject >> uuid: anObject [
+
+	uuid := anObject.
 ]
