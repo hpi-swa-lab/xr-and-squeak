@@ -25,6 +25,7 @@ export class XRProject extends SqueakProject {
   }
 
   async open() {
+    console.info("Opening XRProject...")
     await super.open();
     await ensureSystemChangeCallback(true);
     await this.updateFromRemote();
@@ -37,6 +38,11 @@ export class XRProject extends SqueakProject {
         "https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js"
       )
     ).VRButton;
+    window.HTMLMesh = (
+      await import(
+        "/sandblocks/xr-project/external/HTMLMesh.js"
+      )
+    ).HTMLMesh;
 
     sqEval('XRWorld start');
   }
@@ -63,7 +69,7 @@ export class XRProject extends SqueakProject {
 
   renderBackground() {
     const [isLoading, setIsLoading] = useState(false);
-    return h("Fragment", {}, [
+    return h("div", {}, [
       super.renderBackground(),
       button("Update SqueakXR", async () => {
         setIsLoading(true);
