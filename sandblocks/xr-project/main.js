@@ -10,7 +10,6 @@ export class XRProject extends SqueakProject {
   serialize() {
     return {
       path: this.connectionOptions.path,
-      port: this.connectionOptions.port,
     };
   }
 
@@ -18,11 +17,10 @@ export class XRProject extends SqueakProject {
     return "[XR] " + super.name;
   }
 
-  constructor({path, port}) {
-    console.log(path, port);
+  constructor({path}) {
     super({
       type: "browser",
-      connectionOptions: {path, port},
+      connectionOptions: {path},
     });
   }
 
@@ -44,7 +42,7 @@ export class XRProject extends SqueakProject {
   }
 
   async updateFromRemote() {
-    const source = await fetch(`http://localhost:${this.connectionOptions.port}/source`)
+    const source = await fetch("/source")
       .then(response => response.json());
 
     for (const cls of source) {

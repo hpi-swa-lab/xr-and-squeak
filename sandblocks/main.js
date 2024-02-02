@@ -48,7 +48,7 @@ const PROJECT_TYPES = {
     label: "XR Project",
     createArgs: async () => ({
       path: prompt("Path?", "external/squeak-minimal.image"),
-      port: prompt("Port?", 9824)}),
+    }),
   },
 };
 
