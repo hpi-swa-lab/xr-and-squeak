@@ -6,7 +6,9 @@ Class {
 		'cube',
 		'renderer',
 		'scene',
-		'camera'
+		'camera',
+		'hands',
+		'elementContainer'
 	],
 	#classVars : [
 		'CurrentService'
@@ -51,19 +53,36 @@ XRWorld >> createCamera [
 ]
 
 { #category : #setup }
+XRWorld >> createHands [
+
+	hands := {
+		XRHand new
+			world: self;
+			index: 0;
+			yourself.
+		XRHand new
+			world: self;
+			index: 1;
+			yourself.
+	} do: [:hand | scene add: hand threeObject]
+	
+]
+
+{ #category : #setup }
 XRWorld >> createRenderer [
-	renderer := Three WebGLRenderer new: ({#antialias -> true} as: Dictionary).
-	renderer
+	
+	self renderer: (Three WebGLRenderer new: ({#antialias -> true} as: Dictionary)).
+	self renderer
 		setPixelRatio: JS window devicePixelRatio;
 		setSize: self class canvasWidth height: self class canvasHeight.
-	renderer xr enabled: true.
+	self renderer xr enabled: true.
 	
-	renderer setAnimationLoop: [:time :frame | self renderTime: time frame: frame].
+	self renderer setAnimationLoop: [:time :frame | self renderTime: time frame: frame].
 ]
 
 { #category : #setup }
 XRWorld >> createScene [
-	| light element text htmlMesh elementContainer |
+	| light |
 	scene := Three Scene new.
 	scene background: (Three Color new: 16r505050).
 	
@@ -75,7 +94,76 @@ XRWorld >> createScene [
 		add: light;
 		add: (Three AmbientLight new: 16rffffff intensity: 0.5).
 	
-	self createCamera.
+	self
+		createCamera;
+		createHands.
+]
+
+{ #category : #accessing }
+XRWorld >> elementContainer [
+
+	^ elementContainer
+]
+
+{ #category : #accessing }
+XRWorld >> elementContainer: anHTMLElement [
+
+	elementContainer := anHTMLElement
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld >> renderTime: time frame: frame [
+
+	cube rotation y: time / 1000.
+	renderer render: scene camera: camera
+]
+
+{ #category : #accessing }
+XRWorld >> renderer [
+
+	^ renderer
+]
+
+{ #category : #accessing }
+XRWorld >> renderer: aRenderer [
+
+	Transcript showln: 'renderer: ', aRenderer asString.
+	renderer := aRenderer
+]
+
+{ #category : #setup }
+XRWorld >> setupDocument [
+	| resize container |
+	
+	self assert: self renderer notNil.
+	
+	container := JS window document getElementById: 'xr-container'.
+	container appendChild: self renderer domElement.
+	container appendChild: (JS VRButton createButton: self renderer).
+	
+	self elementContainer: (JS window document createElement: 'div').
+	self elementContainer setAttribute: 'style' to: 'position: absolute; visibility: hidden;'.
+	container appendChild: elementContainer.
+	
+	resize := [camera aspect: self class aspect.
+			camera updateProjectionMatrix.
+			self renderer setSize: self class canvasWidth height: self class canvasHeight].
+	resize value.
+	
+	JS window
+		addEventListener: 'resize'
+		do: resize
+		useCapture: false
+]
+
+{ #category : #setup }
+XRWorld >> start [
+
+	| element htmlMesh text |
+	self
+		createRenderer;
+		createScene;
+		setupDocument.
 	
 	"temporary"
 	cube := Three Mesh
@@ -88,58 +176,16 @@ XRWorld >> createScene [
 	cube position set: 0 y: 1.5 z: -10.
 	scene add: cube.
 	
-	elementContainer := JS window document createElement: 'div'.
-	elementContainer setAttribute: 'style' to: 'position: absolute; visibility: hidden;'.
-	
 	element := JS window document createElement: 'div'.
 	element setAttribute: 'id' to: 'test-id'.
 	element setAttribute: 'style' to: 'width: 100px; height: 100px; background: #FFB;'.
-	elementContainer appendChild: element.
+	self elementContainer appendChild: element.
 	
 	text := JS window document createElement: 'p'.
 	text innerHTML: 'Hello world!'.
 	element appendChild: text.
 	
-	JS window document body appendChild: elementContainer.
-	
 	htmlMesh := JS HTMLMesh new: element.
 	htmlMesh position set: 0 y: 1.5 z: -0.5.
 	scene add: htmlMesh.
-]
-
-{ #category : #'as yet unclassified' }
-XRWorld >> renderTime: time frame: frame [
-
-	cube rotation y: time / 1000.
-	renderer render: scene camera: camera
-]
-
-{ #category : #setup }
-XRWorld >> setupDocument [
-	| resize |
-	
-	self assert: renderer notNil.
-	
-	JS window document body appendChild: renderer domElement.
-	JS window document body
-		appendChild: (JS VRButton createButton: renderer).
-	
-	resize := [camera aspect: self class aspect.
-			camera updateProjectionMatrix.
-			renderer setSize: self class canvasWidth height: self class canvasHeight].
-	resize value.
-	
-	JS window
-		addEventListener: 'resize'
-		do: resize
-		useCapture: false
-]
-
-{ #category : #setup }
-XRWorld >> start [
-
-	self
-		createScene;
-		createRenderer;
-		setupDocument.
 ]
