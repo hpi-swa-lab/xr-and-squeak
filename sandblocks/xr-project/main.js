@@ -44,7 +44,11 @@ export class XRProject extends SqueakProject {
       )
     ).HTMLMesh;
 
-    sqEval('XRWorld start');
+    this.container = document.createElement("div");
+    this.container.setAttribute("id", "xr-container")
+    document.body.appendChild(this.container);
+
+    this.startWorld();
   }
 
   async updateFromRemote() {
@@ -67,6 +71,10 @@ export class XRProject extends SqueakProject {
     }
   }
 
+  startWorld() {
+    sqEval('XRWorld start');
+  }
+
   renderBackground() {
     const [isLoading, setIsLoading] = useState(false);
     return h("div", {}, [
@@ -75,6 +83,10 @@ export class XRProject extends SqueakProject {
         setIsLoading(true);
         await this.updateFromRemote();
         setIsLoading(false);
+      }),
+      button("Restart world", () => {
+        this.container.innerHTML = "";
+        this.startWorld();
       }),
       isLoading ? h("p", null, "Updating SqueakXR") : null,
     ]);
