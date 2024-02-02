@@ -1,5 +1,5 @@
 import { Extension } from "../core/extension.js";
-import { choose } from "../sandblocks/window.js";
+import { choose, openComponentInWindow } from "../sandblocks/window.js";
 import { h, icon, replacement, useDebouncedEffect } from "../view/widgets.js";
 import { AutoSizeTextArea } from "../view/widgets/auto-size-text-area.js";
 import { ShardArray } from "../view/widgets/shard-array.js";
@@ -11,6 +11,8 @@ import { pluralString } from "../utils.js";
 import { useEffect, useState } from "../external/preact-hooks.mjs";
 
 const parseSqArray = (obj) => {
+  if (Array.isArray(obj)) return obj; // this happens on subsequent sqUpdate calls
+
   const arr = new Array(
     Math.max(
       0,
@@ -26,6 +28,25 @@ const parseSqArray = (obj) => {
   }
   return arr;
 };
+
+const OutputExplorer = ({ prompts }) => {
+  const text = prompts.map((prompt, i) => {
+    return prompt.outputs
+      .map((output, j) => `Prompt #${i + 1} - Output #${j + 1}\n${output}`)
+      .join("\n");
+  }).join("\n\n");
+
+  return [
+    h("textarea", {
+      value: text,
+      readOnly: true,
+      style: {
+        width: "100%",
+        height: "100%",
+      },
+    })
+  ];
+}
 
 export const base = new Extension()
 
@@ -61,8 +82,8 @@ export const base = new Extension()
           const input = sqEscapeString(replacement.sourceString);
           const promptsObj = await sqQuery(
             `| project |
-          project := Compiler evaluate: '${input}'.
-          project expand.
+              project := Compiler evaluate: '${input}'.
+              project expand.
           `,
             {
               "[]": {
@@ -171,16 +192,33 @@ export const base = new Extension()
                       prompt.outputs &&= parseSqArray(prompt.outputs);
                     });
 
-                    console.group("Prompts");
-                    prompts.forEach((prompt, i) => {
-                      console.group(`Prompt #${i + 1}`);
-                      prompt.outputs.forEach((output, j) => {
-                        console.group(`Output #${j + 1}`);
-                        console.log(output);
+                    const logOutputs = (prompts) => {
+                      console.group("Prompts");
+                      prompts.forEach((prompt, i) => {
+                        console.group(`Prompt #${i + 1}`);
+                        prompt.outputs.forEach((output, j) => {
+                          console.group(`Output #${j + 1}`);
+                          console.log(output);
+                          console.groupEnd();
+                        });
                         console.groupEnd();
                       });
-                      console.groupEnd();
-                    });
+                    };
+
+                    const showOutputs = async (prompts) => {
+                      openComponentInWindow(
+                        OutputExplorer,
+                        { prompts },
+                        {
+                          doNotStartAttached: true,
+                          initialPosition: { x: 10, y: 10 },
+                          initialSize: { x: 300, y: 400 },
+                        }
+                      );
+                    };
+
+                    logOutputs(prompts);
+                    await showOutputs(prompts);
                   },
                 },
                 icon("play_arrow"),
