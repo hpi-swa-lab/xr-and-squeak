@@ -63,7 +63,7 @@ XRWorld >> createRenderer [
 
 { #category : #setup }
 XRWorld >> createScene [
-	| light |
+	| light element text htmlMesh elementContainer |
 	scene := Three Scene new.
 	scene background: (Three Color new: 16r505050).
 	
@@ -87,6 +87,24 @@ XRWorld >> createScene [
 			new: ({#color -> 16rff0000} as: Dictionary)).
 	cube position set: 0 y: 1.5 z: -10.
 	scene add: cube.
+	
+	elementContainer := JS window document createElement: 'div'.
+	elementContainer setAttribute: 'style' to: 'position: absolute; visibility: hidden;'.
+	
+	element := JS window document createElement: 'div'.
+	element setAttribute: 'id' to: 'test-id'.
+	element setAttribute: 'style' to: 'width: 100px; height: 100px; background: #FFB;'.
+	elementContainer appendChild: element.
+	
+	text := JS window document createElement: 'p'.
+	text innerHTML: 'Hello world!'.
+	element appendChild: text.
+	
+	JS window document body appendChild: elementContainer.
+	
+	htmlMesh := JS HTMLMesh new: element.
+	htmlMesh position set: 0 y: 1.5 z: -0.5.
+	scene add: htmlMesh.
 ]
 
 { #category : #'as yet unclassified' }
