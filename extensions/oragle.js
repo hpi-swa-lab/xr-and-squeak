@@ -74,7 +74,7 @@ class OutputWindow extends Component {
             h(
               "div",
               {},
-              h("div", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1}`),
+              h("strong", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1}`),
               h("pre", { style: { whiteSpace: "pre-wrap" } }, output)
             ))
         ))
