@@ -151,7 +151,7 @@ export const base = new Extension()
                 prompt.defaultNumberOfOutputs ===
                 prompts[0].defaultNumberOfOutputs
             )
-              ? prompts[0].defaultNumberOfOutputs
+              ? prompts[0]?.defaultNumberOfOutputs
               : null,
             totalPrice: totalPrice,
             totalPriceFormatted:
@@ -310,11 +310,11 @@ export const base = new Extension()
                 icon("play_arrow"),
                 "Save",
                 metrics
-                  ? ` (${pluralString("prompt", metrics.numberOfPrompts)} × ${
+                  ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${
                       metrics.defaultNumberOfOutputs !== null
                         ? pluralString("output", metrics.defaultNumberOfOutputs)
                         : "<variable>"
-                    } = ${metrics.totalPriceFormatted})`
+                    }`} = ${metrics.totalPriceFormatted})`
                   : null
               )
             )
