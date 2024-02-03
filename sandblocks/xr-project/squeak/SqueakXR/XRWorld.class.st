@@ -48,7 +48,7 @@ XRWorld >> createCamera [
 		aspect: self class aspect
 		near: 0.1
 		far: 100.
-	camera position set: 0 y: 1.6 z: 3.
+	camera position set: 0m y: 1.6m z: 3m.
 	^ camera
 ]
 
@@ -88,7 +88,7 @@ XRWorld >> createScene [
 	
 	light := Three DirectionalLight new: 16rffffff intensity: 0.5.
 	light position
-		set: 1 y: 1 z: 1;
+		set: 1m y: 1m z: 1m;
  		normalize.
 	scene
 		add: light;
@@ -168,12 +168,12 @@ XRWorld >> start [
 	"temporary"
 	cube := Three Mesh
 		new: (Three BoxGeometry
-			new: 1
-			y: 1
-			z: 1)
+			new: 1m
+			y: 1m
+			z: 1m)
 		material: (Three MeshLambertMaterial
 			new: ({#color -> 16rff0000} as: Dictionary)).
-	cube position set: 0 y: 1.5 z: -10.
+	cube position set: 0m y: 1.5m z: -10m.
 	scene add: cube.
 	
 	element := JS window document createElement: 'div'.
@@ -186,6 +186,6 @@ XRWorld >> start [
 	element appendChild: text.
 	
 	htmlMesh := JS HTMLMesh new: element.
-	htmlMesh position set: 0 y: 1.5 z: -0.5.
+	htmlMesh position set: 0m y: 1.5m z: -0.5m.
 	scene add: htmlMesh.
 ]

@@ -15,7 +15,7 @@ XRHand >> createModel [
 	| sphere |
 	sphere := Three Mesh
 		new: (Three SphereGeometry
-			new: 0.05 "TODO: transfer extension methods so we can write something like 5cm"
+			new: 5cm
 			widthSegments: 32
 			heightSegments: 16)
 		material: (Three MeshLambertMaterial

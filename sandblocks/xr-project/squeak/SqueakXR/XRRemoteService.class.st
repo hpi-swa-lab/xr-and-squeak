@@ -51,7 +51,9 @@ XRRemoteService >> postSource: aWebRequest [
 { #category : #'as yet unclassified' }
 XRRemoteService >> source [
 
-	^ (SystemOrganization classesIn: 'SqueakXR') collect: [:cls |
+	| extensionMethods packageSources |
+	
+	packageSources := (SystemOrganization classesIn: 'SqueakXR') collect: [:cls |
 		{
 			#name -> (cls name).
 			#definition -> (cls definition).
@@ -59,7 +61,18 @@ XRRemoteService >> source [
 				cls sourceCodeAt: selector]).
 			#classMethods -> (cls class selectors collect: [:selector |
 				cls class sourceCodeAt: selector])
-		} as: Dictionary]
+		} as: Dictionary].
+	
+	extensionMethods := ((SystemNavigation new allExtensionMethodsOfPackage: 'SqueakXR')
+		groupBy: #actualClass) associations
+			collect: [:classAndMethods |
+				(classAndMethods key name) -> (classAndMethods value collect: #sourceString)]
+			as: Dictionary.
+	
+	^ {
+		#packageSources -> packageSources.
+		#extensionMethods -> extensionMethods.
+	} as: Dictionary
 ]
 
 { #category : #'as yet unclassified' }
