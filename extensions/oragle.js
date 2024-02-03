@@ -82,6 +82,8 @@ class OutputWindow extends Component {
   }
 }
 
+const allOutputWindows = {};
+
 export const base = new Extension()
 
   // String as a textarea: supports copy-paste without escaping
@@ -173,10 +175,17 @@ export const base = new Extension()
           ? bufferedMetrics
           : null;
 
-      let outputWindows = [];
+      const projectId = uuid.get().replace(/'/g, "");
+      // WORKAROUND: lifecycle of replacements is too short
+      const outputWindows = allOutputWindows[projectId] ??= [];
 
       const assureOutputWindow = () => {
-        outputWindows = outputWindows.filter(([component, window]) => document.body.contains(window));
+        for (let i = outputWindows.length - 1; i >= 0; i--) {
+          const [component, window] = outputWindows[i];
+          if (!document.body.contains(window)) {
+            outputWindows.splice(i, 1);
+          }
+        }
 
         if (outputWindows.length) return;
 
@@ -184,10 +193,9 @@ export const base = new Extension()
       };
 
       const openOutputWindow = () => {
-        const id = uuid.get().replace(/'/g, "");
         const [component, window] = openComponentInWindow(
           OutputWindow,
-          { projectId: id },
+          { projectId },
           {
             doNotStartAttached: true,
             initialPosition: { x: 210, y: 10 },
