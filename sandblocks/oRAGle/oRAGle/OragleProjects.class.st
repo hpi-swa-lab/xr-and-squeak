@@ -357,13 +357,32 @@ OragleProjects class >> stopRpc [
 
 {
 	#category : #projects,
-	#'squeak_changestamp' : 'ct 2/3/2024 18:22'
+	#'squeak_changestamp' : 'ct 2/3/2024 18:48'
+}
+OragleProjects class >> updateProjectNamed: selector [
+
+	^ self updateProjectNamed: selector do: nil
+]
+
+{
+	#category : #projects,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:48'
 }
 OragleProjects class >> updateProjectNamed: selector approvedPrice: totalCents [
 
+	^ self updateProjectNamed: selector do: [:project |
+		project approvedPrice: totalCents]
+]
+
+{
+	#category : #projects,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:48'
+}
+OragleProjects class >> updateProjectNamed: selector do: projectBlock [
+
 	| newProject |
 	newProject := self new perform: selector.
-	newProject approvedPrice: totalCents.
+	projectBlock ifNotNil: [projectBlock value: newProject].
 	self projects
 		at: newProject uuid
 		ifPresent: [:oldProject | oldProject adoptFrom: newProject]
@@ -489,7 +508,7 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 
 {
 	#category : #projects,
-	#'squeak_changestamp' : 'ct 2/3/2024 18:38'
+	#'squeak_changestamp' : 'ct 2/3/2024 19:05'
 }
 OragleProjects >> copilotWithoutScripts [
 	| codeSample postcard handcrafted longPrompt |
@@ -511,8 +530,8 @@ OragleProjects >> copilotWithoutScripts [
 						 content: 'toIsometric2: aPoint
 
 			"Return a new point in isometric view"
-			^ '; state: #solo. OragleLeafModule new uuid: '3b5c15dc-225d-47de-893e-a1af1899eaa3';
-						 content: 'toIso3'; state: #solo};
+			^ '; state: #mute. OragleLeafModule new uuid: '3b5c15dc-225d-47de-893e-a1af1899eaa3';
+						 content: 'toIso3'; state: #enabled};
 					 state: #enabled}. OragleSequenceModule new uuid: '5002757e-9e13-4242-b317-41d474c39e17';
 				 label: 'languageKnowledge';
 				 state: #enabled;

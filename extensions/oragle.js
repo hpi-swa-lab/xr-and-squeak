@@ -83,6 +83,7 @@ class OutputWindow extends Component {
 }
 
 const allOutputWindows = {};
+const allProjects = {};
 
 export const base = new Extension()
 
@@ -178,37 +179,39 @@ export const base = new Extension()
       const projectId = uuid.get().replace(/'/g, "");
       // WORKAROUND: lifecycle of replacements is too short
       const outputWindows = allOutputWindows[projectId] ??= [];
-
-      const assureOutputWindow = () => {
-        for (let i = outputWindows.length - 1; i >= 0; i--) {
-          const [component, window] = outputWindows[i];
-          if (!document.body.contains(window)) {
-            outputWindows.splice(i, 1);
+      const project = allProjects[projectId] = {
+        assureOutputWindow: () => {
+          for (let i = outputWindows.length - 1; i >= 0; i--) {
+            const [component, window] = outputWindows[i];
+            if (!document.body.contains(window)) {
+              outputWindows.splice(i, 1);
+            }
           }
-        }
 
-        if (outputWindows.length) return;
+          if (outputWindows.length) return;
 
-        return openOutputWindow();
+          return project.openOutputWindow();
+        },
+
+        openOutputWindow: () => {
+          const [component, window] = openComponentInWindow(
+            OutputWindow,
+            { projectId },
+            {
+              doNotStartAttached: true,
+              initialPosition: { x: 210, y: 10 },
+              initialSize: { x: 300, y: 400 },
+            }
+          );
+          outputWindows.push([component, window]);
+          return [component, window];
+        },
+
+        updateOutputWindows: async () => {
+          await Promise.all(outputWindows.map(([component, window]) => component.update()))
+        },
       };
-
-      const openOutputWindow = () => {
-        const [component, window] = openComponentInWindow(
-          OutputWindow,
-          { projectId },
-          {
-            doNotStartAttached: true,
-            initialPosition: { x: 210, y: 10 },
-            initialSize: { x: 300, y: 400 },
-          }
-        );
-        outputWindows.push([component, window]);
-        return [component, window];
-      };
-
-      const updateOutputWindows = async () => {
-        await Promise.all(outputWindows.map(([component, window]) => component.update()))
-      };
+      replacement.project = project;
 
       return h(
         OragleProject,
@@ -262,8 +265,8 @@ export const base = new Extension()
                     const selector = shard.sourceString.split(/\s/)[0];
                     await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
 
-                    assureOutputWindow();
-                    await updateOutputWindows();
+                    project.assureOutputWindow();
+                    await project.updateOutputWindows();
 
                     /* await promptsObj._sqUpdateQuery({
                       "[]": {
@@ -415,8 +418,26 @@ export const base = new Extension()
     replacement(
       e,
       "oragle-leaf-module",
-      ({ label, content, state, replacement }) =>
-        h(
+      ({ label, content, state, replacement }) => {
+        const project = (() => {
+          let node = replacement;
+          while (node) {
+            if (node.project) return node.project;
+            node = node.parentElement;
+          }
+        })();
+
+        const saveAndUpdateProject = async () => {
+          const shard = replacement.editor.children[0];
+          await shard.save();
+
+          const selector = shard.sourceString.split(/\s/)[0];
+          await sqQuery(`OragleProjects updateProjectNamed: #${selector}`);
+
+          await project.updateOutputWindows();
+        };
+
+        return h(
           OragleModule,
           { node: replacement.node, type: "OragleLeafModule" },
           h(
@@ -431,8 +452,10 @@ export const base = new Extension()
                 "button",
                 {
                   class: state.get() === "#solo" && "sb-button-pressed",
-                  onClick: () =>
-                    state.set(state.get() === "#solo" ? "#enabled" : "#solo"),
+                  onClick: async () => {
+                    state.set(state.get() === "#solo" ? "#enabled" : "#solo");
+                    await saveAndUpdateProject();
+                  },
                 },
                 "S"
               ),
@@ -440,14 +463,17 @@ export const base = new Extension()
                 "button",
                 {
                   class: state.get() === "#mute" && "sb-button-pressed",
-                  onClick: () =>
+                  onClick: async () => {
                     state.set(state.get() === "#mute" ? "#enabled" : "#mute"),
+                    await saveAndUpdateProject();
+                  },
                 },
                 "M"
               )
             )
           )
-        ),
+        );
+      },
       { selectable: true }
     ),
   ]);
