@@ -27,11 +27,11 @@ OragleLeafModule >> content [
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'ct 1/22/2024 11:47'
+	#'squeak_changestamp' : 'ct 2/3/2024 21:53'
 }
 OragleLeafModule >> content: aString [
 
-	content := aString.
+	content := aString asString.
 ]
 
 {

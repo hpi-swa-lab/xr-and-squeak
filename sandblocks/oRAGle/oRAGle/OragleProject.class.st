@@ -80,6 +80,36 @@ OragleProject >> label: aString [
 ]
 
 {
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/4/2024 00:11'
+}
+OragleProject >> metricsForModule: aModule [
+
+	| allMetrics |
+	allMetrics := self expand collect: [:prompt |
+		prompt metricsForModule: aModule].
+	
+	^ JsonObject new
+		
+		minTokens: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #minTokens) min]);
+		maxTokens: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #maxTokens) max]);
+		
+		minPrice: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #minPrice) min]);
+		maxPrice: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #maxPrice) max]);
+		
+		yourself
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/3/2024 21:05'
+}
+OragleProject >> moduleForId: id [
+
+	^ self rootModule moduleForId: id
+]
+
+{
 	#category : #visiting,
 	#'squeak_changestamp' : 'ct 2/3/2024 18:24'
 }
