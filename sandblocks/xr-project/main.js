@@ -52,14 +52,15 @@ export class XRProject extends SqueakProject {
   }
 
   async updateFromRemote() {
-    const source = await fetch("/source")
+    const {packageSources, extensionMethods} = await fetch("/source")
       .then(response => response.json());
 
-    for (const cls of source) {
+
+    for (const cls of packageSources) {
       sqEval(cls.definition);
     }
     
-    for (const cls of source) {
+    for (const cls of packageSources) {
       for (const method of cls.instanceMethods) {
         sqCompile(cls.name, method);
       }
@@ -67,6 +68,12 @@ export class XRProject extends SqueakProject {
       const metaclass = cls.name + " class";
       for (const method of cls.classMethods) {
         sqCompile(metaclass, method);
+      }
+    }
+
+    for (const [cls, methods] of Object.entries(extensionMethods)) {
+      for (const method of methods) {
+        sqCompile(cls, method);
       }
     }
   }
