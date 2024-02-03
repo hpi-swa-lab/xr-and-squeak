@@ -4,10 +4,42 @@ Class {
 	#instVars : [
 		'uuid',
 		'label',
-		'rootModule'
+		'rootModule',
+		'approvedPrice',
+		'cachedPrompts'
 	],
 	#category : #oRAGle
 }
+
+{
+	#category : #copying,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:23'
+}
+OragleProject >> adoptFrom: anotherProject [
+
+	self assert: self uuid = anotherProject uuid.
+	self label: anotherProject label.
+	self rootModule: anotherProject rootModule.
+	self approvedPrice: anotherProject approvedPrice.
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:19'
+}
+OragleProject >> approvedPrice [
+
+	^ approvedPrice
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:19'
+}
+OragleProject >> approvedPrice: cents [
+
+	approvedPrice := cents.
+]
 
 {
 	#category : #visiting,
@@ -16,6 +48,17 @@ Class {
 OragleProject >> expand [
 
 	^ self rootModule expand
+]
+
+{
+	#category : #'initialize-release',
+	#'squeak_changestamp' : 'ct 2/3/2024 18:14'
+}
+OragleProject >> initialize [
+
+	super initialize.
+	
+	cachedPrompts := Dictionary new.
 ]
 
 {
@@ -34,6 +77,25 @@ OragleProject >> label [
 OragleProject >> label: aString [
 
 	label := aString.
+]
+
+{
+	#category : #visiting,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:24'
+}
+OragleProject >> promptsWithOutputs [
+
+	| prompts |
+	prompts := self expand.
+	^ prompts collect: [:prompt |
+		cachedPrompts
+			at: prompt promptKey
+			ifAbsentPut:
+				[approvedPrice ifNotNil:
+					[prompt approvedPrice: approvedPrice.
+					approvedPrice := approvedPrice - prompt priceToGenerateOutputs maxCents].
+				prompt assureOutputs.
+				prompt]]
 ]
 
 {

@@ -16,12 +16,13 @@ Class {
 
 {
 	#category : #'initialize-release',
-	#'squeak_changestamp' : 'ct 1/25/2024 18:16'
+	#'squeak_changestamp' : 'ct 2/3/2024 18:26'
 }
 OragleProjects class >> cleanUp: aggressive [
 
 	aggressive ifTrue:
-		[self cleanUpObjects].
+		[self cleanUpObjects.
+		self cleanUpProjects].
 ]
 
 {
@@ -32,6 +33,15 @@ OragleProjects class >> cleanUpObjects [
 
 	Objects removeAll.
 	ObjectsInversed removeAll.
+]
+
+{
+	#category : #'initialize-release',
+	#'squeak_changestamp' : 'ct 2/3/2024 18:26'
+}
+OragleProjects class >> cleanUpProjects [
+
+	Projects := nil.
 ]
 
 {
@@ -77,15 +87,11 @@ OragleProjects class >> projects [
 
 {
 	#category : #projects,
-	#'squeak_changestamp' : 'ct 2/2/2024 18:09'
+	#'squeak_changestamp' : 'ct 2/3/2024 18:23'
 }
 OragleProjects class >> promptsForProjectId: projectId [
 
-	self flag: #todo. "cache"
-	
-	^ (self projects at: projectId) expand
-		collect: [:prompt |
-			prompt assureOutputs; yourself]
+	^ (self projects at: projectId) promptsWithOutputs
 ]
 
 {
@@ -351,19 +357,21 @@ OragleProjects class >> stopRpc [
 
 {
 	#category : #projects,
-	#'squeak_changestamp' : 'ct 2/2/2024 18:07'
+	#'squeak_changestamp' : 'ct 2/3/2024 18:22'
 }
 OragleProjects class >> updateProjectNamed: selector approvedPrice: totalCents [
 
-	| project |
-	self flag: #todo. "caches"
-	
-	project := self new perform: selector.
-	self projects at: project uuid put: project.
+	| newProject |
+	newProject := self new perform: selector.
+	newProject approvedPrice: totalCents.
+	self projects
+		at: newProject uuid
+		ifPresent: [:oldProject | oldProject adoptFrom: newProject]
+		ifAbsentPut: [newProject].
 ]
 
 {
-	#category : #'as yet unclassified',
+	#category : #projects,
 	#'squeak_changestamp' : 'ct 1/22/2024 12:43'
 }
 OragleProjects >> copilot [
@@ -480,8 +488,8 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 ]
 
 {
-	#category : #'as yet unclassified',
-	#'squeak_changestamp' : 'ct 2/2/2024 18:49'
+	#category : #projects,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:38'
 }
 OragleProjects >> copilotWithoutScripts [
 	| codeSample postcard handcrafted longPrompt |
@@ -503,8 +511,8 @@ OragleProjects >> copilotWithoutScripts [
 						 content: 'toIsometric2: aPoint
 
 			"Return a new point in isometric view"
-			^ '. OragleLeafModule new uuid: '3b5c15dc-225d-47de-893e-a1af1899eaa3';
-						 content: 'toIso3'};
+			^ '; state: #solo. OragleLeafModule new uuid: '3b5c15dc-225d-47de-893e-a1af1899eaa3';
+						 content: 'toIso3'; state: #solo};
 					 state: #enabled}. OragleSequenceModule new uuid: '5002757e-9e13-4242-b317-41d474c39e17';
 				 label: 'languageKnowledge';
 				 state: #enabled;

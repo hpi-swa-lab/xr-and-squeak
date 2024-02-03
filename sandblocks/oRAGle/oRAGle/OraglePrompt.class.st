@@ -100,14 +100,14 @@ OraglePrompt >> defaultNumberOfOutputs [
 
 {
 	#category : #private,
-	#'squeak_changestamp' : 'ct 1/26/2024 22:08'
+	#'squeak_changestamp' : 'ct 2/3/2024 18:40'
 }
 OraglePrompt >> generateOutputs [
 
 	approvedPrice ifNotNil:
 		[| price |
 		(price := self priceToGenerateOutputs maxCents) > approvedPrice ifTrue:
-			[self notify: ('about to spend {1}' format: {self priceToGenerateOutputs})].
+			[self notify: ('about to spend {1}' format: {price})].
 		approvedPrice := 0].
 	replies := SemanticConversation new
 		addUserMessage: input;
@@ -179,4 +179,13 @@ OraglePrompt >> priceToGenerateOutputs [
 			config maxTokens: self defaultMaxNumberOfTokens];
 		estimatePriceToGetAssistantMessage)
 			* self defaultNumberOfOutputs
+]
+
+{
+	#category : #comparing,
+	#'squeak_changestamp' : 'ct 2/3/2024 18:15'
+}
+OraglePrompt >> promptKey [
+
+	^ self input
 ]
