@@ -9,7 +9,11 @@ import {
 } from "./smalltalk.js";
 import { makeUUID, pluralString } from "../utils.js";
 import { Component } from "../external/preact.mjs";
-import { useEffect, useState } from "../external/preact-hooks.mjs";
+import { useState } from "../external/preact-hooks.mjs";
+import { signal, useComputed } from "../external/preact-signals.mjs" 
+
+const highlightedModules = signal([]);
+const selectedModule = signal(null)
 
 const parseSqArray = (obj) => {
   if (Array.isArray(obj)) return obj; // this happens on subsequent sqUpdate calls
@@ -30,13 +34,47 @@ const parseSqArray = (obj) => {
   return arr;
 };
 
+
+const PromptContainer = (prompt, promptIndex) => {
+  const [hoverOver, setHoverOver] = useState(false)
+  const moduleIDs = prompt.modules.map(module => module.uuid);
+  const shouldHighlight = useComputed(() => selectedModule.value ? moduleIDs.includes(selectedModule.value): false)
+
+  const onEnter = () => {
+    setHoverOver(true)
+    highlightedModules.value = moduleIDs
+  }
+
+  const onLeave = () => {
+    setHoverOver(false)
+    highlightedModules.value = []
+  }
+
+  return h("div",{},...prompt.outputs.map((output, outputIndex) =>
+    h("div",{
+        onMouseEnter: () => onEnter(),
+        onMouseLeave: () => onLeave(),
+        style: {
+          "color": hoverOver ? "white" : undefined,
+          "background-color": hoverOver || shouldHighlight.value ? "blue": undefined
+        }
+      },
+
+      // Prompt Container content
+      h("strong", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1}`),
+      h("pre", { style: { whiteSpace: "pre-wrap" } }, output)
+    ))
+  )
+}
+
 class OutputWindow extends Component {
   constructor(props) {
     super(props);
     this.projectId = props.projectId;
 
     this.state = {
-      prompts: []
+      prompts: [],
+      hover: false
     }
   }
 
@@ -55,30 +93,14 @@ class OutputWindow extends Component {
       prompt.outputs &&= parseSqArray(prompt.outputs);
     });
 
-    this.setState({ prompts })
+    this.setState({ ...this.state, prompts })
   }
 
   render() {
     return h(
-      "div",
-      {
-        style: {
-          overflowY: "scroll",
-        },
-      },
-      ...this.state.prompts.map((prompt, promptIndex) =>
-        h(
-          "div",
-          { },
-          ...prompt.outputs.map((output, outputIndex) =>
-            h(
-              "div",
-              {},
-              h("strong", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1}`),
-              h("pre", { style: { whiteSpace: "pre-wrap" } }, output)
-            ))
-        ))
-    );
+      "div",{style: {overflowY: "scroll"}},
+        ...this.state.prompts.map((prompt, promptIndex) => PromptContainer(prompt, promptIndex))
+      )
   }
 }
 
@@ -179,6 +201,9 @@ export const base = new Extension()
       const projectId = uuid.get().replace(/'/g, "");
       // WORKAROUND: lifecycle of replacements is too short
       const outputWindows = allOutputWindows[projectId] ??= [];
+
+      // Project object definition
+      // TODO: Refactor this 
       const project = allProjects[projectId] = {
         assureOutputWindow: () => {
           for (let i = outputWindows.length - 1; i >= 0; i--) {
@@ -212,7 +237,6 @@ export const base = new Extension()
         },
       };
       replacement.project = project;
-
       return h(
         OragleProject,
         { node: replacement.node, type: "OragleProject" },
@@ -267,44 +291,6 @@ export const base = new Extension()
 
                     project.assureOutputWindow();
                     await project.updateOutputWindows();
-
-                    /* await promptsObj._sqUpdateQuery({
-                      "[]": {
-                        outputs: `self approvedPrice: ${metrics.totalPrice}; assureOutputs`,
-                      },
-                    });
-                    const prompts = parseSqArray(promptsObj);
-                    prompts.forEach((prompt) => {
-                      prompt.outputs &&= parseSqArray(prompt.outputs);
-                    });
-
-                    const logOutputs = (prompts) => {
-                      console.group("Prompts");
-                      prompts.forEach((prompt, i) => {
-                        console.group(`Prompt #${i + 1}`);
-                        prompt.outputs.forEach((output, j) => {
-                          console.group(`Output #${j + 1}`);
-                          console.log(output);
-                          console.groupEnd();
-                        });
-                        console.groupEnd();
-                      });
-                    };
-
-                    const showOutputs = async (prompts) => {
-                      openComponentInWindow(
-                        OutputExplorer,
-                        { prompts },
-                        {
-                          doNotStartAttached: true,
-                          initialPosition: { x: 10, y: 10 },
-                          initialSize: { x: 300, y: 400 },
-                        }
-                      );
-                    };
-
-                    logOutputs(prompts);
-                    await showOutputs(prompts); */
                   },
                 },
                 icon("play_arrow"),
@@ -411,6 +397,7 @@ export const base = new Extension()
   .registerReplacement((e) => [
     (x) =>
       cascadedConstructorShardsFor(x, "OragleLeafModule", {
+        uuid: { mode: "literal"},
         label: { prefix: "'", suffix: "'", placeholder: "label" },
         content: { prefix: "'", suffix: "'", placeholder: "content" },
         state: { mode: "literal", default: "#enabled" },
@@ -418,7 +405,7 @@ export const base = new Extension()
     replacement(
       e,
       "oragle-leaf-module",
-      ({ label, content, state, replacement }) => {
+      ({ uuid, label, content, state, replacement }) => {
         const project = (() => {
           let node = replacement;
           while (node) {
@@ -436,13 +423,13 @@ export const base = new Extension()
 
           await project.updateOutputWindows();
         };
-
+        // debugger;
         return h(
           OragleModule,
-          { node: replacement.node, type: "OragleLeafModule" },
+          { uuid: uuid, node: replacement.node, type: "OragleLeafModule" },
           h(
             "div",
-            { class: "sb-column" },
+            { class: "sb-column", id: uuid.get().slice(1, -1) },
             h("span", { style: { fontWeight: "bold" } }, label),
             content,
             h(
@@ -495,10 +482,27 @@ function OragleProject({ children }) {
 
 // Container component for modules that supports wrapping / unwrapping
 // children of that module.
-function OragleModule({ children, node, type }) {
+function OragleModule({ uuid, children, node, type }) {
+  const highlighted = useComputed(() => {
+    if (uuid) {
+      return highlightedModules.value.includes(uuid.get().slice(1,-1))
+    }
+    return false
+  });
+
   return h(
     "div",
     {
+      onMouseEnter: () => {
+        if (uuid){
+          selectedModule.value = uuid.get().slice(1,-1);
+        }
+      },
+      onMouseLeave: () => {
+        if (uuid){
+          selectedModule.value = null;
+        }
+      },
       oncontextmenu: (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -533,6 +537,7 @@ function OragleModule({ children, node, type }) {
         display: "inline-flex",
         border: "2px solid #333",
         borderRadius: "6px",
+        borderColor: highlighted.value == true ? "red" : undefined,
         padding: "0.5rem",
       },
     },
