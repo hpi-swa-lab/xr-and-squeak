@@ -7,13 +7,13 @@ import {
   parentWithTag,
   rangeEqual,
 } from "../utils.js";
-import { useEffect, useState } from "../external/preact-hooks.mjs";
+import { useEffect, useRef, useState } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
 import { SandblocksExtensionInstance } from "./extension-instance.js";
 import { markAsEditableElement, nodeIsEditable } from "../core/focus.js";
 
-export { h, render } from "../external/preact.mjs";
+export { h, render, Component } from "../external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
 export const ul = (...children) => h("ul", {}, ...children);
 export const div = (...children) => h("div", {}, ...children);
@@ -95,6 +95,21 @@ export const useLocalState = (key, initialValue) => {
   }, [value]);
   return [value, setValue];
 };
+
+/** Normal useState uses Object.is() for comparing values. Here we can provide a custom comparer instead. This is helpful when values are deep objects that should be compared deeply rather than by their indentity to avoid redundant state updates. */
+export function useComparableState(initialState, compare) {
+  const [state, setState] = useState(initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const setComparableState = (newState) => {
+    if (!compare(stateRef.current, newState)) setState(newState);
+  };
+  return [state, setComparableState];
+}
+
+export function useJSONComparedState(initialState) {
+  return useComparableState(initialState, (a, b) => JSON.stringify(a) === JSON.stringify(b));
+}
 
 export class Widget extends HTMLElement {
   disconnectedCallback() {

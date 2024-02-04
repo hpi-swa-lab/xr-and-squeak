@@ -508,21 +508,21 @@ inputs := ((input reject: [:obj | obj includesKey: 'disable']) collect: [:obj |
 
 {
 	#category : #projects,
-	#'squeak_changestamp' : 'ct 2/3/2024 19:05'
+	#'squeak_changestamp' : 'ct 2/4/2024 00:10'
 }
 OragleProjects >> copilotWithoutScripts [
-	| codeSample postcard handcrafted longPrompt |
 	<sandblocksExtensions: #(oragle:base)>
+	| codeSample postcard handcrafted longPrompt |
 	longPrompt := 'You are an expert programmer, assisting in completing code snippets. You do not add comments, only complete statements. If the given prefix to be completed is the start of a function, you may complete the entire function but only do so, if you can complete it without elision. Answer only the code that is to be inserted!'.
 	codeSample := Text codeSample.
-	postcard := '''\\Example>>'' withCRs , codeSample'.
+	postcard := '\\Example>>' withCRs , codeSample.
 	handcrafted := (Collection >> #do:) getSource.
 	^ OragleProject new uuid: 'c6784713-05f4-394d-aa8d-d191ed371a95';
 		 label: 'Copilot (without scripts)';
 		 rootModule: (OragleSequenceModule new uuid: 'a1982e9b-06de-584b-8dbc-7acabb74117c';
 			 separator: String cr , String cr;
 			 children: {OragleSequenceModule new uuid: 'be3d13b7-51b9-0648-a6aa-10573205d3bb';
-				 label: 'completion prefix';
+				 label: 'completion prefix:';
 				 state: #enabled;
 				 separator: String cr , String cr;
 				 children: {OragleAlternation new uuid: 'ac0fa7f1-28d2-c241-88f8-752e29eac33d';
@@ -530,8 +530,8 @@ OragleProjects >> copilotWithoutScripts [
 						 content: 'toIsometric2: aPoint
 
 			"Return a new point in isometric view"
-			^ '; state: #mute. OragleLeafModule new uuid: '3b5c15dc-225d-47de-893e-a1af1899eaa3';
-						 content: 'toIso3'; state: #enabled};
+			^ '; state: #enabled. OragleLeafModule new uuid: '3b5c15dc-225d-47de-893e-a1af1899eaa3';
+						 content: 'toIso'; state: #solo};
 					 state: #enabled}. OragleSequenceModule new uuid: '5002757e-9e13-4242-b317-41d474c39e17';
 				 label: 'languageKnowledge';
 				 state: #enabled;
@@ -544,9 +544,10 @@ OragleProjects >> copilotWithoutScripts [
 						 label: 'someKnowledge';
 						 children: {OragleLeafModule new uuid: '8b06a43d-e88a-d040-97a7-cc10bba9ab67';
 							 content: 'This is a of Smalltalk code:';
-							 state: #enabled. OragleAlternation new children: {OragleLeafModule new uuid: '0a7ef53a-58ef-4e4a-a555-bf66b8a70e18';
+							 state: #enabled. OragleAlternation new uuid: 'c2388af3-75cf-1544-8471-11be6f0051bd';
+								 children: {OragleLeafModule new uuid: '0a7ef53a-58ef-4e4a-a555-bf66b8a70e18';
 								 content: postcard;
-								 state: #enabled. OragleLeafModule new content: handcrafted}}}}. OragleSequenceModule new uuid: '2162a794-9759-f448-9eb6-dc857688d6fd';
+								 state: #solo. OragleLeafModule new uuid: 'f9fe1ea6-d22b-5940-a7a4-faafea99db14'; content: handcrafted; state: #solo}}}}. OragleSequenceModule new uuid: '2162a794-9759-f448-9eb6-dc857688d6fd';
 				 label: 'context';
 				 state: #enabled;
 				 separator: String cr , String cr;
@@ -571,6 +572,6 @@ OragleProjects >> copilotWithoutScripts [
 				"Optimized for speed -- ar 8/26/2001"
 				| r |
 				r := ((x*x) + (y * y)) sqrt.
-				^(x / r) @ (y / r)'}})
+				^(x / r) @ (y / r)'; state: #mute}})
 
 ]

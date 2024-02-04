@@ -15,12 +15,11 @@ OraglePromptVisitor >> value [
 
 {
 	#category : #visiting,
-	#'squeak_changestamp' : 'ct 1/22/2024 15:57'
+	#'squeak_changestamp' : 'ct 2/3/2024 23:37'
 }
 OraglePromptVisitor >> visit: aModule [
 
-	self isThisEverCalled.
-	^ aModule enabledChildren collect: [:child | child accept: self]
+	^ self shouldNotImplement
 ]
 
 {

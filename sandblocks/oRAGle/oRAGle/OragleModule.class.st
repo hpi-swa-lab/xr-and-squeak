@@ -145,6 +145,28 @@ OragleModule >> label: aString [
 ]
 
 {
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/3/2024 23:32'
+}
+OragleModule >> leaves [
+
+	^ (self children ifEmpty: [^ {self}])
+		gather: #leaves
+]
+
+{
+	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/3/2024 21:06'
+}
+OragleModule >> moduleForId: id [
+
+	self uuid = id ifTrue: [^ self].
+	self children do: [:child |
+		(child moduleForId: id) ifNotNil: [:module | ^ module]].
+	^ nil
+]
+
+{
 	#category : #printing,
 	#'squeak_changestamp' : 'ct 1/22/2024 12:11'
 }

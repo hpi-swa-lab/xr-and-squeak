@@ -1,6 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { choose, openComponentInWindow } from "../sandblocks/window.js";
-import { h, icon, replacement, useDebouncedEffect } from "../view/widgets.js";
+import { h, icon, replacement, useDebouncedEffect, useJSONComparedState } from "../view/widgets.js";
 import { AutoSizeTextArea } from "../view/widgets/auto-size-text-area.js";
 import { ShardArray } from "../view/widgets/shard-array.js";
 import {
@@ -14,6 +14,20 @@ import { signal, useComputed } from "../external/preact-signals.mjs"
 
 const highlightedModules = signal([]);
 const selectedModule = signal(null)
+
+const formatPrice = (cents, options = {}) => {
+  const minDigits = options.minDigits ?? 2;
+  return cents > 100
+    ? `$${(cents / 100).toFixed(minDigits)}`
+    : `¢${cents.toFixed(
+      cents > 0.01 || cents === 0
+        ? minDigits
+        : Math.min(
+          Math.max(0, Math.min(-Math.floor(Math.log10(cents))), minDigits - 2),
+            100
+          )
+      )}`;
+};
 
 const parseSqArray = (obj) => {
   if (Array.isArray(obj)) return obj; // this happens on subsequent sqUpdate calls
@@ -102,6 +116,19 @@ class OutputWindow extends Component {
         ...this.state.prompts.map((prompt, promptIndex) => PromptContainer(prompt, promptIndex))
       )
   }
+
+  logOutputs() {
+    console.group("Prompts");
+    this.state.prompts.forEach((prompt, i) => {
+      console.group(`Prompt #${i + 1}`);
+      prompt.outputs.forEach((output, j) => {
+        console.group(`Output #${j + 1}`);
+        console.log(output);
+        console.groupEnd();
+      });
+      console.groupEnd();
+    });
+  };
 }
 
 const allOutputWindows = {};
@@ -134,17 +161,22 @@ export const base = new Extension()
         rootModule: { default: `OragleSequenceModule new uuid: '${makeUUID()}'` },
       }),
     replacement(e, "oragle-project", ({ uuid, label, rootModule, replacement }) => {
-      const [bufferedMetrics, setMetrics] = useState(null);
-      const [promptsObj, setPromptsObj] = useState(null);
+      const [bufferedMetrics, setMetrics] = useJSONComparedState(null);
 
+      const editorShard = replacement.editor?.children[0];
+      const editorSourceString = editorShard?.sourceString;
       useDebouncedEffect(
         500,
         async () => {
-          // TODO: get rid of separate compilation?; support token counting/price estimation per module
-          const input = sqEscapeString(replacement.sourceString);
+          const editorShard = replacement.editor?.children[0];
+          const editorSourceString = editorShard?.sourceString;
+
+          // trim initial selector and optional pragmas
+          const input = editorSourceString.replace(/^[^\s]+/, "").replace(/<[^>]+>/, "").trim();
+
           const promptsObj = await sqQuery(
             `| project |
-              project := Compiler evaluate: '${input}'.
+              project := Compiler evaluate: '${sqEscapeString(input)}'.
               project expand.
           `,
             {
@@ -163,9 +195,8 @@ export const base = new Extension()
             0
           );
 
-          setPromptsObj(promptsObj);
           setMetrics({
-            sourceString: replacement.sourceString,
+            editorSourceString,
             numberOfPrompts: prompts.length,
             // single number if all prompts have the same number of outputs, otherwise `null`
             defaultNumberOfOutputs: prompts.every(
@@ -176,25 +207,15 @@ export const base = new Extension()
               ? prompts[0]?.defaultNumberOfOutputs
               : null,
             totalPrice: totalPrice,
-            totalPriceFormatted:
-              totalPrice > 100
-                ? `$${(totalPrice / 100).toFixed(2)}`
-                : `¢${totalPrice.toFixed(
-                    totalPrice > 0.01 || totalPrice === 0
-                      ? 2
-                      : Math.min(
-                          Math.max(0, -Math.floor(Math.log10(totalPrice))),
-                          100
-                        )
-                  )}`,
+            totalPriceFormatted: formatPrice(totalPrice),
           });
         },
-        [replacement.sourceString]
+        [editorSourceString]
       );
 
       // check if we're still up-to-date
       const metrics =
-        bufferedMetrics?.sourceString === replacement.sourceString
+        bufferedMetrics?.editorSourceString === editorSourceString
           ? bufferedMetrics
           : null;
 
@@ -315,6 +336,7 @@ export const base = new Extension()
   .registerReplacement((e) => [
     (x) =>
       cascadedConstructorShardsFor(x, "OragleSequenceModule", {
+        uuid: { mode: "literal", default: makeUUID() },
         separator: { prefix: "'", placeholder: "separator", suffix: "'" },
         label: { prefix: "'", placeholder: "label", suffix: "'" },
         children: { mode: "array" },
@@ -322,7 +344,9 @@ export const base = new Extension()
     replacement(
       e,
       "oragle-sequence-module",
-      ({ separator, label, children, replacement }) => {
+      ({ uuid, separator, label, children, replacement }) => {
+        const moduleId = uuid.get().replace(/'/g, "");
+
         return h(
           OragleModule,
           { node: replacement.node, type: "OragleSequenceModule" },
@@ -331,9 +355,23 @@ export const base = new Extension()
             { class: "sb-insert-button-container sb-column" },
             h(
               "span",
-              { class: "sb-row" },
+              {
+                class: "sb-row",
+                style: { justifyContent: "space-between" },
+              },
               icon("table_rows"),
-              label?.key && h("span", { style: { fontWeight: "bold" } }, label)
+              label?.key && h("span", { style: { fontWeight: "bold" } }, label),
+              h(
+                "span",
+                {
+                  style: {
+                    flexGrow: 1,
+                    display: "flex",
+                    justifyContent: "flex-end",
+                  },
+                },
+                h(ModulePriceTag, { replacement, moduleId }),
+              ),
             ),
             h(ShardArray, {
               elements: children.elements,
@@ -348,10 +386,13 @@ export const base = new Extension()
   .registerReplacement((e) => [
     (x) =>
       cascadedConstructorShardsFor(x, "OragleScriptModule", {
+        uuid: { mode: "literal", default: makeUUID() },
         children: { mode: "array" },
       }),
-    replacement(e, "oragle-script-module", ({ children, replacement }) =>
-      h(
+    replacement(e, "oragle-script-module", ({ uuid, children, replacement }) => {
+      const moduleId = uuid.get().replace(/'/g, "");
+
+      return h(
         OragleModule,
         { node: replacement.node, type: "OragleScriptModule" },
         h(
@@ -361,19 +402,30 @@ export const base = new Extension()
           h(ShardArray, {
             elements: children.elements,
             onInsert: (i) => insertModule(children, i),
-          })
+          }),
+          h(
+            "span",
+            {
+              class: "sb-row",
+              style: { justifyContent: "space-between" },
+            },
+            h(ModulePriceTag, { replacement, moduleId }),
+          ),
         )
-      )
-    ),
+      );
+    }),
   ])
 
   .registerReplacement((e) => [
     (x) =>
       cascadedConstructorShardsFor(x, "OragleAlternation", {
+        uuid: { mode: "literal", default: makeUUID() },
         children: { mode: "array" },
       }),
-    replacement(e, "oragle-alternation-module", ({ children, replacement }) =>
-      h(
+    replacement(e, "oragle-alternation-module", ({ uuid, children, replacement }) => {
+      const moduleId = uuid.get().replace(/'/g, "");
+
+      return h(
         OragleModule,
         { node: replacement.node, type: "OragleAlternation" },
         h(
@@ -388,16 +440,24 @@ export const base = new Extension()
           h(ShardArray, {
             elements: children.elements,
             onInsert: (i) => insertModule(children, i),
-          })
+          }),
+          h(
+            "span",
+            {
+              class: "sb-row",
+              style: { justifyContent: "space-between" },
+            },
+            h(ModulePriceTag, { replacement, moduleId }),
+          ),
         )
-      )
-    ),
+      );
+    }),
   ])
 
   .registerReplacement((e) => [
     (x) =>
       cascadedConstructorShardsFor(x, "OragleLeafModule", {
-        uuid: { mode: "literal"},
+        uuid: { mode: "literal", default: makeUUID() },
         label: { prefix: "'", suffix: "'", placeholder: "label" },
         content: { prefix: "'", suffix: "'", placeholder: "content" },
         state: { mode: "literal", default: "#enabled" },
@@ -406,6 +466,8 @@ export const base = new Extension()
       e,
       "oragle-leaf-module",
       ({ uuid, label, content, state, replacement }) => {
+        const moduleId = uuid.get().replace(/'/g, "");
+
         const project = (() => {
           let node = replacement;
           while (node) {
@@ -429,8 +491,16 @@ export const base = new Extension()
           { uuid: uuid, node: replacement.node, type: "OragleLeafModule" },
           h(
             "div",
-            { class: "sb-column", id: uuid.get().slice(1, -1) },
-            h("span", { style: { fontWeight: "bold" } }, label),
+            { class: "sb-column", id: uuid.get().slice(1, -1)},
+            h(
+              "span",
+              {
+                class: "sb-row",
+                style: { justifyContent: "space-between" },
+              },
+              h("span", { style: { fontWeight: "bold" } }, label),
+              h(ModulePriceTag, { replacement, moduleId }),
+            ),
             content,
             h(
               "div",
@@ -547,4 +617,80 @@ function OragleModule({ uuid, children, node, type }) {
 
 function insertModule({ insert }, i) {
   insert(i, `OragleLeafModule new uuid: '${makeUUID()}'`);
+}
+
+function ModulePriceTag( { replacement, moduleId }) {
+  const [bufferedMetrics, setMetrics] = useJSONComparedState(null);
+
+  // As the resolved content of the module might depend on earlier script modules or configuration modules, metrics depend on the whole project
+  // FIXME: Typing into one leaf module should not rebuild the entire project UI - this is NOT due to our effects but seems to come from sandblocks!
+  const editorShard = replacement.editor?.children[0];
+  const editorSourceString = editorShard?.sourceString;
+  useDebouncedEffect(
+    500,
+    async () => {
+      const editorShard = replacement.editor.children[0];
+      const editorSourceString = editorShard.sourceString;
+
+      // trim initial selector and optional pragmas
+      const input = editorSourceString.replace(/^[^\s]+/, "").replace(/<[^>]+>/, "").trim();
+
+      const _metrics = await sqQuery(
+        `| project |
+        project := Compiler evaluate: '${sqEscapeString(input)}'.
+        ^ project metricsForModule: (project moduleForId: '${moduleId}')`,
+        {
+          "minPrice": "self minPrice maxCents",
+          "maxPrice": "self maxPrice maxCents",
+          "minTokens": "minTokens",
+          "maxTokens": "maxTokens",
+        }
+      );
+
+      _metrics.minPriceFormatted = formatPrice(_metrics.minPrice);
+      _metrics.maxPriceFormatted = formatPrice(_metrics.maxPrice);
+      _metrics.minPriceFormattedLong = formatPrice(_metrics.minPrice, { minDigits: 4 });
+      _metrics.maxPriceFormattedLong = formatPrice(_metrics.maxPrice, { minDigits: 4 });
+
+      setMetrics({
+        editorSourceString,
+        ..._metrics
+      });
+    },
+    [editorSourceString]
+  );
+
+  const metrics =
+    bufferedMetrics?.editorSourceString === editorSourceString
+      ? bufferedMetrics
+      : null;
+
+  return metrics === null
+    ? null
+    : h(
+      "span",
+      {
+        style: {
+          backgroundColor: "#eee",
+          padding: "2px 6px",
+          borderRadius: "4px",
+          fontSize: "0.75rem",
+        },
+        title:
+`Tokens: ${metrics === null
+  ? "(computing...)"
+  : metrics.minTokens == metrics.maxTokens
+    ? `${metrics.minTokens}`
+    : `${metrics.minTokens} – ${metrics.maxTokens}`}
+Price for one request: ${metrics === null
+  ? "(computing...)"
+  : metrics.minPriceFormattedLong == metrics.maxPriceFormattedLong
+    ? `${metrics.minPriceFormattedLong}`
+    : `${metrics.minPriceFormattedLong} – ${metrics.maxPriceFormattedLong}`}`,
+      },
+      metrics.minPriceFormatted === metrics.maxPriceFormatted
+       ? `${metrics.minPriceFormatted}`
+       //: `${metrics.minPriceFormatted} – ${metrics.maxPriceFormatted}`
+       : `≤${metrics.maxPriceFormatted}`
+      );
 }

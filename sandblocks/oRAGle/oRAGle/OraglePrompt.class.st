@@ -100,7 +100,7 @@ OraglePrompt >> defaultNumberOfOutputs [
 
 {
 	#category : #private,
-	#'squeak_changestamp' : 'ct 2/3/2024 18:40'
+	#'squeak_changestamp' : 'ct 2/3/2024 21:25'
 }
 OraglePrompt >> generateOutputs [
 
@@ -109,10 +109,7 @@ OraglePrompt >> generateOutputs [
 		(price := self priceToGenerateOutputs maxCents) > approvedPrice ifTrue:
 			[self notify: ('about to spend {1}' format: {price})].
 		approvedPrice := 0].
-	replies := SemanticConversation new
-		addUserMessage: input;
-		withConfigDo: [:config |
-			config maxTokens: self defaultMaxNumberOfTokens];
+	replies := self newConversation
 		getAssistantMessages: self defaultNumberOfOutputs.
 ]
 
@@ -140,11 +137,36 @@ OraglePrompt >> input [
 
 {
 	#category : #accessing,
+	#'squeak_changestamp' : 'ct 2/3/2024 23:36'
+}
+OraglePrompt >> metricsForModule: aModule [
+
+	^ OragleMetricsVisitor new
+		conversation: self newConversation;
+		rootModule: aModule;
+		value
+]
+
+{
+	#category : #accessing,
 	#'squeak_changestamp' : 'ct 1/22/2024 16:11'
 }
 OraglePrompt >> modules [
 
 	^ modules
+]
+
+{
+	#category : #private,
+	#'squeak_changestamp' : 'ct 2/3/2024 21:25'
+}
+OraglePrompt >> newConversation [
+
+	^ SemanticConversation new
+		addUserMessage: input;
+		withConfigDo: [:config |
+			config maxTokens: self defaultMaxNumberOfTokens];
+		yourself
 ]
 
 {
@@ -169,16 +191,12 @@ OraglePrompt >> postCopy [
 
 {
 	#category : #private,
-	#'squeak_changestamp' : 'ct 1/22/2024 16:51'
+	#'squeak_changestamp' : 'ct 2/3/2024 21:25'
 }
 OraglePrompt >> priceToGenerateOutputs [
 
-	^ (SemanticConversation new
-		addUserMessage: input;
-		withConfigDo: [:config |
-			config maxTokens: self defaultMaxNumberOfTokens];
-		estimatePriceToGetAssistantMessage)
-			* self defaultNumberOfOutputs
+	^ self newConversation
+		estimatePriceToGetAssistantMessages: self defaultNumberOfOutputs
 ]
 
 {
