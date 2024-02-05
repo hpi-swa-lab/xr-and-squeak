@@ -1,62 +1,18 @@
 import { h } from "../../view/widgets.js";
-import ewd998Small from "../../assets/JsonStateWriter.json" assert {type: "json"}
-import specExport from "../../assets/tla2PCExport.json" assert {type: "json"}
-import { useCallback, useEffect, useRef, useState } from "../../external/preact-hooks.mjs";
+import { useCallback, useEffect, useRef, useState, useContext } from "../../external/preact-hooks.mjs";
 import htm from '../../external/htm.mjs';
-import { Component, createRef } from "../../external/preact.mjs";
+import { Component, createContext, createRef } from "../../external/preact.mjs";
 const html = htm.bind(h);
 
-// TODO put this data in some global state accessible to all components
-const varToActor2 = {
-    "tmState": "Transaction Manager",
-    "tmPrepared": "Transaction Manager",
-    "rmState": {
-        "rm1": "RM 1",
-        "rm2": "RM 2",
-    },
-    "msgs": "messages",
-}
-const actors2 = ["Transaction Manager", "messages", "RM 1", "RM 2"]
-
-
-const varToActor = {
-    "color": {
-        "0": "Node 0",
-        "1": "Node 1",
-        "2": "Node 2"
-    },
-    "pending": {
-        "0": "Node 0",
-        "1": "Node 1",
-        "2": "Node 2"
-    },
-    "active": {
-        "0": "Node 0",
-        "1": "Node 1",
-        "2": "Node 2"
-    },
-    "counter": {
-        "0": "Node 0",
-        "1": "Node 1",
-        "2": "Node 2"
-    },
-}
-
-"0 > 'Node 0'"
-"1 > 'Node 1'"
-"2 > 'Node 2'"
-
-"color.%"
-"token:token.pos=%"
-
-const actors = ["Node 0", "Node 1", "Node 2"]
-
 /** actor to column map */
-const a2c = actors.reduce((acc, a, i) => acc.set(a, i + 1), new Map())
+const DiagramConfig = createContext()
 
-/** succesively applies the list of keys to obj
+/** succesively applies the list of keys to obj. If the any intermediate result is a string, it is returned.
  * @example
  * apply({"a": {"b": "result"}}, ["a", "b"]) // "result"
+ * 
+ * @example
+ * apply({"a": {"b": "result"}}, ["a", "b", "c"]) // "result"
  * 
  * @param {any} obj 
  * @param {string[]} keys 
@@ -66,21 +22,30 @@ function apply(obj, keys) {
     const reversedKeys = [...keys].reverse()
     let result = obj
     while (reversedKeys.length > 0) {
-        result = result[reversedKeys.pop()]
+        const k = reversedKeys.pop()
+        if (Array.isArray(result)) {
+            // this happens if the nested data structur is either a set or a sequence
+            // if k is a number, we can access the element at that index
+            // Note: In TLA+, arrays are 1-indexed
+            result = result[k - 1]
+
+            // we can also think of cases like {1, 2, 3}, where result would
+            // also be modeled as an array and the key might be an int
+            // TODO what do to then? -> currently we don't apply keys
+            // on sets, so this shouldn't happen.
+        } else {
+            result = result[k]
+        }
 
         if (result === undefined) {
             return undefined
         }
+
+        if (typeof result === "string") {
+            return result
+        }
     }
     return result
-}
-
-
-const gridWrapperStyle = {
-    position: "relative", // necessary for relative positioning of messages to this element
-    display: "grid",
-    gridTemplateColumns: `repeat(${actors.length}, 1fr)`,
-    height: "min-content",
 }
 
 /** gives all possible nested key sequences of varTree
@@ -123,14 +88,34 @@ function nestedKeys(varTree) {
  *  msgs: string[]
  * }}
  */
-function edgeToVizData({ reads, readsDuringWrites, writes, label }, varToActor) {
+function edgeToVizData({ reads, readsDuringWrites, writes, label }, currNode, nextNode) {
+    const { varToActor, messageActors } = useContext(DiagramConfig)
+
     const writeKeys = nestedKeys(writes)
     const readKeys = nestedKeys(reads)
     const readsDuringWritesKeys = nestedKeys(readsDuringWrites)
 
-    const keysActorPairsWrite = writeKeys.map(keys => ({ keys, actor: apply(varToActor, keys) }))
-    const keysActorPairsRead = readKeys.map(keys => ({ keys, actor: apply(varToActor, keys) }))
-    const keysActorPairsReadDuringWrite = readsDuringWritesKeys.map(keys => ({ keys, actor: apply(varToActor, keys) }))
+    const getKeysAndActor = (keys, valueFallback) => {
+        let applied = apply(varToActor, keys)
+
+        if (applied instanceof Object) {
+            // we need to check the actual values of the variables
+            const val = apply(valueFallback, keys)
+            if (!(val instanceof Object)) {
+                applied = apply(varToActor, [...keys, `${val}`])
+            }
+        }
+
+        if (typeof applied !== "string") {
+            applied = undefined
+        }
+
+        return { keys, actor: applied }
+    }
+
+    const keysActorPairsWrite = writeKeys.map(k => getKeysAndActor(k, nextNode.vars))
+    const keysActorPairsRead = readKeys.map(k => getKeysAndActor(k, currNode.vars))
+    const keysActorPairsReadDuringWrite = readsDuringWritesKeys.map(k => getKeysAndActor(k, currNode.vars))
 
     let keysActorPairs = [...keysActorPairsWrite, ...keysActorPairsRead, ...keysActorPairsReadDuringWrite]
 
@@ -145,6 +130,10 @@ function edgeToVizData({ reads, readsDuringWrites, writes, label }, varToActor) 
     let actor = null
     let max = 0
     for (const [k, v] of Object.entries(freqs)) {
+        if (messageActors?.includes(k)) {
+            // skip actors that solely abstract message passing
+            continue
+        }
         if (v > max) {
             actor = k
             max = v
@@ -153,17 +142,16 @@ function edgeToVizData({ reads, readsDuringWrites, writes, label }, varToActor) 
 
     const keysActorPairsToMsg = (p) => {
         const type = keysActorPairsWrite.includes(p) ? "write" : "read"
-        const object = p.keys.reduce((acc, k) => acc + "." + k)
+        const object = p.keys.reduce((acc, k) => acc + "[" + k + "]")
         return { to: p.actor, type: type, label: `${type} ${object}` }
     }
 
-    return {
-        label: label,
-        actor,
-        msgs: keysActorPairs
-            .filter(pair => pair.actor !== actor)
-            .map(keysActorPairsToMsg)
-    }
+    const msgs = keysActorPairs
+        .filter(pair => pair.actor !== actor) // remove self references
+        .map(keysActorPairsToMsg)
+        .filter(({ to, type }, i, msgs) => !msgs.slice(0, i).find(m => m.type === type && m.to === to)) // only keep first message of each type to each actor
+
+    return { label, actor, msgs }
 }
 
 const Lifeline = ({ numRows, column }) => {
@@ -221,6 +209,7 @@ const Action = ({ row, col, label, msgs }) => {
         transform: "translateY(60%)",
         whiteSpace: "nowrap",
         marginLeft: "12px",
+        fontWeight: "bold"
     }
 
     return html`
@@ -333,6 +322,8 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
 }
 
 const ActionInspector = ({ actionVizData, startRow, close }) => {
+    const { actors } = useContext(DiagramConfig)
+
     const gridElementStyle = {
         gridColumn: `1 / span ${actors.length}`,
         gridRow: `${startRow} / 40`, // doesn't actually span 40 rows, instead goes to the end of the grid
@@ -396,6 +387,7 @@ const ActionInspector = ({ actionVizData, startRow, close }) => {
 }
 
 const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
+    const { a2c } = useContext(DiagramConfig)
 
     // depending on if messages are read or write messages,
     // they are placed on top (reads) or bottom (writes) of the lifeline
@@ -444,11 +436,10 @@ const EdgePickerButton = (props) => {
     <button class="edgepicker" ...${props} />`
 }
 
-const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCurrNode, setPreviewEdge }) => {
-    const [lines, setLines] = useState([])
+const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCurrNode, setPreviewEdge, vizData }) => {
+    const { a2c, actors } = useContext(DiagramConfig)
 
-    const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges
-    const vizData = edges.map(e => edgeToVizData(e, varToActor))
+    const [lines, setLines] = useState([])
 
     const [inspectEdge, setInspectEdge] = useState(null)
 
@@ -474,7 +465,7 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
                 }
             </style>
             <div style=${{ padding: "16px 32px 16px 16px", display: "flex", flex: "1 0 0", overflowY: "scroll" }}>
-                <div style=${{ ...gridWrapperStyle, width: "100%" }}>
+                <div class="gridWrapper" style=${{ width: "100%" }}>
                     ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
                     ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
                     ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
@@ -490,7 +481,9 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
         `
 }
 
-const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPrevEdges }) => {
+const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPrevEdges, vizData }) => {
+    const { actors, varToActor } = useContext(DiagramConfig)
+
     const tableHeaderStyle = {
         textAlign: "left",
         fontWeight: "normal"
@@ -510,32 +503,26 @@ const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPr
         }
     }
 
-    const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === a))
-    // TODO how to handle actions without actor?
-    const nextActionsWithoutActor = nextEdges.filter(([_, e]) => edgeToVizData(e, varToActor).actor === undefined)
+    const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, currNode, graph.nodes.get(e.to)).actor === a))
 
-    if (nextActionsWithoutActor.length > 0) {
-        console.warn("next action without actor", nextActionsWithoutActor)
-    }
-
-    if (nextActionsPerActorIndex.flat().length !== nextEdges.length) {
-        console.warn("next action without actor", nextActionsWithoutActor)
-    }
-
-    const keySeqs = nestedKeys(currNode.vars)
-    const keySeqsActorPairsPerActor = actors.reduce((acc, a) =>
-        acc.set(a, keySeqs.filter(keys => apply(varToActor, keys) === a)), new Map())
-
+    const keysMappingToActors = nestedKeys(varToActor)
+    // TODO what about keys not mapping to actors
+    const keysPerActorIndex = actors.map(a => {
+        const keysOfThisActor = keysMappingToActors.filter(keys => apply(varToActor, keys) === a)
+        return keysOfThisActor
+    })
 
     const exportToHTML = (keys) => {
         const value = apply(currNode.vars, keys)
+
+        const scope = keys.reduce((acc, k) => acc + "[" + k + "]")
 
         if (Array.isArray(value) && value.length > 0) {
             return value.map(
                 (v, i) => html`
                             <tr>
                                 ${i === 0
-                        ? html`<td style=${{ rowspan: value.length }}>${keys.join(".")}</td>`
+                        ? html`<td style=${{ rowspan: value.length }}>${scope}</td>`
                         : html`<td></td>`}
                                 <td>${JSON.stringify(v)}</td>
                             </tr>
@@ -544,10 +531,119 @@ const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPr
 
         return html`
                 <tr>
-                    <td>${keys.join(".")}</td>
+                    <td>${scope}</td>
                     <td>${JSON.stringify(value)}</td>
                 </tr>`
     }
+
+    return html`
+    <div style=${diagramContainerStyle}>
+        <div class="gridWrapper" style=${{ gridGap: "16px" }}>
+                    ${actors.map((a, i) => html`
+                        <div style=${{ display: "flex", flexDirection: "column", gridColumn: i + 1, gridRow: 1, }}>
+                            <h4>${a}</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style=${tableHeaderStyle}>Scope</th>
+                                        <th style=${tableHeaderStyle}>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${keysPerActorIndex[i].map(exportToHTML)}
+                                </tbody>
+                            </table>
+                        </div>`)}
+        </div>
+        <h4>Choose Next Action</h4>
+        <div class="gridWrapper">
+            ${nextActionsPerActorIndex.map((actions, i) => html`
+                <div style=${{ gridColumn: i + 1, gridRow: 1, display: "flex", flexDirection: "column" }}>
+                    ${actions.map(([to, e]) => html`
+                        <${EdgePickerButton} 
+                            onClick=${selectNodeFn([to, e])}
+                            onMouseEnter=${() => setPreviewEdge(e)}
+                            onMouseLeave=${() => setPreviewEdge(null)}
+                            >
+                            ${e.label + e.parameters}
+                        </${EdgePickerButton}>`)}
+                </div>
+            `)}
+        </div>
+    </div>
+    `
+}
+
+const State = ({ graph, initNodes }) => {
+    const [currNode, setCurrNode] = useState(graph.nodes.get(initNodes[0].id))
+    const [previewEdge, setPreviewEdge] = useState(null)
+    const [prevEdges, setPrevEdges] = useState([])
+
+    const containerStyle = {
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        flex: "1 0 0",
+    }
+
+
+    const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges
+
+    const prevNodes = edges.map(e => graph.nodes.get(e.from))
+    const nextNodes = edges.map(e => graph.nodes.get(e.to))
+    const vizData = edges.map((e, i) => edgeToVizData(e, prevNodes[i], nextNodes[i]))
+
+    const props = { graph, prevEdges, setPrevEdges, previewEdge, setPreviewEdge, currNode, setCurrNode, vizData }
+
+    const InitStateSelection = () => {
+        const resetInitNode = (nodeId) => {
+            setCurrNode(graph.nodes.get(nodeId))
+            setPrevEdges([])
+        }
+
+        return [
+            html`<label for="init">Choose initial state:</label>`,
+            html`<select id="init" value=${currNode.id} onChange=${e => resetInitNode(e.target.value)}>
+                    ${initNodes.map(n => html`<option value=${n.id}>${n.id}</option>`)}
+                </select>`
+        ]
+    }
+
+    return html`
+    <div style=${containerStyle}>
+        <${InitStateSelection} />
+        <${Topbar} ...${props}  />
+        <${Diagram} ...${props} />
+    </div>
+    `
+}
+
+const GraphProvider = ({ spec }) => {
+    // only do computation-heavy operations on whole graph once
+    const nodesList = spec.graph.filter(n => n.$type === "node" || n.$type === "init-node")
+    const nodes = nodesList.reduce((acc, n) => acc.set(n.id, n), new Map())
+    const edges = spec.graph.filter(e => e.$type === "edge")
+    const initNodes = nodesList.filter(n => n.$type === "init-node")
+
+    const computeOutgoingEdges = () => {
+        const m = new Map()
+        for (const n of nodesList) {
+            m.set(n.id, {})
+        }
+
+        for (const e of edges) {
+            const outgoing = m.get(e.from)
+            if (outgoing[e.to]) {
+                continue
+            }
+            outgoing[e.to] = e
+        }
+
+        return m
+    }
+    const outgoingEdges = computeOutgoingEdges()
+
+    const graph = { nodes, edges, outgoingEdges, nodesList }
 
     const mergeTrees = (acc, n) => {
         const varsTree = n.vars
@@ -570,96 +666,54 @@ const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPr
         return acc
     }
 
-    //const allVarScopes = graph.nodesList.reduce(mergeTrees, {})
+    const allVarScopes = graph.nodesList.reduce(mergeTrees, {})
+    console.log(allVarScopes)
 
-    return html`
-    <div style=${diagramContainerStyle}>
-        <div style=${{ ...gridWrapperStyle, gridGap: "16px" }}>
-                    ${actors.map((a, i) => html`
-                        <div style=${{ display: "flex", flexDirection: "column", gridColumn: i + 1, gridRow: 1, }}>
-                            <h4>${a}</h4>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style=${tableHeaderStyle}>Scope</th>
-                                        <th style=${tableHeaderStyle}>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${keySeqsActorPairsPerActor.get(a).map(exportToHTML)}
-                                </tbody>
-                            </table>
-                        </div>`)}
-        </div>
-        <h4>Choose Next Action</h4>
-        <div style=${gridWrapperStyle}>
-            ${nextActionsPerActorIndex.map((actions, i) => html`
-                <div style=${{ gridColumn: i + 1, gridRow: 1, display: "flex", flexDirection: "column" }}>
-                    ${actions.map(([to, e]) => html`
-                        <${EdgePickerButton} 
-                            onClick=${selectNodeFn([to, e])}
-                            onMouseEnter=${() => setPreviewEdge(e)}
-                            onMouseLeave=${() => setPreviewEdge(null)}
-                            >
-                            ${e.label + e.parameters}
-                        </${EdgePickerButton}>`)}
-                </div>
-            `)}
-        </div>
-    </div>
-    `
-}
-
-const State = ({ graph, initNode }) => {
-    const [currNode, setCurrNode] = useState(initNode)
-    const [previewEdge, setPreviewEdge] = useState(null)
-    const [prevEdges, setPrevEdges] = useState([])
-
-    const containerStyle = {
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        flex: "1 0 0",
+    const config = {
+        actors: spec.transformation.actors,
+        varToActor: spec.transformation.varSpaceToActor,
+        messageActors: spec.transformation.messageActors,
+        a2c: spec.transformation.actors.reduce((acc, a, i) => acc.set(a, i + 1), new Map())
     }
 
-    const props = { graph, prevEdges, setPrevEdges, previewEdge, setPreviewEdge, currNode, setCurrNode }
-
-    return html`
-    <div style=${containerStyle}>
-        <${Topbar} ...${props}  />
-        <${Diagram} ...${props} />
-    </div>
-    `
-}
-
-const GraphProvider = () => {
-    // only do computation-heavy operations on whole graph once
-    const nodesList = ewd998Small.graph.filter(n => n.$type === "node" || n.$type === "init-node")
-    const nodes = nodesList.reduce((acc, n) => acc.set(n.id, n), new Map())
-    const edges = ewd998Small.graph.filter(e => e.$type === "edge")
-    const initNode = nodesList.find(n => n.$type === "init-node")
-
-    const computeOutgoingEdges = () => {
-        const m = new Map()
-        for (const n of nodesList) {
-            m.set(n.id, {})
-        }
-
-        for (const e of edges) {
-            const outgoing = m.get(e.from)
-            if (outgoing[e.to]) {
-                continue
+    return [
+        html`
+        <style>
+            .gridWrapper {
+                position: relative;
+                display: grid;
+                grid-template-columns: ${`repeat(${config.actors.length}, 1fr)`};
+                height: min-content;
             }
-            outgoing[e.to] = e
+        </style>
+        `,
+        html`
+    <${DiagramConfig.Provider} value=${config}>
+        <${State} graph=${graph} initNodes=${initNodes}/>
+    </${DiagramConfig.Provider}>`
+    ]
+}
+
+export const SpecPicker = () => {
+    const [spec, setSpec] = useState()
+
+    const loadSpec = (e) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+            const result = JSON.parse(e.target.result)
+            setSpec(result)
         }
-
-        return m
+        reader.readAsText(e.target.files[0])
     }
-    const outgoingEdges = computeOutgoingEdges()
 
-    const graph = { nodes, edges, outgoingEdges, nodesList }
-
-    return html`<${State} graph=${graph} initNode=${initNode}/>`
+    return html`
+    <div style=${{ display: "flex" }}>
+        <label for="spec">Load spec</label>
+        <!-- we reset the spec state onClick to prevent inconsistent state while loading the new (potentially large) spec -->
+        <input type="file" id="spec" accept=".json" onClick=${() => setSpec(undefined)} onChange=${loadSpec} />
+    </div>
+    ${spec ? html`<${GraphProvider} spec=${spec} />` : ""}
+    `
 }
 
 export const SequenceDiagram = () => {
@@ -683,6 +737,6 @@ export const SequenceDiagram = () => {
             }
         </style>
         `,
-        html`<${GraphProvider} />`
+        html`<${SpecPicker} />`
     ]
 }
