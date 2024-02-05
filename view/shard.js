@@ -106,13 +106,7 @@ export class Shard extends HTMLElement {
             case "save":
               e.preventDefault();
               e.stopPropagation();
-              await this.editor.asyncExtensionsDo((e) =>
-                e.processAsync("preSave", this.source)
-              );
-              this.editor.extensionsDo((e) => e.process(["save"], this.source));
-              this.editor.dispatchEvent(
-                new CustomEvent("save", { detail: this.editor.sourceString })
-              );
+              await this.save();
               break;
             default:
               preventDefault = false;
@@ -129,6 +123,16 @@ export class Shard extends HTMLElement {
         break;
       }
     });
+  }
+
+  async save() {
+    await this.editor.asyncExtensionsDo((e) =>
+      e.processAsync("preSave", this.source)
+    );
+    this.editor.extensionsDo((e) => e.process(["save"], this.source));
+    this.editor.dispatchEvent(
+      new CustomEvent("save", { detail: this.editor.sourceString })
+    );
   }
 
   connectedCallback() {
