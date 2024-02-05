@@ -406,7 +406,7 @@ export class ExtensionInstance {
   }
 
   // subclassResponsibility
-  installReplacement(node, tag, props) {}
+  installReplacement(view, tag, props) {}
   ensureReplacement(node, tag, props) {}
   attachData(node, identifier, add, remove, update = null) {}
   processStickyReplacements(node) {}

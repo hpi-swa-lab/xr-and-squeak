@@ -76,6 +76,7 @@ sb-window {
 
 .sb-insert-button-anchor {
   position: relative;
+  height: 100%;
 }
 
 .sb-insert-button-container:not(:has(.sb-insert-button-container:hover)):hover

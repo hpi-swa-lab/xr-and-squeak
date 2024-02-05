@@ -7,13 +7,13 @@ import {
   parentWithTag,
   rangeEqual,
 } from "../utils.js";
-import { useEffect, useState } from "../external/preact-hooks.mjs";
+import { useEffect, useRef, useState } from "../external/preact-hooks.mjs";
 import { useMemo } from "../external/preact-hooks.mjs";
 import { SBList } from "../core/model.js";
 import { SandblocksExtensionInstance } from "./extension-instance.js";
 import { markAsEditableElement, nodeIsEditable } from "../core/focus.js";
 
-export { h, render } from "../external/preact.mjs";
+export { h, render, Component } from "../external/preact.mjs";
 export const li = (...children) => h("li", {}, ...children);
 export const ul = (...children) => h("ul", {}, ...children);
 export const div = (...children) => h("div", {}, ...children);
@@ -23,8 +23,20 @@ export const button = (label, onclick, autofocus) =>
   h("button", { onclick, autofocus }, label);
 export const tr = (...children) => h("tr", {}, ...children);
 export const td = (...children) => h("td", {}, ...children);
-export const shard = (node) =>
-  h(node.editor.shardTag, { initNode: [node], key: node.id });
+export const shard = (node, props = {}) => {
+  if (!node.editor) throw new Error("node has become disconnected");
+  return h(node.editor.shardTag, { initNode: [node], key: node.id, ...props });
+};
+function StickyShard({ node, ...props }) {
+  useEffect(() => {
+    const editor = node.editor;
+    editor.markSticky(node, true);
+    return () => editor.markSticky(node, false);
+  }, [node]);
+  return shard(node, props);
+}
+export const stickyShard = (node, props = {}) =>
+  h(StickyShard, { node, ...props });
 export const shardList = (list) => {
   const node = new SBList(list);
   return h(node.editor.shardTag, { initNode: [node], key: node.id });
@@ -84,6 +96,21 @@ export const useLocalState = (key, initialValue) => {
   return [value, setValue];
 };
 
+/** Normal useState uses Object.is() for comparing values. Here we can provide a custom comparer instead. This is helpful when values are deep objects that should be compared deeply rather than by their indentity to avoid redundant state updates. */
+export function useComparableState(initialState, compare) {
+  const [state, setState] = useState(initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const setComparableState = (newState) => {
+    if (!compare(stateRef.current, newState)) setState(newState);
+  };
+  return [state, setComparableState];
+}
+
+export function useJSONComparedState(initialState) {
+  return useComparableState(initialState, (a, b) => JSON.stringify(a) === JSON.stringify(b));
+}
+
 export class Widget extends HTMLElement {
   disconnectedCallback() {
     this.dispatchEvent(new Event("disconnect"));
@@ -135,8 +162,6 @@ export class Widget extends HTMLElement {
 export class Replacement extends Widget {
   shards = [];
 
-  // isSticky = true;
-
   constructor() {
     super();
     this.hash = nextHash();
@@ -179,7 +204,7 @@ export class Replacement extends Widget {
   }
 
   uninstall(prepareCb = null) {
-    const source = this.source.toHTML();
+    const source = this.source.toHTMLExpanded();
     prepareCb?.(source);
     this.editor.changeDOM(() => this.replaceWith(source));
     return source;
@@ -201,6 +226,11 @@ export class Replacement extends Widget {
 
   get node() {
     return this.source;
+  }
+
+  set node(n) {
+    this.source = n;
+    this.update(n);
   }
 
   init(source) {
@@ -283,7 +313,7 @@ function ensureReplacementTagDefined(tag) {
           // entire replacement
           this._component ??= (...args) => this.component(...args);
 
-          if (["key"].some((k) => k in (this.props ?? {})))
+          if (["key", "id"].some((k) => k in (this.props ?? {})))
             throw new Error("used a prop name reserved for preact components");
 
           this.render(

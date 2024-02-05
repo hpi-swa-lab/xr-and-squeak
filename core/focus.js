@@ -21,7 +21,8 @@ function nodeIsEditablePart(node) {
     node instanceof Element &&
     (node.tagName === "SB-TEXT" ||
       // nodeIsEditable(node) ||
-      !!node.getAttribute("role") === "presentation" ||
+      (node.getAttribute("role") === "presentation" &&
+        node.tagName === "SPAN") ||
       !!node.getAttribute("sb-editable-part"))
   );
 }
@@ -34,12 +35,20 @@ export function nodeEditableForPart(node) {
   return orParentThat(node, (p) => nodeIsEditable(p));
 }
 
-export function followingEditablePart(node, direction) {
+export function followingEditablePart(
+  node,
+  direction,
+  sameShardAllowed = false
+) {
   const currentEditable = nodeEditableForPart(node);
   return followingElementThat(
     node,
     direction,
-    (n) => nodeIsEditablePart(n) && n !== currentEditable
+    (n) =>
+      nodeIsEditablePart(n) &&
+      n !== currentEditable &&
+      !hasParent(n, node) &&
+      (sameShardAllowed || nodeEditableForPart(n) !== currentEditable)
   );
 }
 
@@ -51,12 +60,30 @@ export function followingElementThat(node, direction, predicate) {
   return null;
 }
 
+function parent(node) {
+  return node.parentNode ?? node.getRootNode()?.host;
+}
+
+function lastChild(node) {
+  if (node.shadowRoot) return node.shadowRoot.lastElementChild;
+  else return node.lastElementChild;
+}
+
+function hasParent(node, p) {
+  while (p) {
+    if (node === p) return true;
+    p = parent(p);
+  }
+  return false;
+}
+
 function nextNodePreOrder(node) {
+  if (node.shadowRoot) return node.shadowRoot.firstElementChild;
   if (node.firstElementChild) return node.firstElementChild;
   if (node.nextElementSibling) return node.nextElementSibling;
 
   let current = node;
-  while ((current = current.parentNode)) {
+  while ((current = parent(current))) {
     if (current.nextElementSibling) return current.nextElementSibling;
   }
   return null;
@@ -65,10 +92,10 @@ function nextNodePreOrder(node) {
 function previousNodePreOrder(node) {
   if (node.previousElementSibling) {
     let current = node.previousElementSibling;
-    while (current.lastElementChild) current = current.lastElementChild;
+    while (lastChild(current)) current = lastChild(current);
     return current;
   }
-  return node.parentNode;
+  return parent(node);
 }
 
 // Manages selection and caret position for an editor.
@@ -97,6 +124,22 @@ export class SBSelection extends EventTarget {
     );
   }
 
+  get notificationPoint() {
+    const s = getSelection();
+    if (s.rangeCount > 0) {
+      return withDo(s.getRangeAt(0).getBoundingClientRect(), (r) => [
+        r.x + r.width,
+        r.y,
+      ]);
+    }
+    return this.lastRect
+      ? [this.lastRect.x + this.lastRect.width, this.lastRect.y]
+      : withDo(getEditor(this.lastEditable).getBoundingClientRect(), (r) => [
+          r.x,
+          r.y,
+        ]);
+  }
+
   moveToRange(editor, targetRange, scrollIntoView = true) {
     const start = this.viewForMove(editor, targetRange);
     for (const direction of [1, -1]) {
@@ -110,6 +153,7 @@ export class SBSelection extends EventTarget {
         node = followingEditablePart(node, direction);
       } while (node);
     }
+    this.informChange(null, targetRange, editor);
   }
 
   focusEditable(editable) {
@@ -192,8 +236,8 @@ export class SBSelection extends EventTarget {
       view.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
-  informChange(view, range) {
-    const editor = getEditor(view);
+  informChange(view, range, editor = null) {
+    editor ??= getEditor(view);
     const newEditable = nodeEditableForPart(view);
 
     if (this.lastEditable !== newEditable) {
@@ -245,7 +289,7 @@ export function markAsEditableElement(element) {
 }
 
 function handleKeyDown(e) {
-  if (document.activeElement !== this) return;
+  if (document.activeElement !== this || e.shiftKey) return;
 
   switch (e.key) {
     case "ArrowLeft":

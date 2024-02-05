@@ -4,6 +4,7 @@ import {
   useState,
   useMemo,
 } from "../external/preact-hooks.mjs";
+import { last } from "../utils.js";
 import { h } from "../view/widgets.js";
 
 function highlightSubstring(string, search) {
@@ -44,9 +45,13 @@ export function List({
   const [filterString, setFilterString] = useState("");
 
   const visibleItems = useMemo(() => {
-    return items
-      .filter((item) => labelFunc(item).toLowerCase().includes(filterString))
-      .sort((a, b) => labelFunc(a).length - labelFunc(b).length);
+    return filterString === ""
+      ? items
+      : items
+          .filter((item) =>
+            labelFunc(item).toLowerCase().includes(filterString)
+          )
+          .sort((a, b) => labelFunc(a).length - labelFunc(b).length);
   }, [items, filterString]);
 
   useEffect(() => {
@@ -70,6 +75,7 @@ export function List({
       focusable: true,
       autofocus,
       style: { maxHeight: height, ...(style ?? {}) },
+      onClick: (e) => setSelected(last(visibleItems)),
       onkeydown: (e) => {
         if (e.key === "ArrowDown") {
           const index = visibleItems.indexOf(selected);
@@ -96,7 +102,8 @@ export function List({
         {
           class: `sb-list-item ${selected === item ? "selected" : ""}`,
           ref: selected === item ? selectedRef : null,
-          onClick: () => {
+          onClick: (e) => {
+            e.stopPropagation();
             setSelected(item);
             onConfirm?.(item);
           },

@@ -1,7 +1,7 @@
 import { LoadOp, RemoveOp, UpdateOp } from "../core/diff.js";
 import { Extension, needsSelection } from "../core/extension.js";
-import { rangeEqual } from "../utils.js";
-import { Widget } from "../view/widgets.js";
+import { rangeEqual, withDo } from "../utils.js";
+import { Replacement, Widget, h } from "../view/widgets.js";
 
 class DetachedShard extends Widget {
   noteProcessed(trigger, node) {
@@ -289,3 +289,45 @@ export const identifierSuggestions = new Extension()
       }
     });
   });
+
+export const doubleClickToCollapse = new Extension().registerDoubleClick(
+  (e) => [
+    (x) => x.named,
+    (x) => {
+      // TODO: should only replace the view that was clicked on
+      x.viewsDo((v) => e.installReplacement(v, "sb-collapse"));
+      e.stopPropagation();
+    },
+  ]
+);
+
+class SBCollapse extends Replacement {
+  update(node) {
+    const src = node.sourceString;
+    const max = Math.min(
+      20,
+      withDo(src.indexOf("\n"), (n) => (n === -1 ? Infinity : n))
+    );
+    this.render(
+      h(
+        "span",
+        {
+          onClick: () => this.uninstall(),
+          style: {
+            background: "#eee",
+            border: "1px solid #ccc",
+            borderRadius: "6px",
+            padding: "0 0.5rem",
+            fontStyle: "italic",
+            cursor: "pointer",
+          },
+        },
+        src.slice(0, max),
+        src.length > max && "…"
+      ),
+      this
+    );
+  }
+}
+
+customElements.define("sb-collapse", SBCollapse);

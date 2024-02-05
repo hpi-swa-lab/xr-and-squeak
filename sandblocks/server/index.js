@@ -9,6 +9,7 @@ import { Server } from "socket.io";
 import { exec, spawn } from "child_process";
 import Gitignore from "gitignore-fs";
 import crypto from "crypto";
+import { hotReload } from "./hot-reload.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -22,11 +23,12 @@ app.post("/sb-watch", (req, res) => {
   res.send();
 });
 
-app.use(
-  express.static(
-    fsPath.join(fsPath.dirname(fileURLToPath(import.meta.url)), "../../")
-  )
+const rootPath = fsPath.join(
+  fsPath.dirname(fileURLToPath(import.meta.url)),
+  "../.."
 );
+if (process.env.HOT) hotReload(app, rootPath, io);
+app.use(express.static(rootPath));
 
 function callback(cb) {
   return async (data, send) => {

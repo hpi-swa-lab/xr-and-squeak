@@ -6,6 +6,7 @@ export function AutoSizeTextArea({ node, value, onChange }) {
     padding: 0,
     lineHeight: "inherit",
     fontWeight: "inherit",
+    fontSize: "inherit",
     border: "none",
   };
   return h(

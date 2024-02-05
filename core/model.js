@@ -159,11 +159,13 @@ class SBNode {
   }
 
   get root() {
-    return this.parent ? this.parent.root : this;
+    let r = this;
+    while (r.parent) r = r.parent;
+    return r;
   }
 
   get isRoot() {
-    return !this.parent;
+    return !!this._language;
   }
 
   get sourceString() {
@@ -173,6 +175,19 @@ class SBNode {
   get preferForSelection() {
     // named or likely a keyword
     return this.named || this.text.match(/^[A-Za-z]+$/);
+  }
+
+  get depth() {
+    return this.parent ? this.parent.depth + 1 : 0;
+  }
+
+  get connected() {
+    return this.root.isRoot;
+  }
+
+  toHTMLExpanded() {
+    // return this.toHTML(this.depth + 2);
+    return this.toHTML();
   }
 
   updateModelAndView(text) {
@@ -210,7 +225,7 @@ class SBNode {
   }
 
   get context() {
-    return this.editor.context;
+    return this.editor?.context;
   }
 
   get field() {
@@ -219,6 +234,10 @@ class SBNode {
 
   atField(field) {
     return this.children.find((child) => child.field === field);
+  }
+
+  atType(type) {
+    return this.children.find((child) => child.type === type);
   }
 
   print(level = 0, namedOnly = false) {
@@ -457,10 +476,19 @@ class SBNode {
   }
 
   allNodesDo(cb) {
-    cb(this);
-    for (const child of this.children) {
-      child.allNodesDo(cb);
+    // FIXME still gotta do proper measurements on iterative vs recursive
+    let stack = [this];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      cb(node);
+      for (let i = node.children.length - 1; i >= 0; i--)
+        stack.push(node.children[i]);
     }
+
+    // cb(this);
+    // for (const child of this.children) {
+    //   child.allNodesDo(cb);
+    // }
   }
 
   allChildrenDo(cb) {
@@ -676,10 +704,19 @@ export class SBBlock extends SBNode {
     ));
   }
 
-  toHTML() {
-    const block = document.createElement("sb-block");
-    for (const child of this.children) {
-      block.appendChild(child.toHTML());
+  toHTML(maxDepth = Infinity) {
+    let block;
+    if (
+      this.depth >= maxDepth &&
+      this.sourceString.length > 200 &&
+      this.children.length > 1
+    ) {
+      block = document.createElement("sb-collapse");
+    } else {
+      block = document.createElement("sb-block");
+      for (const child of this.children) {
+        block.appendChild(child.toHTML(maxDepth));
+      }
     }
     block.node = this;
     (this._views ??= new WeakArray()).push(block);

@@ -12,6 +12,7 @@ import {
   rangeDistance,
   rangeEqual,
   rangeShift,
+  findChange,
 } from "../utils.js";
 import { Block } from "./elements.js";
 import {
@@ -71,12 +72,14 @@ export class Shard extends HTMLElement {
         case "ArrowUp":
           if (this.editor.suggestions.canMove(-1)) {
             e.preventDefault();
+            e.stopPropagation();
             this.editor.suggestions?.moveSelected(-1);
           }
           break;
         case "ArrowDown":
           if (this.editor.suggestions.canMove(1)) {
             e.preventDefault();
+            e.stopPropagation();
             this.editor.suggestions?.moveSelected(1);
           }
           break;
@@ -103,13 +106,7 @@ export class Shard extends HTMLElement {
             case "save":
               e.preventDefault();
               e.stopPropagation();
-              await this.editor.asyncExtensionsDo((e) =>
-                e.processAsync("preSave", this.source)
-              );
-              this.editor.extensionsDo((e) => e.process(["save"], this.source));
-              this.editor.dispatchEvent(
-                new CustomEvent("save", { detail: this.editor.sourceString })
-              );
+              await this.save();
               break;
             default:
               preventDefault = false;
@@ -126,6 +123,16 @@ export class Shard extends HTMLElement {
         break;
       }
     });
+  }
+
+  async save() {
+    await this.editor.asyncExtensionsDo((e) =>
+      e.processAsync("preSave", this.source)
+    );
+    this.editor.extensionsDo((e) => e.process(["save"], this.source));
+    this.editor.dispatchEvent(
+      new CustomEvent("save", { detail: this.editor.sourceString })
+    );
   }
 
   connectedCallback() {
@@ -153,19 +160,53 @@ export class Shard extends HTMLElement {
       if (mutations.some((m) => m.type === "attributes")) return;
       if (!mutations.some((m) => this.isMyMutation(m))) return;
 
+      const undo = () => {
+        for (const mutation of mutations) this.observer.undoMutation(mutation);
+      };
+
       ToggleableMutationObserver.ignoreMutation(() => {
         const { selectionRange, sourceString } =
           this._extractSourceStringAndSelectionRangeAfterMutation();
-        for (const mutation of mutations) this.observer.undoMutation(mutation);
 
-        this.editor.replaceTextFromTyping({
-          range: this.range,
-          text: sourceString,
-          selectionRange,
+        let change;
+        // our findChange method can only identify singular changes, so
+        // if we have pending changes, we need to replace the entire range.
+        // FIXME should replace all visible ranges, otherwise we override
+        // pending changes in nested shards
+        if (this.pendingCleanups.length > 0) {
+          change = {
+            from: this.range[0],
+            to: this.range[1],
+            insert: sourceString,
+            selectionRange,
+          };
+        } else {
+          change = findChange(
+            this.editor.sourceString.slice(...this.range),
+            sourceString,
+            this.editor.selectionRange[1] - this.range[0]
+          );
+          if (!change) return;
+
+          change.from += this.range[0];
+          change.to += this.range[0];
+          change.selectionRange = selectionRange;
+        }
+
+        this.editor.extensionsDo((e) =>
+          e.filterChange(change, this.editor.sourceString, this.source)
+        );
+
+        this.pendingCleanups.push(undo);
+        this.editor.applyChanges([change], false, () => {
+          this.pendingCleanups.reverse().forEach((c) => c());
+          this.pendingCleanups = [];
         });
       });
     });
   }
+
+  pendingCleanups = [];
 
   disconnectedCallback() {
     this.observer.destroy();
@@ -480,7 +521,7 @@ export class Shard extends HTMLElement {
     // otherwise, fallback to just comparing the selected editable
     if (me) {
       const newRange = rangeShift(this.editor.selection.range, delta);
-      const following = me && followingEditablePart(me, delta);
+      const following = me && followingEditablePart(me, delta, true);
       if (
         (!rangeContains(me.range, newRange) || selectionChangesEditables) &&
         following?.shard !== me.shard

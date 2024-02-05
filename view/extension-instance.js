@@ -105,7 +105,7 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
       node.root.allNodesDo((node) => this.runQueries("replacement", node));
 
       for (const view of this.currentReplacements) {
-        if (!this.newReplacements.has(view) && view.isSticky) {
+        if (!this.newReplacements.has(view) && view.sticky) {
           throw new StickyReplacementRemoved();
         }
       }
@@ -127,6 +127,7 @@ export class SandblocksExtensionInstance extends ExtensionInstance {
   }
 
   destroyReplacement(r) {
-    r.replaceWith(r.source.toHTML());
+    // check if our node is still connected or we got unmounted entirely
+    if (r.source.root.isRoot) r.replaceWith(r.source.toHTML());
   }
 }

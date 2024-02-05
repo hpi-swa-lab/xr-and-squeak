@@ -1,12 +1,10 @@
 import { Extension } from "../core/extension.js";
 import {
   ToggleableMutationObserver,
-  clampRange,
   findChange,
   getSelection,
   last,
   parentWithTag,
-  rangeEqual,
 } from "../utils.js";
 import { Block, Text, ViewList } from "./elements.js";
 import { Shard } from "./shard.js";
@@ -66,11 +64,13 @@ export class Editor extends HTMLElement {
 
     Extension.clearRegistry();
 
-    customElements.define("sb-shard", Shard);
-    customElements.define("sb-block", Block);
-    customElements.define("sb-view-list", ViewList);
-    customElements.define("sb-text", Text);
-    customElements.define("sb-editor", Editor);
+    if (!customElements.get("sb-editor")) {
+      customElements.define("sb-shard", Shard);
+      customElements.define("sb-block", Block);
+      customElements.define("sb-view-list", ViewList);
+      customElements.define("sb-text", Text);
+      customElements.define("sb-editor", Editor);
+    }
   }
 
   // may be set by external parties to provide e.g. a file path or similar to
@@ -88,7 +88,7 @@ export class Editor extends HTMLElement {
   extensionInstances = [];
 
   focus() {
-    this.focusShard(this.editHistory?.lastView?.shard);
+    this.focusShard(this.editHistory?.lastView?.shard ?? this.shard);
   }
 
   focusShard(shard) {
@@ -171,7 +171,7 @@ export class Editor extends HTMLElement {
     });
   }
 
-  replaceTextFromTyping({ range, text, selectionRange }) {
+  replaceTextFromTyping({ range, text, selectionRange, cleanupView }) {
     const change = findChange(
       this.sourceString.slice(...range),
       text,
@@ -189,7 +189,7 @@ export class Editor extends HTMLElement {
       );
     }
 
-    this.applyChanges([change]);
+    this.applyChanges([change], false, cleanupView);
   }
 
   insertTextFromCommand(position, text) {
@@ -222,7 +222,7 @@ export class Editor extends HTMLElement {
 
   // apply a change to the text buffer and notify all interested parties
   // NOTE: the change may be denied if it would destroy a sticky replacement
-  applyChanges(changes, doNotCommitToHistory = false) {
+  applyChanges(changes, doNotCommitToHistory = false, cleanupView = null) {
     const oldSelected = this.editHistory.lastView;
     const oldRange = this.selectionRange ?? [0, 0];
     const oldSource = this.sourceString;
@@ -233,7 +233,7 @@ export class Editor extends HTMLElement {
         newSource.slice(0, from) + (insert ?? "") + newSource.slice(to);
     }
 
-    const diff = this._setText(newSource);
+    const diff = this._setText(newSource, cleanupView);
     if (diff && !this.suspendViewChanges) {
       this.updateViewAfterChange(
         last(changes).selectionRange,
@@ -244,7 +244,9 @@ export class Editor extends HTMLElement {
         oldRange,
         oldSource
       );
+      return true;
     }
+    return false;
   }
 
   updateViewAfterChange(
@@ -259,12 +261,6 @@ export class Editor extends HTMLElement {
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     if (selectionRange) this.selection.moveToRange(this, selectionRange);
 
-    this.clearSuggestions();
-    if (this.selected)
-      this.extensionsDo((e) => e.process(["type"], this.selected.node));
-    this.extensionsDo((e) =>
-      e.process(["always"], this.selected?.node ?? this.source)
-    );
     if (diff)
       this.extensionsDo((e) =>
         e.changesApplied(
@@ -275,6 +271,12 @@ export class Editor extends HTMLElement {
           diff
         )
       );
+    this.clearSuggestions();
+    if (this.selected)
+      this.extensionsDo((e) => e.process(["type"], this.selected.node));
+    this.extensionsDo((e) =>
+      e.process(["always"], this.selected?.node ?? this.source)
+    );
 
     if (!doNotCommitToHistory && oldSelected !== this.selected) {
       this.editHistory.push(oldSource, oldRange, this.selected);
@@ -287,20 +289,37 @@ export class Editor extends HTMLElement {
   // update the text buffer and resync selection and replacements
   // returns either the diff on success or null if the change was
   // denied
-  _setText(text) {
+  _setText(text, cleanupView = null) {
     const { diff, tx } = this.source.updateModelAndView(text);
 
     let mayCommit = true;
     this.extensionsDo(
       (e) => (mayCommit = mayCommit && e.processStickyReplacements(this.source))
     );
+    for (const node of this.stickyNodes) {
+      mayCommit = mayCommit && node.connected;
+    }
     if (!mayCommit) {
       tx.rollback();
-      this.selection.moveToRange(this, this.selection.range);
+      // this.selection.moveToRange(this, this.selection.range);
+      this.notifyAtCursor("Blocked as change damages a structure");
       return null;
+    } else {
+      cleanupView?.();
+      tx.commit();
     }
 
     return diff;
+  }
+
+  stickyNodes = [];
+  markSticky(node, sticky) {
+    if (sticky) {
+      this.stickyNodes.push(node);
+    } else {
+      const index = this.stickyNodes.indexOf(node);
+      if (index !== -1) this.stickyNodes.splice(index, 1);
+    }
   }
 
   changeDOM(cb) {
@@ -364,6 +383,16 @@ export class Editor extends HTMLElement {
     ToggleableMutationObserver.ignoreMutation(() => {
       ext.process([trigger], this.selected?.node ?? this.source);
     });
+  }
+
+  notifyAtCursor(message) {
+    const notification = document.createElement("div");
+    notification.textContent = message;
+    notification.classList.add("sb-notification");
+    notification.style.left = `${this.selection.notificationPoint[0]}px`;
+    notification.style.top = `calc(${this.selection.notificationPoint[1]}px - 1em - 8px)`;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 2000);
   }
 
   undo() {
@@ -447,6 +476,7 @@ export class Editor extends HTMLElement {
     this.extensionsDo((e) => e.process(["replacement"], this.source));
     this.extensionsDo((e) => e.process(["always"], this.source));
     this.initializing = false;
+    this._queuedViewUpdate = false;
 
     if (this.queuedUpdate) {
       let update = this.queuedUpdate;
@@ -462,6 +492,18 @@ export class Editor extends HTMLElement {
     this.selection.moveToRange(this, [start, end], scrollIntoView);
   }
 
+  queueViewUpdate() {
+    if (this._queuedViewUpdate || !this.shard) return;
+    this._queuedViewUpdate = true;
+    queueMicrotask(() => {
+      // if we are not loaded yet, we can ignore this request as we will refresh once loaded
+      if (!this.shard) return;
+      this._queuedViewUpdate = false;
+      this.extensionsDo((e) => e.process(["replacement"], this.source));
+      this.extensionsDo((e) => e.process(["always"], this.source));
+    });
+  }
+
   _shards = [];
 
   createShardFor(node) {
@@ -473,6 +515,7 @@ export class Editor extends HTMLElement {
 
   registerShard(shard) {
     this._shards.push(shard);
+    this.queueViewUpdate();
   }
 
   deregisterShard(shard) {

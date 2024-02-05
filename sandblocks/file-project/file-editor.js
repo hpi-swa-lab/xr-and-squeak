@@ -87,13 +87,14 @@ export function FileEditor({
     },
     h(
       "div",
-      { style: { overflowY: "scroll", padding: "2px", width: "100%" } },
+      { style: { overflowY: "auto", padding: "2px", width: "100%" } },
       sourceString !== null &&
         editor({
           extensions: [
             ...preferences.getDefaultExtensions(),
             ...language.defaultExtensions,
           ],
+          style: { minHeight: "100%", height: "1px" },
           inlineExtensions: [references, search, ...(inlineExtensions ?? [])],
           sourceString,
           editorRef,

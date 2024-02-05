@@ -1,11 +1,17 @@
 sb-editor {
+  /* has to be display: block for content-editable to work
+     correctly (inserts div instead of br otherwise) */
   display: block;
+  flex-direction: column;
   justify-content: stretch;
+  align-items: stretch;
 }
-.sb-editor-content {
-  display: block;
-  white-space: pre;
+sb-editor > sb-shard {
+  display: inline-block;
+  flex: 1;
+  width: 100%;
 }
+
 sb-block {
   display: inline;
   margin: 0;
@@ -31,10 +37,8 @@ sb-shard {
   word-wrap: normal;
   tab-size: 2;
   outline: none;
-}
-sb-editor > sb-shard {
-  display: inline-block;
-  min-width: 100%;
+  background: #fff;
+  color: #000;
 }
 
 table {
@@ -180,4 +184,35 @@ td {
 
 .sb-replacement-selected {
   outline-width: 4px !important;
+}
+
+.sb-notification {
+  position: absolute;
+  background: #444;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 0.25rem;
+  z-index: 9999999;
+  padding: 0.1rem 0.25rem;
+  animation: notification-slide-up 0.075s ease-out;
+}
+
+@keyframes notification-slide-up {
+  from {
+    transform-origin: bottom left;
+    transform: scale(1, 0);
+  }
+  to {
+    transform-origin: bottom left;
+    transform: scale(1, 1);
+  }
+}
+
+.sb-pending-add,
+.sb-pending-remove {
+  background: #fcc;
+  outline: 1px solid #faa;
+}
+.sb-pending-remove:before {
+  content: "\00a0";
 }

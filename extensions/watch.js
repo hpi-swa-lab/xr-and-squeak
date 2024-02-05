@@ -7,15 +7,17 @@ function makeWatchExtension(config) {
   return new Extension()
     .registerReplacement((e) => [
       (x) => x.extract(config.query),
-      ([x, { id, expr }]) =>
-        e.ensureReplacement(x, "sb-watch", { config, id, expr }),
+      ([x, { identifier, expr }]) =>
+        e.ensureReplacement(x, "sb-watch", { config, identifier, expr }),
     ])
     .registerShortcut("wrapWithWatch", (x) => {
       let current = x;
       for (let i = 0; i < config.exprNesting; i++) current = current?.parent;
 
-      const currentWatch = current?.matches(config.query);
-      if (currentWatch) {
+      if (current?.matches(config.query)) {
+        current.viewsDo(
+          (view) => view.tagName === "SB-WATCH" && (view.sticky = false)
+        );
         current.replaceWith(x.sourceString);
       } else {
         config.wrap(x, randomId());
@@ -24,7 +26,7 @@ function makeWatchExtension(config) {
 }
 
 export const javascriptInline = makeWatchExtension({
-  query: `sbWatch($expr, $id)`,
+  query: `sbWatch($expr, $identifier)`,
   exprNesting: 2,
   wrap: (x, id) => x.wrapWith("sbWatch(", `, ${id})`),
 });
@@ -34,7 +36,7 @@ export const javascript = makeWatchExtension({
     ((e) => (
       fetch("http://localhost:3000/sb-watch", {
         method: "POST",
-        body: JSON.stringify({ id: $id, e }),
+        body: JSON.stringify({ id: $identifier, e }),
         headers: { "Content-Type": "application/json" },
       }), e))($expr),][1]`,
 
@@ -52,12 +54,13 @@ customElements.define(
   class extends Replacement {
     static registry = new Map();
 
+    sticky = true;
     count = 0;
     lastValue = "";
 
     init(source) {
       super.init(source);
-      this.watchId = parseInt(this.id.text, 10);
+      this.watchId = parseInt(this.identifier.text, 10);
       window.sbWatch.registry.set(this.watchId, this);
     }
 
@@ -78,11 +81,7 @@ customElements.define(
               borderRadius: "4px",
             },
           },
-          h(
-            "div",
-            { style: { background: "#fff", padding: "0.1rem" } },
-            shard(this.expr)
-          ),
+          shard(this.expr, { style: { padding: "0.1rem" } }),
           h(
             "div",
             { style: { color: "#fff", display: "flex", marginTop: "0.25rem" } },
@@ -114,7 +113,7 @@ customElements.define(
 
 socket?.on("sb-watch", ({ id, e }) => window.sbWatch(e, id));
 window.sbWatch = function (value, id) {
-  window.sbWatch.registry.get(id)?.reportValue(value);
+  sbWatch.registry.get(id)?.reportValue(value);
   return value;
 };
 window.sbWatch.registry = new Map();

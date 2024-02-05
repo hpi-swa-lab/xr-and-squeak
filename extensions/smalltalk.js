@@ -2,22 +2,6 @@ import { Extension } from "../core/extension.js";
 import { caseOf, exec, mapSeparated, withDo } from "../utils.js";
 import { ExpandToShard, Replacement, h, shard } from "../view/widgets.js";
 
-customElements.define(
-  "sb-watch",
-  class Watch extends Replacement {
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-      this.shadowRoot.innerHTML = `<span>WATCH[</span><slot></slot><span>]WATCH</span>`;
-    }
-
-    init(source) {
-      super.init(source);
-      this.appendChild(this.createShard((source) => source.childNode(0)));
-    }
-  }
-);
-
 export const smalltalkMethodSelector = [
   (x) => x.orAnyParent((y) => y.type === "method"),
   (x) =>
@@ -168,13 +152,6 @@ function addCascadedMessageTo(node, message, arg) {
 }
 
 export const base = new Extension()
-  .registerReplacement((e) => [
-    (x) => true,
-    (x) => x.type === "unary_message",
-    (x) => x.childNode(1).text === "sbWatch",
-    (x) => e.ensureReplacement(x, "sb-watch"),
-  ])
-
   .registerDoubleClick((e) => [
     (x) => x.type === "true" || x.type === "false",
     (x) => x.replaceWith(x.type === "true" ? "false" : "true"),
