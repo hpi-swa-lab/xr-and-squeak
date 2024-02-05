@@ -10,6 +10,11 @@ import {
 import { makeUUID, pluralString } from "../utils.js";
 import { signal, useComputed } from "../external/preact-signals.mjs"
 
+const cssLink = document.createElement("link");
+cssLink.setAttribute("rel", "stylesheet");
+cssLink.setAttribute("href", "extensions/oragle.css");
+document.head.appendChild(cssLink);
+
 const highlightedModules = signal([]);
 const selectedModule = signal(null)
 
@@ -284,52 +289,52 @@ export const base = new Extension()
                   justifyContent: "flex-end",
                 },
               },
-              h(
-                "button",
-                {
-                  style: {
-                    padding: "0.25rem 0.5rem",
-                    fontSize: "0.75rem",
-                    fontWeight: "bold",
-                    border: "1px solid #333",
-                    borderRadius: "6px",
-                  },
-                  onClick: async () => {
-                    if (metrics) {
-                      // price has been seen by user, so we can use it
-                    } else {
-                      if (
-                        !confirm(
-                          `About to spend ${
-                            metrics.totalPriceFormatted
-                          } to generate ${metrics.numberOfPrompts} prompts × ${
-                            metrics.defaultNumberOfOutputs ?? "<variable>"
-                          } outputs. Continue?`
+              (() => {
+                let metricsText;
+                const button = h(
+                  "button",
+                  {
+                    className: "oragle-project-save-button",
+                    onClick: async () => {
+                      if (metrics) {
+                        // price has been seen by user, so we can use it
+                      } else {
+                        if (
+                          !confirm(
+                            `About to spend ${
+                              metrics.totalPriceFormatted
+                            } to generate ${metrics.numberOfPrompts} prompts × ${
+                              metrics.defaultNumberOfOutputs ?? "<variable>"
+                            } outputs. Continue?`
+                          )
                         )
-                      )
-                        return;
-                    }
+                          return;
+                      }
 
-                    const shard = replacement.editor.children[0];
-                    await shard.save();
+                      const shard = replacement.editor.children[0];
+                      await shard.save();
 
-                    const selector = shard.sourceString.split(/\s/)[0];
-                    await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
+                      const selector = shard.sourceString.split(/\s/)[0];
+                      await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
 
-                    project.assureOutputWindow();
-                    await project.updateOutputWindows();
+                      project.assureOutputWindow();
+                      await project.updateOutputWindows();
+                    },
                   },
-                },
-                icon("play_arrow"),
-                "Save",
-                metrics
-                  ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${
-                      metrics.defaultNumberOfOutputs !== null
-                        ? pluralString("output", metrics.defaultNumberOfOutputs)
-                        : "<variable>"
-                    }`} = ${metrics.totalPriceFormatted})`
-                  : null
-              )
+                  icon("play_arrow"),
+                  "Save",
+                  metricsText = metrics
+                    ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${
+                        metrics.defaultNumberOfOutputs !== null
+                          ? pluralString("output", metrics.defaultNumberOfOutputs)
+                          : "<variable>"
+                      }`} = ${metrics.totalPriceFormatted})`
+                    : null
+                );
+                // force re-rendering when text changes to restart animation
+                button.key = metricsText;
+                return button;
+              })(),
             )
           ),
           // FIXME: [low] should not display brackets (`()`) around the root module
@@ -674,17 +679,12 @@ function ModulePriceTag( { replacement, moduleId }) {
       ? bufferedMetrics
       : cachedModuleMetrics[moduleId] ?? null;
 
-  return metrics === null
+  const span = metrics === null
     ? null
     : h(
       "span",
       {
-        style: {
-          backgroundColor: "#eee",
-          padding: "2px 6px",
-          borderRadius: "4px",
-          fontSize: "0.75rem",
-        },
+        className: "oragle-module-price-tag",
         title:
 `Tokens: ${metrics === null
   ? "(computing...)"
@@ -702,4 +702,10 @@ Price for one request: ${metrics === null
        //: `${metrics.minPriceFormatted} – ${metrics.maxPriceFormatted}`
        : `≤${metrics.maxPriceFormatted}`
       );
+
+  if (span)
+    // force re-rendering when text changes to restart animation
+    span.key = span.props?.children;
+
+  return span;
 }
