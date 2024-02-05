@@ -132,6 +132,7 @@ class OutputWindow extends Component {
 // TODO: remove global state - memory leak!
 const allOutputWindows = {};
 const allProjects = {};
+const cachedProjectMetrics = {};
 
 export const base = new Extension()
 
@@ -161,6 +162,8 @@ export const base = new Extension()
       }),
     replacement(e, "oragle-project", ({ uuid, label, rootModule, replacement }) => {
       const [bufferedMetrics, setMetrics] = useJSONComparedState(null);
+
+      const projectId = uuid.get().replace(/'/g, "");
 
       const editorShard = replacement.editor?.children[0];
       const editorSourceString = editorShard?.sourceString;
@@ -194,8 +197,7 @@ export const base = new Extension()
             0
           );
 
-          setMetrics({
-            editorSourceString,
+          const metrics = {
             numberOfPrompts: prompts.length,
             // single number if all prompts have the same number of outputs, otherwise `null`
             defaultNumberOfOutputs: prompts.every(
@@ -207,6 +209,12 @@ export const base = new Extension()
               : null,
             totalPrice: totalPrice,
             totalPriceFormatted: formatPrice(totalPrice),
+          };
+
+          cachedProjectMetrics[projectId] = metrics;
+          setMetrics({
+            editorSourceString,
+            ...metrics,
           });
         },
         [editorSourceString]
@@ -216,9 +224,8 @@ export const base = new Extension()
       const metrics =
         bufferedMetrics?.editorSourceString === editorSourceString
           ? bufferedMetrics
-          : null;
+          : cachedProjectMetrics[projectId] ?? null;
 
-      const projectId = uuid.get().replace(/'/g, "");
       // WORKAROUND: lifecycle of replacements is too short
       const outputWindows = allOutputWindows[projectId] ??= [];
 
@@ -618,6 +625,8 @@ function insertModule({ insert }, i) {
   insert(i, `OragleLeafModule new uuid: '${makeUUID()}'`);
 }
 
+const cachedModuleMetrics = {};
+
 function ModulePriceTag( { replacement, moduleId }) {
   const [bufferedMetrics, setMetrics] = useJSONComparedState(null);
 
@@ -651,6 +660,7 @@ function ModulePriceTag( { replacement, moduleId }) {
       _metrics.minPriceFormattedLong = formatPrice(_metrics.minPrice, { minDigits: 4 });
       _metrics.maxPriceFormattedLong = formatPrice(_metrics.maxPrice, { minDigits: 4 });
 
+      cachedModuleMetrics[moduleId] = _metrics;
       setMetrics({
         editorSourceString,
         ..._metrics
@@ -662,7 +672,7 @@ function ModulePriceTag( { replacement, moduleId }) {
   const metrics =
     bufferedMetrics?.editorSourceString === editorSourceString
       ? bufferedMetrics
-      : null;
+      : cachedModuleMetrics[moduleId] ?? null;
 
   return metrics === null
     ? null
