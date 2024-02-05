@@ -64,7 +64,7 @@ XRWorld >> createHands [
 			world: self;
 			index: 1;
 			yourself.
-	} do: [:hand | scene add: hand threeObject]
+	} do: [:hand | self scene add: hand threeObject]
 	
 ]
 
@@ -83,14 +83,14 @@ XRWorld >> createRenderer [
 { #category : #setup }
 XRWorld >> createScene [
 	| light |
-	scene := Three Scene new.
-	scene background: (Three Color new: 16r505050).
+	self scene: Three Scene new.
+	self scene background: (Three Color new: 16r505050).
 	
 	light := Three DirectionalLight new: 16rffffff intensity: 0.5.
 	light position
 		set: 1m y: 1m z: 1m;
  		normalize.
-	scene
+	self scene
 		add: light;
 		add: (Three AmbientLight new: 16rffffff intensity: 0.5).
 	
@@ -115,7 +115,7 @@ XRWorld >> elementContainer: anHTMLElement [
 XRWorld >> renderTime: time frame: frame [
 
 	cube rotation y: time / 1000.
-	renderer render: scene camera: camera
+	renderer render: self scene camera: camera
 ]
 
 { #category : #accessing }
@@ -127,8 +127,19 @@ XRWorld >> renderer [
 { #category : #accessing }
 XRWorld >> renderer: aRenderer [
 
-	Transcript showln: 'renderer: ', aRenderer asString.
 	renderer := aRenderer
+]
+
+{ #category : #accessing }
+XRWorld >> scene [
+
+	^ scene
+]
+
+{ #category : #accessing }
+XRWorld >> scene: aScene [
+
+	scene := aScene
 ]
 
 { #category : #setup }
@@ -174,7 +185,7 @@ XRWorld >> start [
 		material: (Three MeshLambertMaterial
 			new: ({#color -> 16rff0000} as: Dictionary)).
 	cube position set: 0m y: 1.5m z: -10m.
-	scene add: cube.
+	self scene add: cube.
 	
 	element := JS window document createElement: 'div'.
 	element setAttribute: 'id' to: 'test-id'.
@@ -187,5 +198,5 @@ XRWorld >> start [
 	
 	htmlMesh := JS HTMLMesh new: element.
 	htmlMesh position set: 0m y: 1.5m z: -0.5m.
-	scene add: htmlMesh.
+	self scene add: htmlMesh.
 ]

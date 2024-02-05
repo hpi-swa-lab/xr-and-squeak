@@ -22,6 +22,17 @@ XRHand >> createModel [
 			new: ({#color -> 16rffffff} as: Dictionary)).
 	
 	self threeObject add: sphere.
+	
+	sphere := Three Mesh
+		new: (Three SphereGeometry
+			new: 1cm
+			widthSegments: 32
+			heightSegments: 16)
+		material: (Three MeshLambertMaterial
+			new: ({#color -> 16rffffff} as: Dictionary)).
+	sphere position z: -15cm.
+	
+	self threeObject add: sphere.
 ]
 
 { #category : #accessing }
@@ -33,15 +44,16 @@ XRHand >> index [
 { #category : #accessing }
 XRHand >> index: anIndex [
 
-	index := anIndex.
-	self createModel.
+	index := anIndex
 ]
 
 { #category : #accessing }
 XRHand >> threeObject [
 	
 	^ threeObject ifNil: [
-		threeObject := self world renderer xr getController: self index]
+		threeObject := self world renderer xr getController: self index.
+		self createModel.
+		threeObject]
 ]
 
 { #category : #accessing }
