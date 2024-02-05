@@ -1,6 +1,6 @@
 import { Extension } from "../core/extension.js";
 import { choose, openComponentInWindow } from "../sandblocks/window.js";
-import { h, icon, replacement, useDebouncedEffect, useJSONComparedState } from "../view/widgets.js";
+import { h, icon, replacement, useDebouncedEffect, useJSONComparedState, Component } from "../view/widgets.js";
 import { AutoSizeTextArea } from "../view/widgets/auto-size-text-area.js";
 import { ShardArray } from "../view/widgets/shard-array.js";
 import {
@@ -8,9 +8,7 @@ import {
   cascadedConstructorShardsFor,
 } from "./smalltalk.js";
 import { makeUUID, pluralString } from "../utils.js";
-import { Component } from "../external/preact.mjs";
-import { useState } from "../external/preact-hooks.mjs";
-import { signal, useComputed } from "../external/preact-signals.mjs" 
+import { signal, useComputed } from "../external/preact-signals.mjs"
 
 const highlightedModules = signal([]);
 const selectedModule = signal(null)
@@ -131,6 +129,7 @@ class OutputWindow extends Component {
   };
 }
 
+// TODO: remove global state - memory leak!
 const allOutputWindows = {};
 const allProjects = {};
 
@@ -224,7 +223,7 @@ export const base = new Extension()
       const outputWindows = allOutputWindows[projectId] ??= [];
 
       // Project object definition
-      // TODO: Refactor this 
+      // TODO: Refactor this
       const project = allProjects[projectId] = {
         assureOutputWindow: () => {
           for (let i = outputWindows.length - 1; i >= 0; i--) {
