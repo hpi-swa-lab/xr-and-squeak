@@ -170,7 +170,7 @@ XRWorld >> setupDocument [
 { #category : #setup }
 XRWorld >> start [
 
-	| element htmlMesh text |
+	| element htmlMesh text button clickCounter count updateCounter |
 	self
 		createRenderer;
 		createScene;
@@ -192,11 +192,23 @@ XRWorld >> start [
 	element setAttribute: 'style' to: 'width: 100px; height: 100px; background: #FFB;'.
 	self elementContainer appendChild: element.
 	
-	text := JS window document createElement: 'p'.
-	text innerHTML: 'Hello world!'.
+	text := JS window document createElement: 'h1'.
+	text innerHTML: 'Test UI'.
 	element appendChild: text.
+	
+	count := 0.
+	clickCounter := JS window document createElement: 'p'.
+	updateCounter := [clickCounter innerHTML: 'The button was clicked ', count asString, ' times'].
+	updateCounter value.
+	element appendChild: clickCounter.
+	
+	button := JS window document createElement: 'button'.
+	button innerHTML: 'Click me!'.
+	button onclick: [count := count + 1. updateCounter value].
+	element appendChild: button.
 	
 	htmlMesh := JS HTMLMesh new: element.
 	htmlMesh position set: 0m y: 1.5m z: -0.5m.
+	htmlMesh userData: ({#isPointable -> true} as: Dictionary).
 	self scene add: htmlMesh.
 ]
