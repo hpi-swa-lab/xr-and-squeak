@@ -8,7 +8,8 @@ Class {
 		'scene',
 		'camera',
 		'hands',
-		'elementContainer'
+		'elementContainer',
+		'xrObjects'
 	],
 	#classVars : [
 		'CurrentService',
@@ -40,6 +41,14 @@ XRWorld class >> start [
 
 	CurrentWorld ifNotNil: #stop.
 	CurrentWorld := self new start
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld >> add: anXRObject [
+
+	xrObjects add: anXRObject.
+	anXRObject world: self.
+	self scene add: anXRObject threeObject.
 ]
 
 { #category : #setup }
@@ -113,6 +122,12 @@ XRWorld >> elementContainer: anHTMLElement [
 	elementContainer := anHTMLElement
 ]
 
+{ #category : #initializing }
+XRWorld >> initialize [
+
+	xrObjects := OrderedCollection new.
+]
+
 { #category : #'as yet unclassified' }
 XRWorld >> renderTime: time frame: frame [
 
@@ -172,7 +187,6 @@ XRWorld >> setupDocument [
 { #category : #setup }
 XRWorld >> start [
 
-	| element htmlMesh text button clickCounter count updateCounter |
 	self
 		createRenderer;
 		createScene;
@@ -189,30 +203,7 @@ XRWorld >> start [
 	cube position set: 0m y: 1.5m z: -10m.
 	self scene add: cube.
 	
-	element := JS window document createElement: 'div'.
-	element setAttribute: 'id' to: 'test-id'.
-	element setAttribute: 'style' to: 'width: 200px; height: 200px; background: #FFB; overflow-wrap: break-word;'.
-	self elementContainer appendChild: element.
-	
-	text := JS window document createElement: 'h1'.
-	text innerHTML: 'Test UI'.
-	element appendChild: text.
-	
-	count := 0.
-	clickCounter := JS window document createElement: 'p'.
-	updateCounter := [clickCounter innerHTML: 'The button was clicked ', count asString, ' times'].
-	updateCounter value.
-	element appendChild: clickCounter.
-	
-	button := JS window document createElement: 'button'.
-	button innerHTML: 'Click me!'.
-	button onclick: [count := count + 1. updateCounter value].
-	element appendChild: button.
-	
-	htmlMesh := JS HTMLMesh new: element.
-	htmlMesh position set: 0m y: 1.5m z: -0.5m.
-	htmlMesh userData: ({#isPointable -> true} as: Dictionary).
-	self scene add: htmlMesh.
+	self add: XRHtmlPanel new.
 ]
 
 { #category : #setup }
@@ -220,4 +211,10 @@ XRWorld >> stop [
 
 	self renderer setAnimationLoop: nil.
 	self renderer dispose.
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld >> xrObjectWithIdentifier: anIdentifier [
+
+	^ xrObjects detect: [:xrObject | xrObject matchesIdentifier: anIdentifier]
 ]

@@ -11,7 +11,7 @@ Class {
 { #category : #'as yet unclassified' }
 XRHand >> castRay [
 
-	| intersection sphere planePosition |
+	| intersection sphere identifier |
 	intersection := self closestIntersectionWithPointableObject.
 	
 	sphere := Three Mesh
@@ -25,9 +25,8 @@ XRHand >> castRay [
 	
 	self world scene add: sphere.
 	
-	planePosition := intersection object worldToLocal: intersection point.
-	
-	JS console log: planePosition and: intersection.
+	identifier := intersection object userData at: #xrObjectIdentifier.
+	(self world xrObjectWithIdentifier: identifier) handlePointing: intersection.
 ]
 
 { #category : #private }

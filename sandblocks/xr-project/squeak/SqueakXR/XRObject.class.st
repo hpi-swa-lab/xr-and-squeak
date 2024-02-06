@@ -8,6 +8,16 @@ Class {
 	#category : #SqueakXR
 }
 
+{ #category : #'as yet unclassified' }
+XRObject >> handlePointing: pointingInformation [
+]
+
+{ #category : #accessing }
+XRObject >> identifier [
+
+	^ self identityHash
+]
+
 { #category : #initializing }
 XRObject >> initializeThreeObject [
 
@@ -15,9 +25,18 @@ XRObject >> initializeThreeObject [
 ]
 
 { #category : #accessing }
+XRObject >> matchesIdentifier: aHash [
+
+	^ self identityHash = aHash
+]
+
+{ #category : #accessing }
 XRObject >> threeObject [
 
-	^ threeObject ifNil: [threeObject := self initializeThreeObject]
+	^ threeObject ifNil: [
+		threeObject := self initializeThreeObject.
+		threeObject userData at: #xrObjectIdentifier put: self identityHash.
+		threeObject]
 ]
 
 { #category : #accessing }
