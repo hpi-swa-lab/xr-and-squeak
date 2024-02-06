@@ -218,7 +218,10 @@ export class Shard extends HTMLElement {
   }
 
   get root() {
-    return this.childNodes[0];
+    const first = this.childNodes[0];
+    if (!(first.tagName === "SB-BLOCK" || first.tagName === "SB-TEXT"))
+      return null;
+    return first;
   }
 
   get editor() {
@@ -425,6 +428,8 @@ export class Shard extends HTMLElement {
       range.setEnd(this, 0);
       return range;
     }
+
+    if (!this.root) return null;
 
     let startNode = this.root.findTextForCursor(start);
     let endNode = this.root.findTextForCursor(end);
