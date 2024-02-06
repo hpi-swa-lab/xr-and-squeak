@@ -11,7 +11,8 @@ Class {
 		'elementContainer'
 	],
 	#classVars : [
-		'CurrentService'
+		'CurrentService',
+		'CurrentWorld'
 	],
 	#category : #SqueakXR
 }
@@ -37,7 +38,8 @@ XRWorld class >> canvasWidth [
 { #category : #'as yet unclassified' }
 XRWorld class >> start [
 
-	self new start
+	CurrentWorld ifNotNil: #stop.
+	CurrentWorld := self new start
 ]
 
 { #category : #setup }
@@ -189,7 +191,7 @@ XRWorld >> start [
 	
 	element := JS window document createElement: 'div'.
 	element setAttribute: 'id' to: 'test-id'.
-	element setAttribute: 'style' to: 'width: 100px; height: 100px; background: #FFB;'.
+	element setAttribute: 'style' to: 'width: 200px; height: 200px; background: #FFB; overflow-wrap: break-word;'.
 	self elementContainer appendChild: element.
 	
 	text := JS window document createElement: 'h1'.
@@ -211,4 +213,11 @@ XRWorld >> start [
 	htmlMesh position set: 0m y: 1.5m z: -0.5m.
 	htmlMesh userData: ({#isPointable -> true} as: Dictionary).
 	self scene add: htmlMesh.
+]
+
+{ #category : #setup }
+XRWorld >> stop [
+
+	self renderer setAnimationLoop: nil.
+	self renderer dispose.
 ]
