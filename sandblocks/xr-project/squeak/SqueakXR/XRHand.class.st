@@ -13,11 +13,27 @@ Class {
 { #category : #'as yet unclassified' }
 XRHand >> castRay [
 
-	JS console log: self closestPointableObject
+	| intersection sphere planePosition |
+	intersection := self closestIntersectionWithPointableObject.
+	
+	sphere := Three Mesh
+		new: (Three SphereGeometry
+			new: 5mm
+			widthSegments: 5
+			heightSegments: 5)
+		material: (Three MeshLambertMaterial
+			new: ({#color -> 16rffffff} as: Dictionary)).
+	sphere position copy: intersection point.
+	
+	self world scene add: sphere.
+	
+	planePosition := intersection object worldToLocal: intersection point.
+	
+	JS console log: planePosition and: intersection.
 ]
 
 { #category : #private }
-XRHand >> closestPointableObject [
+XRHand >> closestIntersectionWithPointableObject [
 
 	| intersections worldDirection worldPosition |
 	worldPosition := Three Vector3 new.
@@ -32,11 +48,14 @@ XRHand >> closestPointableObject [
 		intersectObjects: self world scene children.
 	
 	"TODO: find a better way to iterate over JS arrays"
-	0 to: intersections length - 1 do: [:idx || object |
-		intersections at: idx.
-		object := intersections object.
-		object userData at: 'isPointable' ifPresent: [:value |
-			value ifTrue: [^ object]]].
+	0 to: intersections length - 1 do: [:idx || intersection isPointable |
+		intersection := intersections at: idx.
+		"TODO: JSObjectProxy does not yet support things like at:ifPresent:"
+		isPointable := (intersection object userData at: 'isPointable')
+			ifNil: false
+			ifNotNil: #value.
+		
+		isPointable ifTrue: [^ intersection]].
 	
 	^ nil
 ]
@@ -57,9 +76,10 @@ XRHand >> createModel [
 	
 	laser := Three Mesh
 		new: (Three CylinderGeometry
-			new: 1cm
-			radiusBottom: 1cm
-			height: 100m)
+			new: 5mm
+			radiusBottom: 5mm
+			height: 100m
+			radialSegments: 10)
 		material: ((Three MeshLambertMaterial
 			new: ({#color -> 16rff0000} as: Dictionary))
 				transparent: true;
