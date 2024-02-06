@@ -137,7 +137,6 @@ class OutputWindow extends Component {
 // TODO: remove global state - memory leak!
 const allOutputWindows = {};
 const allProjects = {};
-const cachedProjectMetrics = {};
 
 export const base = new Extension()
 
@@ -216,20 +215,13 @@ export const base = new Extension()
             totalPriceFormatted: formatPrice(totalPrice),
           };
 
-          cachedProjectMetrics[projectId] = metrics;
-          setMetrics({
-            editorSourceString,
-            ...metrics,
-          });
+          setMetrics(metrics);
         },
         [editorSourceString]
       );
 
       // check if we're still up-to-date
-      const metrics =
-        bufferedMetrics?.editorSourceString === editorSourceString
-          ? bufferedMetrics
-          : cachedProjectMetrics[projectId] ?? null;
+      const metrics = bufferedMetrics;
 
       // WORKAROUND: lifecycle of replacements is too short
       const outputWindows = allOutputWindows[projectId] ??= [];
@@ -630,8 +622,6 @@ function insertModule({ insert }, i) {
   insert(i, `OragleLeafModule new uuid: '${makeUUID()}'`);
 }
 
-const cachedModuleMetrics = {};
-
 function ModulePriceTag( { replacement, moduleId }) {
   const [bufferedMetrics, setMetrics] = useJSONComparedState(null);
 
@@ -665,7 +655,6 @@ function ModulePriceTag( { replacement, moduleId }) {
       _metrics.minPriceFormattedLong = formatPrice(_metrics.minPrice, { minDigits: 4 });
       _metrics.maxPriceFormattedLong = formatPrice(_metrics.maxPrice, { minDigits: 4 });
 
-      cachedModuleMetrics[moduleId] = _metrics;
       setMetrics({
         editorSourceString,
         ..._metrics
@@ -674,10 +663,7 @@ function ModulePriceTag( { replacement, moduleId }) {
     [editorSourceString]
   );
 
-  const metrics =
-    bufferedMetrics?.editorSourceString === editorSourceString
-      ? bufferedMetrics
-      : cachedModuleMetrics[moduleId] ?? null;
+  const metrics = bufferedMetrics
 
   const span = metrics === null
     ? null
