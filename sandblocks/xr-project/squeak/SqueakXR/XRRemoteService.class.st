@@ -53,7 +53,7 @@ XRRemoteService >> source [
 
 	| extensionMethods packageSources |
 	
-	packageSources := (SystemOrganization classesIn: 'SqueakXR') collect: [:cls |
+	packageSources := (SystemOrganization superclassOrder: 'SqueakXR') collect: [:cls |
 		{
 			#name -> (cls name).
 			#definition -> (cls definition).

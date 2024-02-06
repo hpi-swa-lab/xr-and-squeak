@@ -1,10 +1,8 @@
 Class {
 	#name : #XRHand,
-	#superclass : #Object,
+	#superclass : #XRObject,
 	#instVars : [
 		'index',
-		'threeObject',
-		'world',
 		'raycaster'
 	],
 	#category : #SqueakXR
@@ -60,10 +58,12 @@ XRHand >> closestIntersectionWithPointableObject [
 	^ nil
 ]
 
-{ #category : #'as yet unclassified' }
+{ #category : #initializing }
 XRHand >> createModel [
 
-	| sphere laser |
+	| sphere laser group |
+	group := Three Group new.
+	
 	sphere := Three Mesh
 		new: (Three SphereGeometry
 			new: 5cm
@@ -71,8 +71,7 @@ XRHand >> createModel [
 			heightSegments: 16)
 		material: (Three MeshLambertMaterial
 			new: ({#color -> 16rffffff} as: Dictionary)).
-	
-	self threeObject add: sphere.
+	group add: sphere.
 	
 	laser := Three Mesh
 		new: (Three CylinderGeometry
@@ -87,7 +86,9 @@ XRHand >> createModel [
 				yourself).
 	laser position z: -50m.
 	laser rotation x: 90 degreesToRadians.
-	self threeObject add: laser.
+	group add: laser.
+	
+	^ group
 ]
 
 { #category : #accessing }
@@ -108,6 +109,16 @@ XRHand >> initialize [
 	self raycaster: Three Raycaster new.
 ]
 
+{ #category : #initializing }
+XRHand >> initializeThreeObject [
+
+	| obj |
+	obj := self world renderer xr getController: self index.
+	obj addEventListener: 'select' do: [:event | self castRay].
+	obj add: self createModel.
+	^ obj
+]
+
 { #category : #accessing }
 XRHand >> raycaster [
 
@@ -118,28 +129,4 @@ XRHand >> raycaster [
 XRHand >> raycaster: aRaycaster [
 
 	raycaster := aRaycaster
-]
-
-{ #category : #accessing }
-XRHand >> threeObject [
-	
-	^ threeObject ifNil: [
-		threeObject := self world renderer xr getController: self index.
-		threeObject addEventListener: 'select' do: [:event | self castRay].
-		
-		self createModel.
-		
-		threeObject]
-]
-
-{ #category : #accessing }
-XRHand >> world [
-
-	^ world
-]
-
-{ #category : #accessing }
-XRHand >> world: aWorld [
-
-	world := aWorld
 ]
