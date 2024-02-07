@@ -1,0 +1,33 @@
+--- /Users/leo/Downloads/external/squeak_headless_with_plugins_bundle.js	2023-12-13 20:35:47
++++ external/squeak_headless_with_plugins_bundle.js	2024-02-07 10:54:46
+@@ -10215,12 +10215,9 @@
+     return function evalSqueakBlock(/* arguments */) {
+       var args = [];
+       for (var i = 0; i < numArgs; i++) args.push(arguments[i]);
+-      return new Promise(function (resolve, reject) {
+-        function evalAsync() {
+-          squeak.js_executeCallbackAsync(block, args, resolve, reject);
+-        }
+-        self.setTimeout(evalAsync, 0);
+-      });
++      let res
++      squeak.js_executeCallback(block, args, (r) => (res = r), (e) => console.error(e))
++      return res
+     };
+   },
+   js_executeCallbackAsync: function (block, args, resolve, reject) {
+@@ -10235,8 +10232,12 @@
+     }
+   },
+   js_executeCallback: function (block, args, resolve, reject) {
+-    if (this.js_activeCallback)
+-      return console.error("Callback: already active");
++    var squeak = this;
++    if (this.js_activeCallback) {
++      console.log("Callback: already active. Waiting a bit...")
++      setTimeout(() => squeak.js_executeCallback(block, args, resolve, reject), 5)
++      return;
++    }
+     // make block and args available to primitiveGetActiveCallback
+     this.js_activeCallback = {
+       block: block,
