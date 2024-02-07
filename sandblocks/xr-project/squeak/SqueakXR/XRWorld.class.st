@@ -170,7 +170,7 @@ XRWorld >> setupDocument [
 	container appendChild: (JS VRButton createButton: self renderer).
 	
 	self elementContainer: (JS window document createElement: 'div').
-	self elementContainer setAttribute: 'style' to: 'position: absolute; visibility: hidden;'.
+	self elementContainer setAttribute: 'style' to: 'position: fixed; visibility: visible; top: 0; left: 0'.
 	container appendChild: elementContainer.
 	
 	resize := [camera aspect: self class aspect.
