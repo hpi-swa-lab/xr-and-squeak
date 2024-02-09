@@ -10,10 +10,12 @@ import { ToggleableMutationObserver, orParentThat, wait } from "../../utils.js";
 import { button, editor, h } from "../../view/widgets.js";
 import { config } from "../../core/config.js";
 import { Project } from "../../core/project.js";
-import { runHeadless } from "../../external/squeak_headless_with_plugins_bundle.js";
 import { List } from "../list.js";
 import { openComponentInWindow } from "../window.js";
 import {} from "../../view/widget-utils.js";
+
+import 'vm.plugins.javascript.js';
+import { runHeadless } from "../../external/squeak_headless_with_plugins_bundle.js";
 
 // Use RPC with:
 /*
