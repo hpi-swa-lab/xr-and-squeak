@@ -9,6 +9,7 @@ import {
 } from "./smalltalk.js";
 import { makeUUID, pluralString } from "../utils.js";
 import { signal, useComputed } from "../external/preact-signals.mjs"
+import { useState } from "../external/preact-hooks.mjs";
 
 const cssLink = document.createElement("link");
 cssLink.setAttribute("rel", "stylesheet");
@@ -18,6 +19,8 @@ document.head.appendChild(cssLink);
 const highlightedModules = signal([]);
 const selectedModule = signal(null)
 
+
+// utils
 const formatPrice = (cents, options = {}) => {
   const minDigits = options.minDigits ?? 2;
   return cents > 100
@@ -52,6 +55,8 @@ const parseSqArray = (obj) => {
 };
 
 
+
+// Components
 const PromptContainer = (prompt, promptIndex) => {
   const [hoverOver, setHoverOver] = useState(false)
   const moduleIDs = prompt.modules.map(module => module.uuid);
@@ -83,6 +88,34 @@ const PromptContainer = (prompt, promptIndex) => {
     ))
   )
 }
+/*
+const OutputWindowFunc = (projectId, prompts) => {
+  const [prompts, setPrompts] = useState([])
+  const [hover, setHover] = useState(false)
+
+  const update = async () => {
+    const promptsObj = await sqQuery(`OragleProjects promptsForProjectId: '${projectId}'`,{
+      "[]": {
+        modules: [{
+          "[]": ["uuid"],
+        }],
+        outputs: `outputs`,
+      },
+    });
+    const parsedPrompts = parseSqArray(promptsObj);
+    parsedPrompts.forEach((prompt) => {
+      prompt.modules &&= parseSqArray(prompt.modules);
+      prompt.outputs &&= parseSqArray(prompt.outputs);
+    });
+    setPrompts(prompts)
+  }
+
+  return h(
+    "div",{style: {overflowY: "scroll"}},
+      ...prompts.map((prompt, promptIndex) => PromptContainer(prompt, promptIndex))
+  )
+}
+*/
 
 class OutputWindow extends Component {
   constructor(props) {
@@ -134,6 +167,210 @@ class OutputWindow extends Component {
   };
 }
 
+const OragleProjectMetrics = ({label, project, metrics, rootModule, replacement}) => {
+  const metricText = metrics
+    ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${
+        metrics.defaultNumberOfOutputs !== null
+          ? pluralString("output", metrics.defaultNumberOfOutputs)
+          : "<variable>"
+      }`} = ${metrics.totalPriceFormatted})`
+    : null
+
+  const onSave = async () => {
+      if (!metrics) {
+        const hasConfirmed = confirm(
+          `About to spend ${metrics.totalPriceFormatted} to generate ${metrics.numberOfPrompts} prompts × ${
+            metrics.defaultNumberOfOutputs ?? "<variable>"} outputs. Continue?`
+        ) 
+        if ( !hasConfirmed ) return;
+      }
+
+      const shard = replacement.editor.children[0];
+      await shard.save();
+
+      const selector = shard.sourceString.split(/\s/)[0];
+      await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
+
+      project.assureOutputWindow();
+      await project.updateOutputWindows();
+  }
+  
+  return h("div",{ class: "sb-column" },
+    h("span",{ class: "sb-row" },
+      icon("draft"),
+      h("span", { style: { fontWeight: "bold" } }, label),
+      h("span",{style: {flexGrow: 1,display: "flex",justifyContent: "flex-end",}},
+        h("button", {className: "oragle-project-save-button", onClick: () => onSave()},
+          icon("play_arrow"),
+          "Save",
+          metricText
+        )
+      )
+    ),
+    rootModule
+  )
+}
+
+const OragleSequenceModule = ({uuid, separator, label, children, replacement}) => {
+    const moduleId = uuid.get().replace(/'/g, "");
+    return h(
+      OragleModule,
+      { node: replacement.node, type: "OragleSequenceModule" },
+      h(
+        "div",
+        { class: "sb-insert-button-container sb-column" },
+        h(
+          "span",
+          {
+            class: "sb-row",
+            style: { justifyContent: "space-between" },
+          },
+          icon("table_rows"),
+          label?.key && h("span", { style: { fontWeight: "bold" } }, label),
+          h(
+            "span",
+            {
+              style: {
+                flexGrow: 1,
+                display: "flex",
+                justifyContent: "flex-end",
+              },
+            },
+            h(ModulePriceTag, { replacement, moduleId }),
+          ),
+        ),
+        h(ShardArray, {
+          elements: children.elements,
+          onInsert: (i) => insertModule(children, i),
+        })
+      )
+    );
+}
+
+const OragleScriptModule = ({uuid, children, replacement}) => {
+  const moduleId = uuid.get().replace(/'/g, "");
+
+  return h(
+    OragleModule,
+    { node: replacement.node, type: "OragleScriptModule" },
+    h(
+      "div",
+      { class: "sb-insert-button-container sb-column" },
+      h("span", { class: "sb-row" }, icon("code"), "Script"),
+      h(ShardArray, {
+        elements: children.elements,
+        onInsert: (i) => insertModule(children, i),
+      }),
+      h(
+        "span",
+        {
+          class: "sb-row",
+          style: { justifyContent: "space-between" },
+        },
+        h(ModulePriceTag, { replacement, moduleId }),
+      ),
+    )
+  );
+}
+
+const OragleAlternationModule = ({uuid, children, replacement}) => {
+  const moduleId = uuid.get().replace(/'/g, "");
+  
+  return h(
+    OragleModule,
+    { node: replacement.node, type: "OragleAlternation" },
+    h(
+      "div",
+      {
+        class: "sb-insert-button-container sb-row",
+        style: {
+          alignItems: "start",
+        },
+      },
+      icon("alt_route"),
+      h(ShardArray, {
+        elements: children.elements,
+        onInsert: (i) => insertModule(children, i),
+      }),
+      h(
+        "span",
+        {
+          class: "sb-row",
+          style: { justifyContent: "space-between" },
+        },
+        h(ModulePriceTag, { replacement, moduleId }),
+      ),
+    )
+  );
+}
+
+const OragleLeafModule = ({uuid, label, content, state, replacement}) => {
+  const moduleId = uuid.get().replace(/'/g, "");
+  debugger;
+  const project = (() => {
+    let node = replacement;
+    while (node) {
+      if (node.project) return node.project;
+      node = node.parentElement;
+    }
+  })();
+
+  const saveAndUpdateProject = async () => {
+    const shard = replacement.editor.children[0];
+    await shard.save();
+
+    const selector = shard.sourceString.split(/\s/)[0];
+    await sqQuery(`OragleProjects updateProjectNamed: #${selector}`);
+
+    await project.updateOutputWindows();
+  };
+
+  return h(
+    OragleModule,
+    { uuid: uuid, node: replacement.node, type: "OragleLeafModule" },
+    h(
+      "div",
+      { class: "sb-column", id: uuid.get().slice(1, -1)},
+      h(
+        "span",
+        {
+          class: "sb-row",
+          style: { justifyContent: "space-between" },
+        },
+        h("span", { style: { fontWeight: "bold" } }, label),
+        h(ModulePriceTag, { replacement, moduleId }),
+      ),
+      content,
+      h(
+        "div",
+        { class: "sb-row" },
+        h(
+          "button",
+          {
+            class: state.get() === "#solo" && "sb-button-pressed",
+            onClick: async () => {
+              state.set(state.get() === "#solo" ? "#enabled" : "#solo");
+              await saveAndUpdateProject();
+            },
+          },
+          "S"
+        ),
+        h(
+          "button",
+          {
+            class: state.get() === "#mute" && "sb-button-pressed",
+            onClick: async () => {
+              state.set(state.get() === "#mute" ? "#enabled" : "#mute"),
+              await saveAndUpdateProject();
+            },
+          },
+          "M"
+        )
+      )
+    )
+  );
+}
+
 // TODO: remove global state - memory leak!
 const allOutputWindows = {};
 const allProjects = {};
@@ -141,16 +378,16 @@ const allProjects = {};
 export const base = new Extension()
 
   // String as a textarea: supports copy-paste without escaping
-  .registerReplacement((e) => [
+  .registerReplacement((event) => [
     (x) => x.type === "string",
-    replacement(e, "oragle-string", ({ replacement }) =>
+    replacement(event, "oragle-string", ({ replacement }) =>
       // TODO need to translate range select requests by delimiters and escapes
       h(AutoSizeTextArea, {
         node: replacement.node,
         value: replacement.node.sourceString.slice(1, -1).replace(/''/g, "'"),
-        onChange: (e) =>
+        onChange: (event) =>
           replacement.node.replaceWith(
-            "'" + e.target.value.replace(/'/g, "''") + "'"
+            "'" + event.target.value.replace(/'/g, "''") + "'"
           ),
       })
     ),
@@ -171,6 +408,7 @@ export const base = new Extension()
 
       const editorShard = replacement.editor?.children[0];
       const editorSourceString = editorShard?.sourceString;
+
       useDebouncedEffect(
         500,
         async () => {
@@ -205,11 +443,8 @@ export const base = new Extension()
             numberOfPrompts: prompts.length,
             // single number if all prompts have the same number of outputs, otherwise `null`
             defaultNumberOfOutputs: prompts.every(
-              (prompt) =>
-                prompt.defaultNumberOfOutputs ===
-                prompts[0].defaultNumberOfOutputs
-            )
-              ? prompts[0]?.defaultNumberOfOutputs
+              (prompt) =>prompt.defaultNumberOfOutputs === prompts[0].defaultNumberOfOutputs
+            ) ? prompts[0]?.defaultNumberOfOutputs
               : null,
             totalPrice: totalPrice,
             totalPriceFormatted: formatPrice(totalPrice),
@@ -260,78 +495,13 @@ export const base = new Extension()
           await Promise.all(outputWindows.map(([component, window]) => component.update()))
         },
       };
+
       replacement.project = project;
+
       return h(
         OragleProject,
         { node: replacement.node, type: "OragleProject" },
-        h(
-          "div",
-          { class: "sb-column" },
-          h(
-            "span",
-            { class: "sb-row" },
-            icon("draft"),
-            h("span", { style: { fontWeight: "bold" } }, label),
-            h(
-              "span",
-              {
-                style: {
-                  flexGrow: 1,
-                  display: "flex",
-                  justifyContent: "flex-end",
-                },
-              },
-              (() => {
-                let metricsText;
-                const button = h(
-                  "button",
-                  {
-                    className: "oragle-project-save-button",
-                    onClick: async () => {
-                      if (metrics) {
-                        // price has been seen by user, so we can use it
-                      } else {
-                        if (
-                          !confirm(
-                            `About to spend ${
-                              metrics.totalPriceFormatted
-                            } to generate ${metrics.numberOfPrompts} prompts × ${
-                              metrics.defaultNumberOfOutputs ?? "<variable>"
-                            } outputs. Continue?`
-                          )
-                        )
-                          return;
-                      }
-
-                      const shard = replacement.editor.children[0];
-                      await shard.save();
-
-                      const selector = shard.sourceString.split(/\s/)[0];
-                      await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
-
-                      project.assureOutputWindow();
-                      await project.updateOutputWindows();
-                    },
-                  },
-                  icon("play_arrow"),
-                  "Save",
-                  metricsText = metrics
-                    ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${
-                        metrics.defaultNumberOfOutputs !== null
-                          ? pluralString("output", metrics.defaultNumberOfOutputs)
-                          : "<variable>"
-                      }`} = ${metrics.totalPriceFormatted})`
-                    : null
-                );
-                // force re-rendering when text changes to restart animation
-                button.key = metricsText;
-                return button;
-              })(),
-            )
-          ),
-          // FIXME: [low] should not display brackets (`()`) around the root module
-          rootModule
-        )
+        OragleProjectMetrics({label, project, metrics, rootModule, replacement}) 
       );
     }),
   ])
@@ -344,46 +514,7 @@ export const base = new Extension()
         label: { prefix: "'", placeholder: "label", suffix: "'" },
         children: { mode: "array" },
       }),
-    replacement(
-      e,
-      "oragle-sequence-module",
-      ({ uuid, separator, label, children, replacement }) => {
-        const moduleId = uuid.get().replace(/'/g, "");
-
-        return h(
-          OragleModule,
-          { node: replacement.node, type: "OragleSequenceModule" },
-          h(
-            "div",
-            { class: "sb-insert-button-container sb-column" },
-            h(
-              "span",
-              {
-                class: "sb-row",
-                style: { justifyContent: "space-between" },
-              },
-              icon("table_rows"),
-              label?.key && h("span", { style: { fontWeight: "bold" } }, label),
-              h(
-                "span",
-                {
-                  style: {
-                    flexGrow: 1,
-                    display: "flex",
-                    justifyContent: "flex-end",
-                  },
-                },
-                h(ModulePriceTag, { replacement, moduleId }),
-              ),
-            ),
-            h(ShardArray, {
-              elements: children.elements,
-              onInsert: (i) => insertModule(children, i),
-            })
-          )
-        );
-      }
-    ),
+    replacement(e, "oragle-sequence-module", OragleSequenceModule),
   ])
 
   .registerReplacement((e) => [
@@ -392,31 +523,7 @@ export const base = new Extension()
         uuid: { mode: "literal", default: makeUUID() },
         children: { mode: "array" },
       }),
-    replacement(e, "oragle-script-module", ({ uuid, children, replacement }) => {
-      const moduleId = uuid.get().replace(/'/g, "");
-
-      return h(
-        OragleModule,
-        { node: replacement.node, type: "OragleScriptModule" },
-        h(
-          "div",
-          { class: "sb-insert-button-container sb-column" },
-          h("span", { class: "sb-row" }, icon("code"), "Script"),
-          h(ShardArray, {
-            elements: children.elements,
-            onInsert: (i) => insertModule(children, i),
-          }),
-          h(
-            "span",
-            {
-              class: "sb-row",
-              style: { justifyContent: "space-between" },
-            },
-            h(ModulePriceTag, { replacement, moduleId }),
-          ),
-        )
-      );
-    }),
+    replacement(e, "oragle-script-module", OragleScriptModule),
   ])
 
   .registerReplacement((e) => [
@@ -425,36 +532,7 @@ export const base = new Extension()
         uuid: { mode: "literal", default: makeUUID() },
         children: { mode: "array" },
       }),
-    replacement(e, "oragle-alternation-module", ({ uuid, children, replacement }) => {
-      const moduleId = uuid.get().replace(/'/g, "");
-
-      return h(
-        OragleModule,
-        { node: replacement.node, type: "OragleAlternation" },
-        h(
-          "div",
-          {
-            class: "sb-insert-button-container sb-row",
-            style: {
-              alignItems: "start",
-            },
-          },
-          icon("alt_route"),
-          h(ShardArray, {
-            elements: children.elements,
-            onInsert: (i) => insertModule(children, i),
-          }),
-          h(
-            "span",
-            {
-              class: "sb-row",
-              style: { justifyContent: "space-between" },
-            },
-            h(ModulePriceTag, { replacement, moduleId }),
-          ),
-        )
-      );
-    }),
+    replacement(e, "oragle-alternation-module", OragleAlternationModule),
   ])
 
   .registerReplacement((e) => [
@@ -465,80 +543,10 @@ export const base = new Extension()
         content: { prefix: "'", suffix: "'", placeholder: "content" },
         state: { mode: "literal", default: "#enabled" },
       }),
-    replacement(
-      e,
-      "oragle-leaf-module",
-      ({ uuid, label, content, state, replacement }) => {
-        const moduleId = uuid.get().replace(/'/g, "");
-
-        const project = (() => {
-          let node = replacement;
-          while (node) {
-            if (node.project) return node.project;
-            node = node.parentElement;
-          }
-        })();
-
-        const saveAndUpdateProject = async () => {
-          const shard = replacement.editor.children[0];
-          await shard.save();
-
-          const selector = shard.sourceString.split(/\s/)[0];
-          await sqQuery(`OragleProjects updateProjectNamed: #${selector}`);
-
-          await project.updateOutputWindows();
-        };
-        // debugger;
-        return h(
-          OragleModule,
-          { uuid: uuid, node: replacement.node, type: "OragleLeafModule" },
-          h(
-            "div",
-            { class: "sb-column", id: uuid.get().slice(1, -1)},
-            h(
-              "span",
-              {
-                class: "sb-row",
-                style: { justifyContent: "space-between" },
-              },
-              h("span", { style: { fontWeight: "bold" } }, label),
-              h(ModulePriceTag, { replacement, moduleId }),
-            ),
-            content,
-            h(
-              "div",
-              { class: "sb-row" },
-              h(
-                "button",
-                {
-                  class: state.get() === "#solo" && "sb-button-pressed",
-                  onClick: async () => {
-                    state.set(state.get() === "#solo" ? "#enabled" : "#solo");
-                    await saveAndUpdateProject();
-                  },
-                },
-                "S"
-              ),
-              h(
-                "button",
-                {
-                  class: state.get() === "#mute" && "sb-button-pressed",
-                  onClick: async () => {
-                    state.set(state.get() === "#mute" ? "#enabled" : "#mute"),
-                    await saveAndUpdateProject();
-                  },
-                },
-                "M"
-              )
-            )
-          )
-        );
-      },
-      { selectable: true }
-    ),
+    replacement(e,"oragle-leaf-module", OragleLeafModule, { selectable: true}),
   ]);
 
-function OragleProject({ children }) {
+const OragleProject = ({ children }) => {
   return h(
     "div",
     {
@@ -555,7 +563,7 @@ function OragleProject({ children }) {
 
 // Container component for modules that supports wrapping / unwrapping
 // children of that module.
-function OragleModule({ uuid, children, node, type }) {
+const OragleModule = ({ uuid, children, node, type }) => {
   const highlighted = useComputed(() => {
     if (uuid) {
       return highlightedModules.value.includes(uuid.get().slice(1,-1))
@@ -622,7 +630,7 @@ function insertModule({ insert }, i) {
   insert(i, `OragleLeafModule new uuid: '${makeUUID()}'`);
 }
 
-function ModulePriceTag( { replacement, moduleId }) {
+const ModulePriceTag = ({ replacement, moduleId }) => {
   const [bufferedMetrics, setMetrics] = useJSONComparedState(null);
 
   // As the resolved content of the module might depend on earlier script modules or configuration modules, metrics depend on the whole project
