@@ -8,9 +8,9 @@ export const formatPrice = (cents, options = {}) => {
         ? minDigits
         : Math.min(
           Math.max(0, Math.min(-Math.floor(Math.log10(cents))), minDigits - 2),
-            100
-          )
-      )}`;
+          100
+        )
+    )}`;
 };
 
 export const parseSqArray = (obj) => {

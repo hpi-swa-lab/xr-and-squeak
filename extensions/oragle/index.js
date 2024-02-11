@@ -3,9 +3,9 @@ import { Extension } from "../../core/extension.js";
 import { openComponentInWindow } from "../../sandblocks/window.js";
 import { h, replacement, useDebouncedEffect, useJSONComparedState, Component } from "../../view/widgets.js";
 import { AutoSizeTextArea } from "../../view/widgets/auto-size-text-area.js";
-import {cascadedConstructorShardsFor,} from "../smalltalk.js";
+import { cascadedConstructorShardsFor, } from "../smalltalk.js";
 import { makeUUID } from "../../utils.js";
-import { 
+import {
   OragleAlternationModule,
   OragleLeafModule,
   OragleSequenceModule,
@@ -93,7 +93,7 @@ export const base = new Extension()
             numberOfPrompts: prompts.length,
             // single number if all prompts have the same number of outputs, otherwise `null`
             defaultNumberOfOutputs: prompts.every(
-              (prompt) =>prompt.defaultNumberOfOutputs === prompts[0].defaultNumberOfOutputs
+              (prompt) => prompt.defaultNumberOfOutputs === prompts[0].defaultNumberOfOutputs
             ) ? prompts[0]?.defaultNumberOfOutputs
               : null,
             totalPrice: totalPrice,
@@ -151,7 +151,7 @@ export const base = new Extension()
       return h(
         OragleProject,
         { node: replacement.node, type: "OragleProject" },
-        OragleProjectMetrics({label, project, metrics, rootModule, replacement}) 
+        OragleProjectMetrics({ label, project, metrics, rootModule, replacement })
       );
     }),
   ])
@@ -193,5 +193,5 @@ export const base = new Extension()
         content: { prefix: "'", suffix: "'", placeholder: "content" },
         state: { mode: "literal", default: "#enabled" },
       }),
-    replacement(e,"oragle-leaf-module", OragleLeafModule, { selectable: true}),
+    replacement(e, "oragle-leaf-module", OragleLeafModule, { selectable: true }),
   ]);

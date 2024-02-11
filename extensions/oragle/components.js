@@ -8,13 +8,13 @@ import { makeUUID, pluralString } from "../../utils.js";
 import { useComputed } from "../../external/preact-signals.mjs"
 import { useState } from "../../external/preact-hooks.mjs";
 import { selectedModule, highlightedModules } from "./signals.js"
-import { parseSqArray, formatPrice} from "./utils.js" 
+import { parseSqArray, formatPrice } from "./utils.js"
 
 // Components
 export const PromptContainer = (prompt, promptIndex) => {
   const [hoverOver, setHoverOver] = useState(false)
   const moduleIDs = prompt.modules.map(module => module.uuid);
-  const shouldHighlight = useComputed(() => selectedModule.value ? moduleIDs.includes(selectedModule.value): false)
+  const shouldHighlight = useComputed(() => selectedModule.value ? moduleIDs.includes(selectedModule.value) : false)
 
   const onEnter = () => {
     setHoverOver(true)
@@ -26,15 +26,15 @@ export const PromptContainer = (prompt, promptIndex) => {
     highlightedModules.value = []
   }
 
-  return h("div",{},...prompt.outputs.map((output, outputIndex) =>
-    h("div",{
-        onMouseEnter: () => onEnter(),
-        onMouseLeave: () => onLeave(),
-        style: {
-          "color": hoverOver ? "white" : undefined,
-          "background-color": hoverOver || shouldHighlight.value ? "blue": undefined
-        }
-      },
+  return h("div", {}, ...prompt.outputs.map((output, outputIndex) =>
+    h("div", {
+      onMouseEnter: () => onEnter(),
+      onMouseLeave: () => onLeave(),
+      style: {
+        "color": hoverOver ? "white" : undefined,
+        "background-color": hoverOver || shouldHighlight.value ? "blue" : undefined
+      }
+    },
 
       // Prompt Container content
       h("strong", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1}`),
@@ -83,7 +83,7 @@ export class OutputWindow extends Component {
   }
 
   async update() {
-    const promptsObj = await sqQuery(`OragleProjects promptsForProjectId: '${this.projectId}'`,{
+    const promptsObj = await sqQuery(`OragleProjects promptsForProjectId: '${this.projectId}'`, {
       "[]": {
         modules: [{
           "[]": ["uuid"],
@@ -102,9 +102,9 @@ export class OutputWindow extends Component {
 
   render() {
     return h(
-      "div",{style: {overflowY: "scroll"}},
-        ...this.state.prompts.map((prompt, promptIndex) => PromptContainer(prompt, promptIndex))
-      )
+      "div", { style: { overflowY: "scroll" } },
+      ...this.state.prompts.map((prompt, promptIndex) => PromptContainer(prompt, promptIndex))
+    )
   }
 
   logOutputs() {
@@ -121,40 +121,38 @@ export class OutputWindow extends Component {
   };
 }
 
-export const OragleProjectMetrics = ({label, project, metrics, rootModule, replacement}) => {
+export const OragleProjectMetrics = ({ label, project, metrics, rootModule, replacement }) => {
   const metricText = metrics
-    ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${
-        metrics.defaultNumberOfOutputs !== null
-          ? pluralString("output", metrics.defaultNumberOfOutputs)
-          : "<variable>"
+    ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${metrics.defaultNumberOfOutputs !== null
+        ? pluralString("output", metrics.defaultNumberOfOutputs)
+        : "<variable>"
       }`} = ${metrics.totalPriceFormatted})`
     : null
 
   const onSave = async () => {
-      if (!metrics) {
-        const hasConfirmed = confirm(
-          `About to spend ${metrics.totalPriceFormatted} to generate ${metrics.numberOfPrompts} prompts × ${
-            metrics.defaultNumberOfOutputs ?? "<variable>"} outputs. Continue?`
-        ) 
-        if ( !hasConfirmed ) return;
-      }
+    if (!metrics) {
+      const hasConfirmed = confirm(
+        `About to spend ${metrics.totalPriceFormatted} to generate ${metrics.numberOfPrompts} prompts × ${metrics.defaultNumberOfOutputs ?? "<variable>"} outputs. Continue?`
+      )
+      if (!hasConfirmed) return;
+    }
 
-      const shard = replacement.editor.children[0];
-      await shard.save();
+    const shard = replacement.editor.children[0];
+    await shard.save();
 
-      const selector = shard.sourceString.split(/\s/)[0];
-      await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
+    const selector = shard.sourceString.split(/\s/)[0];
+    await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
 
-      project.assureOutputWindow();
-      await project.updateOutputWindows();
+    project.assureOutputWindow();
+    await project.updateOutputWindows();
   }
-  
-  return h("div",{ class: "sb-column" },
-    h("span",{ class: "sb-row" },
+
+  return h("div", { class: "sb-column" },
+    h("span", { class: "sb-row" },
       icon("draft"),
       h("span", { style: { fontWeight: "bold" } }, label),
-      h("span",{style: {flexGrow: 1,display: "flex",justifyContent: "flex-end",}},
-        h("button", {className: "oragle-project-save-button", onClick: () => onSave()},
+      h("span", { style: { flexGrow: 1, display: "flex", justifyContent: "flex-end", } },
+        h("button", { className: "oragle-project-save-button", onClick: () => onSave() },
           icon("play_arrow"),
           "Save",
           metricText
@@ -165,43 +163,43 @@ export const OragleProjectMetrics = ({label, project, metrics, rootModule, repla
   )
 }
 
-export const OragleSequenceModule = ({uuid, separator, label, children, replacement}) => {
-    const moduleId = uuid.get().replace(/'/g, "");
-    return h(
-      OragleModule,
-      { node: replacement.node, type: "OragleSequenceModule" },
+export const OragleSequenceModule = ({ uuid, separator, label, children, replacement }) => {
+  const moduleId = uuid.get().replace(/'/g, "");
+  return h(
+    OragleModule,
+    { node: replacement.node, type: "OragleSequenceModule" },
+    h(
+      "div",
+      { class: "sb-insert-button-container sb-column" },
       h(
-        "div",
-        { class: "sb-insert-button-container sb-column" },
+        "span",
+        {
+          class: "sb-row",
+          style: { justifyContent: "space-between" },
+        },
+        icon("table_rows"),
+        label?.key && h("span", { style: { fontWeight: "bold" } }, label),
         h(
           "span",
           {
-            class: "sb-row",
-            style: { justifyContent: "space-between" },
-          },
-          icon("table_rows"),
-          label?.key && h("span", { style: { fontWeight: "bold" } }, label),
-          h(
-            "span",
-            {
-              style: {
-                flexGrow: 1,
-                display: "flex",
-                justifyContent: "flex-end",
-              },
+            style: {
+              flexGrow: 1,
+              display: "flex",
+              justifyContent: "flex-end",
             },
-            h(ModulePriceTag, { replacement, moduleId }),
-          ),
+          },
+          h(ModulePriceTag, { replacement, moduleId }),
         ),
-        h(ShardArray, {
-          elements: children.elements,
-          onInsert: (i) => insertModule(children, i),
-        })
-      )
-    );
+      ),
+      h(ShardArray, {
+        elements: children.elements,
+        onInsert: (i) => insertModule(children, i),
+      })
+    )
+  );
 }
 
-export const OragleScriptModule = ({uuid, children, replacement}) => {
+export const OragleScriptModule = ({ uuid, children, replacement }) => {
   const moduleId = uuid.get().replace(/'/g, "");
 
   return h(
@@ -227,9 +225,9 @@ export const OragleScriptModule = ({uuid, children, replacement}) => {
   );
 }
 
-export const OragleAlternationModule = ({uuid, children, replacement}) => {
+export const OragleAlternationModule = ({ uuid, children, replacement }) => {
   const moduleId = uuid.get().replace(/'/g, "");
-  
+
   return h(
     OragleModule,
     { node: replacement.node, type: "OragleAlternation" },
@@ -258,7 +256,7 @@ export const OragleAlternationModule = ({uuid, children, replacement}) => {
   );
 }
 
-export const OragleLeafModule = ({uuid, label, content, state, replacement}) => {
+export const OragleLeafModule = ({ uuid, label, content, state, replacement }) => {
   const moduleId = uuid.get().replace(/'/g, "");
   const project = (() => {
     let node = replacement;
@@ -283,7 +281,7 @@ export const OragleLeafModule = ({uuid, label, content, state, replacement}) => 
     { uuid: uuid, node: replacement.node, type: "OragleLeafModule" },
     h(
       "div",
-      { class: "sb-column", id: uuid.get().slice(1, -1)},
+      { class: "sb-column", id: uuid.get().slice(1, -1) },
       h(
         "span",
         {
@@ -314,7 +312,7 @@ export const OragleLeafModule = ({uuid, label, content, state, replacement}) => 
             class: state.get() === "#mute" && "sb-button-pressed",
             onClick: async () => {
               state.set(state.get() === "#mute" ? "#enabled" : "#mute"),
-              await saveAndUpdateProject();
+                await saveAndUpdateProject();
             },
           },
           "M"
@@ -344,7 +342,7 @@ export const OragleProject = ({ children }) => {
 export const OragleModule = ({ uuid, children, node, type }) => {
   const highlighted = useComputed(() => {
     if (uuid) {
-      return highlightedModules.value.includes(uuid.get().slice(1,-1))
+      return highlightedModules.value.includes(uuid.get().slice(1, -1))
     }
     return false
   });
@@ -353,12 +351,12 @@ export const OragleModule = ({ uuid, children, node, type }) => {
     "div",
     {
       onMouseEnter: () => {
-        if (uuid){
-          selectedModule.value = uuid.get().slice(1,-1);
+        if (uuid) {
+          selectedModule.value = uuid.get().slice(1, -1);
         }
       },
       onMouseLeave: () => {
-        if (uuid){
+        if (uuid) {
           selectedModule.value = null;
         }
       },
@@ -458,22 +456,22 @@ export const ModulePriceTag = ({ replacement, moduleId }) => {
       {
         className: "oragle-module-price-tag",
         title:
-`Tokens: ${metrics === null
-  ? "(computing...)"
-  : metrics.minTokens == metrics.maxTokens
-    ? `${metrics.minTokens}`
-    : `${metrics.minTokens} – ${metrics.maxTokens}`}
+          `Tokens: ${metrics === null
+            ? "(computing...)"
+            : metrics.minTokens == metrics.maxTokens
+              ? `${metrics.minTokens}`
+              : `${metrics.minTokens} – ${metrics.maxTokens}`}
 Price for one request: ${metrics === null
-  ? "(computing...)"
-  : metrics.minPriceFormattedLong == metrics.maxPriceFormattedLong
-    ? `${metrics.minPriceFormattedLong}`
-    : `${metrics.minPriceFormattedLong} – ${metrics.maxPriceFormattedLong}`}`,
+            ? "(computing...)"
+            : metrics.minPriceFormattedLong == metrics.maxPriceFormattedLong
+              ? `${metrics.minPriceFormattedLong}`
+              : `${metrics.minPriceFormattedLong} – ${metrics.maxPriceFormattedLong}`}`,
       },
       metrics.minPriceFormatted === metrics.maxPriceFormatted
-       ? `${metrics.minPriceFormatted}`
-       //: `${metrics.minPriceFormatted} – ${metrics.maxPriceFormatted}`
-       : `≤${metrics.maxPriceFormatted}`
-      );
+        ? `${metrics.minPriceFormatted}`
+        //: `${metrics.minPriceFormatted} – ${metrics.maxPriceFormatted}`
+        : `≤${metrics.maxPriceFormatted}`
+    );
 
   if (span)
     // force re-rendering when text changes to restart animation
