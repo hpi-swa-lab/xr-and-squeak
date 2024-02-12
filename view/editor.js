@@ -64,11 +64,13 @@ export class Editor extends HTMLElement {
 
     Extension.clearRegistry();
 
-    customElements.define("sb-shard", Shard);
-    customElements.define("sb-block", Block);
-    customElements.define("sb-view-list", ViewList);
-    customElements.define("sb-text", Text);
-    customElements.define("sb-editor", Editor);
+    if (!customElements.get("sb-editor")) {
+      customElements.define("sb-shard", Shard);
+      customElements.define("sb-block", Block);
+      customElements.define("sb-view-list", ViewList);
+      customElements.define("sb-text", Text);
+      customElements.define("sb-editor", Editor);
+    }
   }
 
   // may be set by external parties to provide e.g. a file path or similar to
@@ -491,9 +493,11 @@ export class Editor extends HTMLElement {
   }
 
   queueViewUpdate() {
-    if (this._queuedViewUpdate) return;
+    if (this._queuedViewUpdate || !this.shard) return;
     this._queuedViewUpdate = true;
     queueMicrotask(() => {
+      // if we are not loaded yet, we can ignore this request as we will refresh once loaded
+      if (!this.shard) return;
       this._queuedViewUpdate = false;
       this.extensionsDo((e) => e.process(["replacement"], this.source));
       this.extensionsDo((e) => e.process(["always"], this.source));

@@ -103,6 +103,7 @@ export class SqueakProject extends Project {
       console.debug(`sqEval ${x} took ${end - start}ms`);
       return res;
     };
+    await ensureSystemChangeCallback(this.type === 'browser');
 
     window.sqEscapeString = (string) => string.replaceAll("'", "''");
 
@@ -223,7 +224,7 @@ async function sqCompile(cls, source) {
 
 let systemChangeSubscribers = [];
 let systemChangeCallbackInit = false;
-async function ensureSystemChangeCallback() {
+async function ensureSystemChangeCallback(needsPatches) {
   if (!systemChangeCallbackInit) {
     systemChangeCallbackInit = true;
 
@@ -233,8 +234,7 @@ async function ensureSystemChangeCallback() {
       notify: JS window
       ofAllSystemChangesUsing: #sqSystemChangeCallback:`);
 
-    const SQUEAK_JS_HACKS = false;
-    if (SQUEAK_JS_HACKS) {
+    if (needsPatches) {
       await sqCompile(
         "Behavior",
         `asJSArgument
@@ -349,8 +349,6 @@ function SqueakBrowserComponent({ initialClass, initialSelector }) {
       setSelectedSystemCategory(map[initialClass]);
       setSelectedClass(initialClass);
     }
-
-    await ensureSystemChangeCallback();
   }, []);
 
   useEffect(async () => {
