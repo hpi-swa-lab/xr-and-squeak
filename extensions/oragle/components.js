@@ -427,10 +427,10 @@ export const ModulePriceTag = ({ replacement, moduleId }) => {
         project := Compiler evaluate: '${sqEscapeString(input)}'.
         ^ project metricsForModule: (project moduleForId: '${moduleId}')`,
         {
-          "minPrice": "self minPrice maxCents",
-          "maxPrice": "self maxPrice maxCents",
-          "minTokens": "minTokens",
-          "maxTokens": "maxTokens",
+          "minPrice": "self minPrice maxCents oragleNanToNil",
+          "maxPrice": "self maxPrice maxCents oragleNanToNil",
+          "minTokens": "self minTokens oragleNanToNil",
+          "maxTokens": "self maxTokens oragleNanToNil",
         }
       );
 
@@ -459,13 +459,13 @@ export const ModulePriceTag = ({ replacement, moduleId }) => {
           `Tokens: ${metrics === null
             ? "(computing...)"
             : metrics.minTokens == metrics.maxTokens
-              ? `${metrics.minTokens}`
+              ? `${metrics.minTokens === null ? "n/a" : metrics.minTokens}`
               : `${metrics.minTokens} – ${metrics.maxTokens}`}
 Price for one request: ${metrics === null
-            ? "(computing...)"
-            : metrics.minPriceFormattedLong == metrics.maxPriceFormattedLong
-              ? `${metrics.minPriceFormattedLong}`
-              : `${metrics.minPriceFormattedLong} – ${metrics.maxPriceFormattedLong}`}`,
+              ? "(computing...)"
+              : metrics.minPriceFormattedLong == metrics.maxPriceFormattedLong
+                ? `${metrics.minPriceFormattedLong}`
+                : `${metrics.minPriceFormattedLong} – ${metrics.maxPriceFormattedLong}`}`,
       },
       metrics.minPriceFormatted === metrics.maxPriceFormatted
         ? `${metrics.minPriceFormatted}`

@@ -1,5 +1,6 @@
 // utils
 export const formatPrice = (cents, options = {}) => {
+  if (cents == null || isNaN(cents)) return "n/a";
   const minDigits = options.minDigits ?? 2;
   return cents > 100
     ? `$${(cents / 100).toFixed(minDigits)}`

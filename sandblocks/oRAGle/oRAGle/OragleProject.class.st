@@ -81,7 +81,7 @@ OragleProject >> label: aString [
 
 {
 	#category : #accessing,
-	#'squeak_changestamp' : 'ct 2/4/2024 00:11'
+	#'squeak_changestamp' : 'ct 2/16/2024 18:42'
 }
 OragleProject >> metricsForModule: aModule [
 
@@ -91,8 +91,8 @@ OragleProject >> metricsForModule: aModule [
 	
 	^ JsonObject new
 		
-		minTokens: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #minTokens) min]);
-		maxTokens: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #maxTokens) max]);
+		minTokens: (allMetrics ifEmpty: [Float nan] ifNotEmpty: [(allMetrics collect: #minTokens) min]);
+		maxTokens: (allMetrics ifEmpty: [Float nan] ifNotEmpty: [(allMetrics collect: #maxTokens) max]);
 		
 		minPrice: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #minPrice) min]);
 		maxPrice: (allMetrics ifEmpty: [OpenAIAmount oragleNan] ifNotEmpty: [(allMetrics collect: #maxPrice) max]);
