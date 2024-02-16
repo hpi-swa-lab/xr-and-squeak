@@ -382,7 +382,7 @@ OragleProjects class >> shouldDebugRpc: aBoolean [
 
 {
 	#category : #rpc,
-	#'squeak_changestamp' : 'ct 2/16/2024 11:49'
+	#'squeak_changestamp' : 'ct 2/16/2024 12:21'
 }
 OragleProjects class >> startRpc [
 
@@ -391,10 +391,15 @@ OragleProjects class >> startRpc [
 		addService: '/sbEval' action: [:req |
 			self shouldDebugRpc ifTrue:
 				[Transcript showln: req content].
-			req
+			[req
 				send200Response: (Compiler evaluate: req content)
 				contentType: 'text/plain'
-				do: [:res | res headerAt: 'Access-Control-Allow-Origin' put: '*']];
+				do: [:res | res headerAt: 'Access-Control-Allow-Origin' put: '*']]
+			
+					on: Warning , Halt do: [:ex |
+						Server errorHandler 
+							ifNil: [self handleError: ex request: req]
+							ifNotNil: [:handler | handler value: ex value: req]]];
 		yourself.
 	self updateDebugRpc.
 ]
