@@ -37,7 +37,7 @@ export const PromptContainer = (prompt, promptIndex) => {
     },
 
       // Prompt Container content
-      h("strong", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1}`),
+      h("strong", {}, `Prompt #${promptIndex + 1} - Output #${outputIndex + 1} (${prompt.modules.map(module => module.label).join(", ")})`),
       h("pre", { style: { whiteSpace: "pre-wrap" } }, output)
     ))
   )
@@ -86,7 +86,7 @@ export class OutputWindow extends Component {
     const promptsObj = await sqQuery(`OragleProjects promptsForProjectId: '${this.projectId}'`, {
       "[]": {
         modules: [{
-          "[]": ["uuid"],
+          "[]": ["uuid", "label"],
         }],
         outputs: `outputs`,
       },
