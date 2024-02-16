@@ -115,7 +115,7 @@ export const base = new Extension()
       // Project object definition
       // TODO: Refactor this
       const project = allProjects[projectId] = {
-        assureOutputWindow: () => {
+        outputWindows: () => {
           for (let i = outputWindows.length - 1; i >= 0; i--) {
             const [component, window] = outputWindows[i];
             if (!document.body.contains(window)) {
@@ -123,9 +123,17 @@ export const base = new Extension()
             }
           }
 
-          if (outputWindows.length) return;
+          return outputWindows;
+        },
+
+        assureOutputWindow: () => {
+          if (project.outputWindows().length) return;
 
           return project.openOutputWindow();
+        },
+
+        setIsUpdating: (isUpdating) => {
+          project.outputWindows().forEach(([component, window]) => component.setIsUpdating(isUpdating));
         },
 
         openOutputWindow: () => {

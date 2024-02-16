@@ -78,7 +78,8 @@ export class OutputWindow extends Component {
 
     this.state = {
       prompts: [],
-      hover: false
+      hover: false,
+      isUpdating: false,
     }
   }
 
@@ -100,9 +101,14 @@ export class OutputWindow extends Component {
     this.setState({ ...this.state, prompts })
   }
 
+  setIsUpdating(isUpdating) {
+    this.setState({ ...this.state, isUpdating });
+  }
+
   render() {
     return h(
       "div", { style: { overflowY: "scroll" } },
+      ...this.state.isUpdating ? ["Updating..."] : [],
       ...this.state.prompts.map((prompt, promptIndex) => PromptContainer(prompt, promptIndex))
     )
   }
@@ -143,10 +149,20 @@ export const OragleProjectMetrics = ({ label, project, metrics, rootModule, defa
     await shard.save();
 
     const selector = shard.sourceString.split(/\s/)[0];
-    await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
+    setIsSaving(true);
+    project.setIsUpdating(true);
+    try {
+      try {
+        await sqQuery(`OragleProjects updateProjectNamed: #${selector} approvedPrice: ${metrics.totalPrice}`);
+      } finally {
+        setIsSaving(false);
+      }
 
-    project.assureOutputWindow();
-    await project.updateOutputWindows();
+      project.assureOutputWindow();
+      await project.updateOutputWindows();
+    } finally {
+      project.setIsUpdating(false);
+    }
   }
 
   return h("div", { class: "sb-column" },
@@ -164,9 +180,9 @@ export const OragleProjectMetrics = ({ label, project, metrics, rootModule, defa
             style: { width: "4ch" }
           })
         ),
-        h("button", { className: "oragle-project-save-button", onClick: () => onSave() },
+        h("button", { className: "oragle-project-save-button", disabled: isSaving, onClick: () => onSave() },
           icon("play_arrow"),
-          "Save",
+          isSaving ? "Saving..." : "Save",
           metricText
         )
       )
