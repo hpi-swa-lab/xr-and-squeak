@@ -372,36 +372,52 @@ OragleProjects class >> shouldDebugRpc [
 
 {
 	#category : #rpc,
-	#'squeak_changestamp' : 'ct 2/16/2024 11:49'
+	#'squeak_changestamp' : 'ct 2/16/2024 18:13'
 }
 OragleProjects class >> shouldDebugRpc: aBoolean [
 
 	ShouldDebugRpc := aBoolean.
-	self updateDebugRpc.
 ]
 
 {
 	#category : #rpc,
-	#'squeak_changestamp' : 'ct 2/16/2024 12:21'
+	#'squeak_changestamp' : 'ct 2/16/2024 20:10'
 }
 OragleProjects class >> startRpc [
 
 	Server := WebServer new
 		listenOn: 9823;
-		addService: '/sbEval' action: [:req |
-			self shouldDebugRpc ifTrue:
-				[Transcript showln: req content].
-			[req
-				send200Response: (Compiler evaluate: req content)
-				contentType: 'text/plain'
-				do: [:res | res headerAt: 'Access-Control-Allow-Origin' put: '*']]
-			
-					on: Warning , Halt do: [:ex |
-						Server errorHandler 
-							ifNil: [self handleError: ex request: req]
-							ifNotNil: [:handler | handler value: ex value: req]]];
+		addService: '/sbEval'
+			action: [:req |
+				| addCorsHeaders |
+				self shouldDebugRpc ifTrue:
+					[Transcript showln: req content].
+				
+				"Enable no-cors mode. Arguably a workaround and maybe should be handled in the WebServer instead."
+				addCorsHeaders := [:res |
+					res
+						headerAt: 'Access-Control-Allow-Origin' put: '*';
+						headerAt: 'Access-Control-Allow-Methods' put: 'GET, POST, OPTIONS';
+						headerAt: 'Access-Control-Allow-Headers' put: 'Content-Type, Authorization'].
+				
+				[| result |
+				result := req isOptionsRequest
+					ifTrue: ['ok']
+					ifFalse: [Compiler evaluate: req content].
+						.
+				req
+					send200Response: result
+					contentType: 'text/plain'
+					do: addCorsHeaders]
+					
+						on: Halt do: [:ex |
+							ex resumeUnchecked: ex defaultAction "prevent default server errorHandler"]
+						"override default errorHandler to manually provide CORS headers"
+						on: Error , Warning do: [:ex |
+							Server oragleHandleError: ex request: req do: addCorsHeaders]]
+			methods: #('GET' 'POST' 'OPTIONS' "<-- must be enabled to provide CORS headers");
+		errorHandler: [:err :request | ToolSet debugException: err];
 		yourself.
-	self updateDebugRpc.
 ]
 
 {
@@ -412,18 +428,6 @@ OragleProjects class >> stopRpc [
 
 	Server ifNotNil: #destroy.
 	Server := nil.
-]
-
-{
-	#category : #rpc,
-	#'squeak_changestamp' : 'ct 2/16/2024 11:49'
-}
-OragleProjects class >> updateDebugRpc [
-
-	Server ifNil: [^ self].
-	Server errorHandler:
-		(self shouldDebugRpc
-			ifTrue: [[:err :request | ToolSet debugException: err]]).
 ]
 
 {
