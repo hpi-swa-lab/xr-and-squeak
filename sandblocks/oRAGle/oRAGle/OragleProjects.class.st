@@ -8,7 +8,8 @@ Class {
 		'Objects',
 		'ObjectsInversed',
 		'Projects',
-		'Server'
+		'Server',
+		'ShouldDebugRpc'
 	],
 	#category : #oRAGle,
 	#'squeak_changestamp' : 'tobe 1/19/2024 07:27'
@@ -16,13 +17,17 @@ Class {
 
 {
 	#category : #'initialize-release',
-	#'squeak_changestamp' : 'ct 2/3/2024 18:26'
+	#'squeak_changestamp' : 'ct 2/16/2024 11:54'
 }
 OragleProjects class >> cleanUp: aggressive [
 
 	aggressive ifTrue:
 		[self cleanUpObjects.
-		self cleanUpProjects].
+		self cleanUpProjects.
+		
+		self stopRpc.
+		Server := nil.
+		ShouldDebugRpc := nil].
 ]
 
 {
@@ -301,6 +306,30 @@ OragleProjects class >> resolveQuery: query for: anObject [
 ]
 
 {
+	#category : #rpc,
+	#'squeak_changestamp' : 'ct 2/16/2024 11:55'
+}
+OragleProjects class >> runningRpc [
+	<preference: 'Running Oragle RPC'
+		categoryList: #(Oragle)
+		description: 'hello world'
+		type: #Boolean>
+
+	^ Server notNil
+]
+
+{
+	#category : #rpc,
+	#'squeak_changestamp' : 'ct 2/16/2024 11:52'
+}
+OragleProjects class >> runningRpc: aBoolean [
+
+	self stopRpc.
+	aBoolean ifTrue:
+		[self startRpc].
+]
+
+{
 	#category : #'queries-private',
 	#'squeak_changestamp' : 'ct 1/25/2024 16:19'
 }
@@ -330,29 +359,66 @@ OragleProjects class >> serialize: anObject ifNotPrimitiveObject: aBlock [
 
 {
 	#category : #rpc,
-	#'squeak_changestamp' : 'ct 2/2/2024 12:48'
+	#'squeak_changestamp' : 'ct 2/16/2024 11:50'
+}
+OragleProjects class >> shouldDebugRpc [
+	<preference: 'Debug Oragle RPC'
+		categoryList: #(Oragle)
+		description: 'When true, RPC requests are logged and errors are opened in a debugger. When false, errors cause a failing request.'
+		type: #Boolean>
+
+	^ ShouldDebugRpc ifNil: [false]
+]
+
+{
+	#category : #rpc,
+	#'squeak_changestamp' : 'ct 2/16/2024 11:49'
+}
+OragleProjects class >> shouldDebugRpc: aBoolean [
+
+	ShouldDebugRpc := aBoolean.
+	self updateDebugRpc.
+]
+
+{
+	#category : #rpc,
+	#'squeak_changestamp' : 'ct 2/16/2024 11:49'
 }
 OragleProjects class >> startRpc [
 
 	Server := WebServer new
 		listenOn: 9823;
 		addService: '/sbEval' action: [:req |
-			Transcript showln: req content.
+			self shouldDebugRpc ifTrue:
+				[Transcript showln: req content].
 			req
 				send200Response: (Compiler evaluate: req content)
 				contentType: 'text/plain'
 				do: [:res | res headerAt: 'Access-Control-Allow-Origin' put: '*']];
-		errorHandler: [:err :request | ToolSet debugException: err];
-		yourself
+		yourself.
+	self updateDebugRpc.
 ]
 
 {
 	#category : #rpc,
-	#'squeak_changestamp' : 'tobe 1/19/2024 07:29'
+	#'squeak_changestamp' : 'ct 2/16/2024 11:57'
 }
 OragleProjects class >> stopRpc [
 
-	Server ifNotNil: #destroy
+	Server ifNotNil: #destroy.
+	Server := nil.
+]
+
+{
+	#category : #rpc,
+	#'squeak_changestamp' : 'ct 2/16/2024 11:49'
+}
+OragleProjects class >> updateDebugRpc [
+
+	Server ifNil: [^ self].
+	Server errorHandler:
+		(self shouldDebugRpc
+			ifTrue: [[:err :request | ToolSet debugException: err]]).
 ]
 
 {
