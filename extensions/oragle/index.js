@@ -50,8 +50,9 @@ export const base = new Extension()
         uuid: { mode: "literal", default: makeUUID() },
         label: { prefix: "'", placeholder: "label", suffix: "'" },
         rootModule: { default: `OragleSequenceModule new uuid: '${makeUUID()}'` },
+        defaultNumberOfOutputs: { mode: "literal", default: 1 },
       }),
-    replacement(e, "oragle-project", ({ uuid, label, rootModule, replacement }) => {
+    replacement(e, "oragle-project", ({ uuid, label, rootModule, defaultNumberOfOutputs, replacement }) => {
       const [bufferedMetrics, setMetrics] = useJSONComparedState(null);
 
       const projectId = uuid.get().replace(/'/g, "");
@@ -151,7 +152,7 @@ export const base = new Extension()
       return h(
         OragleProject,
         { node: replacement.node, type: "OragleProject" },
-        OragleProjectMetrics({ label, project, metrics, rootModule, replacement })
+        OragleProjectMetrics({ label, project, metrics, rootModule, defaultNumberOfOutputs, replacement })
       );
     }),
   ])

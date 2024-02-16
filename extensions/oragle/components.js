@@ -121,7 +121,9 @@ export class OutputWindow extends Component {
   };
 }
 
-export const OragleProjectMetrics = ({ label, project, metrics, rootModule, replacement }) => {
+export const OragleProjectMetrics = ({ label, project, metrics, rootModule, defaultNumberOfOutputs, replacement }) => {
+  const [isSaving, setIsSaving] = useState(false);
+
   const metricText = metrics
     ? ` (${pluralString("prompt", metrics.numberOfPrompts)}${!metrics.numberOfPrompts ? `` : ` × ${metrics.defaultNumberOfOutputs !== null
         ? pluralString("output", metrics.defaultNumberOfOutputs)
@@ -151,7 +153,17 @@ export const OragleProjectMetrics = ({ label, project, metrics, rootModule, repl
     h("span", { class: "sb-row" },
       icon("draft"),
       h("span", { style: { fontWeight: "bold" } }, label),
-      h("span", { style: { flexGrow: 1, display: "flex", justifyContent: "flex-end", } },
+      h("span", { style: { flexGrow: 1, display: "flex", justifyContent: "flex-end", alignItems: "center" } },
+        h("span", { style: { marginRight: "0.5rem" } },
+          h("span", { style: { fontWeight: "bold" } }, "Outputs: "),
+          h("input", {
+            type: "number",
+            value: defaultNumberOfOutputs.get(),
+            min: 1,
+            onInput: (e) => defaultNumberOfOutputs.set(e.target.value),
+            style: { width: "4ch" }
+          })
+        ),
         h("button", { className: "oragle-project-save-button", onClick: () => onSave() },
           icon("play_arrow"),
           "Save",
