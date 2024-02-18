@@ -88,70 +88,43 @@ function nestedKeys(varTree) {
  *  msgs: string[]
  * }}
  */
-function edgeToVizData({ reads, readsDuringWrites, writes, label }, currNode, nextNode) {
-    const { varToActor, messageActors } = useContext(DiagramConfig)
+function edgeToVizData({ reads, writes, label }, currNode, nextNode) {
+    const { actorSelectors } = useContext(DiagramConfig)
 
-    const writeKeys = nestedKeys(writes)
-    const readKeys = nestedKeys(reads)
-    const readsDuringWritesKeys = nestedKeys(readsDuringWrites)
+    const actorsFreqs = []
+    for (const actor in actorSelectors) {
+        // disambiguate between reads and writes
+        const onlyReads = { reads }
+        const readFreq = actorSelectors[actor].flatMap(s => jmespath.search(onlyReads, s) ?? []).length
 
-    const getKeysAndActor = (keys, valueFallback) => {
-        let applied = apply(varToActor, keys)
+        const onlyWrites = { writes }
+        const writeFreq = actorSelectors[actor].flatMap(s => jmespath.search(onlyWrites, s) ?? []).length
 
-        if (applied instanceof Object) {
-            // we need to check the actual values of the variables
-            const val = apply(valueFallback, keys)
-            if (!(val instanceof Object)) {
-                applied = apply(varToActor, [...keys, `${val}`])
-            }
-        }
-
-        if (typeof applied !== "string") {
-            applied = undefined
-        }
-
-        return { keys, actor: applied }
+        const sum = readFreq + writeFreq
+        actorsFreqs.push({ actor, readFreq, writeFreq, sum })
     }
-
-    const keysActorPairsWrite = writeKeys.map(k => getKeysAndActor(k, nextNode.vars))
-    const keysActorPairsRead = readKeys.map(k => getKeysAndActor(k, currNode.vars))
-    const keysActorPairsReadDuringWrite = readsDuringWritesKeys.map(k => getKeysAndActor(k, currNode.vars))
-
-    let keysActorPairs = [...keysActorPairsWrite, ...keysActorPairsRead, ...keysActorPairsReadDuringWrite]
-
 
     // TODO what should we do with unmapped vars?
     // TODO what if only unmapped vars? or one action not mapped?
-    keysActorPairs = keysActorPairs.filter(p => p.actor !== undefined)
 
-    const freqs = {}
-    keysActorPairs.forEach(({ actor }) => freqs[actor] ? freqs[actor] += 1 : freqs[actor] = 1)
+    // this is the actor where the lifeline is activated
+    const activatedActor = actorsFreqs.reduce((acc, el) => el.sum > acc.sum ? el : acc).actor
+    const actorFreqsWithoutActivated = actorsFreqs.filter(({ actor }) => actor !== activatedActor)
 
-    let actor = null
-    let max = 0
-    for (const [k, v] of Object.entries(freqs)) {
-        if (messageActors?.includes(k)) {
-            // skip actors that solely abstract message passing
-            continue
+    const toMsgs = (acc, { actor, readFreq, writeFreq }) => {
+        if (readFreq > 0) {
+            acc.push({ to: actor, type: "read", label: `read` })
         }
-        if (v > max) {
-            actor = k
-            max = v
+        if (writeFreq > 0) {
+            acc.push({ to: actor, type: "write", label: `write` })
         }
+        return acc
     }
 
-    const keysActorPairsToMsg = (p) => {
-        const type = keysActorPairsWrite.includes(p) ? "write" : "read"
-        const object = p.keys.reduce((acc, k) => acc + "[" + k + "]")
-        return { to: p.actor, type: type, label: `${type} ${object}` }
-    }
+    // correct the line below to set inital propery
+    const msgs = actorFreqsWithoutActivated.reduce(toMsgs, [])
 
-    const msgs = keysActorPairs
-        .filter(pair => pair.actor !== actor) // remove self references
-        .map(keysActorPairsToMsg)
-        .filter(({ to, type }, i, msgs) => !msgs.slice(0, i).find(m => m.type === type && m.to === to)) // only keep first message of each type to each actor
-
-    return { label, actor, msgs }
+    return { label, actor: activatedActor, msgs }
 }
 
 const Lifeline = ({ numRows, column }) => {
@@ -634,6 +607,8 @@ const GraphProvider = ({ spec }) => {
         for (const e of edges) {
             const outgoing = m.get(e.from)
             if (outgoing[e.to]) {
+                // TODO here we discard any edges that have the same transition
+                // this would be cases where the another action has the same result for this state
                 continue
             }
             outgoing[e.to] = e
@@ -671,8 +646,8 @@ const GraphProvider = ({ spec }) => {
 
     const config = {
         actors: spec.transformation.actors,
-        varToActor: spec.transformation.varSpaceToActor,
-        messageActors: spec.transformation.messageActors,
+        actorSelectors: spec.transformation.actorSelectors,
+        messageActors: spec.transformation.messageActors ?? [],
         a2c: spec.transformation.actors.reduce((acc, a, i) => acc.set(a, i + 1), new Map())
     }
 
