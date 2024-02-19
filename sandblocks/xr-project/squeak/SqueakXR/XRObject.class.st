@@ -24,10 +24,22 @@ XRObject >> initializeThreeObject [
 	self subclassResponsibility
 ]
 
-{ #category : #accessing }
+{ #category : #'as yet unclassified' }
 XRObject >> matchesIdentifier: aHash [
 
 	^ self identityHash = aHash
+]
+
+{ #category : #accessing }
+XRObject >> position [
+
+	^ self threeObject position
+]
+
+{ #category : #accessing }
+XRObject >> position: aVector3 [
+
+	self threeObject position copy: aVector3
 ]
 
 { #category : #accessing }

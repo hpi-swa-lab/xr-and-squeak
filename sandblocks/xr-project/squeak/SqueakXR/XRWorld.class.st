@@ -49,6 +49,8 @@ XRWorld >> add: anXRObject [
 	xrObjects add: anXRObject.
 	anXRObject world: self.
 	self scene add: anXRObject threeObject.
+	
+	^ anXRObject
 ]
 
 { #category : #setup }
@@ -170,7 +172,6 @@ XRWorld >> setupDocument [
 	container appendChild: (JS VRButton createButton: self renderer).
 	
 	self elementContainer: (JS window document createElement: 'div').
-	self elementContainer setAttribute: 'style' to: 'position: fixed; visibility: visible; top: 0; left: 0'.
 	container appendChild: elementContainer.
 	
 	resize := [camera aspect: self class aspect.
@@ -203,7 +204,10 @@ XRWorld >> start [
 	cube position set: 0m y: 1.5m z: -10m.
 	self scene add: cube.
 	
-	self add: XRHtmlPanel new.
+	(self add: XRHtmlPanel new)
+		position: (Three Vector3 new: 0m y: 1.5m z: -0.5m).
+	(self add: XRHtmlPanel new)
+		position: (Three Vector3 new: 0.5m y: 1.5m z: -0.5m).
 ]
 
 { #category : #setup }

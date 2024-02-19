@@ -7,7 +7,7 @@ Class {
 	#category : #SqueakXR
 }
 
-{ #category : #initializing }
+{ #category : #accessing }
 XRHtmlPanel >> boundingRect [
 
 	^ element getBoundingClientRect
@@ -25,7 +25,7 @@ XRHtmlPanel >> element: anHtmlElement [
 	element := anHtmlElement
 ]
 
-{ #category : #initializing }
+{ #category : #'as yet unclassified' }
 XRHtmlPanel >> handlePointing: pointingInformation [
 
 	| dimensions normalizedPoint point clickPoint clickedElement event |
@@ -46,10 +46,12 @@ XRHtmlPanel >> handlePointing: pointingInformation [
 			#bubbles -> true.
 			#cancelable -> true.
 			# view -> JS window} as: Dictionary).
-	clickedElement dispatchEvent: event.
+	
+	
+	self withElementSelectableDo: [clickedElement dispatchEvent: event]
 ]
 
-{ #category : #initializing }
+{ #category : #accessing }
 XRHtmlPanel >> htmlElementSizeAsVector3 [
 
 	| rect |
@@ -67,7 +69,17 @@ XRHtmlPanel >> initializeThreeObject [
 	self element: (JS window document createElement: 'div').
 	self element setAttribute: 'id' to: 'test-id'.
 	"IMPORTANT: overflow: hidden prevents offset in viewport if children have margins etc"
-	self element setAttribute: 'style' to: 'width: 200px; height: 200px; background: #FFB; overflow-wrap: break-word; overflow: hidden'.
+	"self element setAttribute: 'style' to: 'width: 200px; height: 200px; background: #FFB; overflow-wrap: break-word; overflow: hidden; position: fixed; top: 0; left: 0'."
+	self element style
+		width: '200px';
+		height: '200px';
+		background: '#ffb';
+		at: 'overflow-wrap' put: 'break-word';
+		overflow: 'hidden';
+		position: 'fixed';
+		top: '0';
+		left: '0';
+		at: 'z-index' put: 0.
 	self world elementContainer appendChild: element.
 	
 	text := JS window document createElement: 'h1'.
@@ -86,8 +98,16 @@ XRHtmlPanel >> initializeThreeObject [
 	self element appendChild: button.
 	
 	htmlMesh := JS HTMLMesh new: self element.
-	htmlMesh position set: 0m y: 1.5m z: -0.5m.
 	htmlMesh userData: ({#isPointable -> true} as: Dictionary).
 	
 	^ htmlMesh
+]
+
+{ #category : #'as yet unclassified' }
+XRHtmlPanel >> withElementSelectableDo: aBlock [
+
+	"This method ensures that JS methods like elementByPoint work correctly, which expect that the element is visible and on top"
+	self world elementContainer removeChild: self element.
+	self world elementContainer appendChild: self element.
+	aBlock value.
 ]
