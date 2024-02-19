@@ -216,12 +216,9 @@ Object.extend(Squeak.Primitives.prototype, "JavaScriptPlugin", {
     return function evalSqueakBlock(/* arguments */) {
       var args = [];
       for (var i = 0; i < numArgs; i++) args.push(arguments[i]);
-      return new Promise(function (resolve, reject) {
-        function evalAsync() {
-          squeak.js_executeCallbackAsync(block, args, resolve, reject);
-        }
-        self.setTimeout(evalAsync, 0);
-      });
+      let res
+      squeak.js_executeCallback(block, args, (r) => (res = r), (e) => console.error(e))
+      return res
     };
   },
   js_executeCallbackAsync: function (block, args, resolve, reject) {

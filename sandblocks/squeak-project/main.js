@@ -14,8 +14,8 @@ import { List } from "../list.js";
 import { openComponentInWindow } from "../window.js";
 import {} from "../../view/widget-utils.js";
 
-import 'vm.plugins.javascript.js';
 import { runHeadless } from "../../external/squeak_headless_with_plugins_bundle.js";
+import {} from "../xr-project/vm.plugins.javascript.js";
 
 // Use RPC with:
 /*
