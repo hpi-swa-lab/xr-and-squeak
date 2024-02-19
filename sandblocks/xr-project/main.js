@@ -2,6 +2,12 @@ import { SqueakProject, ensureSystemChangeCallback, sqCompile } from "../squeak-
 import { button, h } from "../../view/widgets.js";
 import { useState } from "../../external/preact-hooks.mjs";
 
+// Note: In order to allow an XR environment, the site must be served over HTTPS.
+// Example using http-serve (TODO link):
+// http-server -p 3000 -S -C cert.pem -P http://localhost:9824
+// cert.pem is a self signed certificate.
+// http://localhost:9824 is the location of the XRRemoteService in Squeak.
+
 export class XRProject extends SqueakProject {
   static deserialize(options) {
     return new XRProject(options);

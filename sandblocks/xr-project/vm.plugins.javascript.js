@@ -75,6 +75,68 @@ Object.extend(Squeak.Primitives.prototype, "JavaScriptPlugin", {
     var stResult = this.makeStObject(jsResult, rcvr.sqClass);
     return this.popNandPushIfOK(argCount + 1, stResult);
   },
+  // A second version of this primitive is necessary because the signature is
+  // changed after loading code from the remote image. Done properly, the
+  // JSBridge code would already be part of the minimal image, making this
+  // duplication unnecessary.
+  js_primitiveDoUnderstand2: function (argCount) {
+    // This is JSObjectProxy's doesNotUnderstand handler.
+    // Property name is the selector up to first colon.
+    // If it is 'new', create an instance;
+    // otherwise if the property is a function, call it;
+    // otherwise if the property exists, get/set it;
+    // otherwise, fail.
+    var rcvr = this.stackNonInteger(2),
+      obj = this.js_objectOrGlobal(rcvr),
+      message = this.stackNonInteger(1).pointers,
+      selector = message[0].bytesAsString(),
+      args = message[1].pointers || [],
+      semaIdx = this.stackInteger(0),
+      isGlobal = !("jsObject" in rcvr),
+      jsResult = null;
+    try {
+      var propName = selector.match(/([^:]*)/)[0];
+      if (!isGlobal && propName === "new") {
+        if (args.length === 0) {
+          // new this()
+          jsResult = new obj();
+        } else {
+          // new this(arg0, arg1, ...)
+          var newArgs = [null].concat(this.js_fromStArray(args));
+          jsResult = new (Function.prototype.bind.apply(obj, newArgs))();
+        }
+      } else {
+        if (!(propName in obj))
+          return this.js_setError("Property not found: " + propName);
+        var propValue = obj[propName];
+        if (typeof propValue == "function" && (!isGlobal || args.length > 0)) {
+          // do this[selector](arg0, arg1, ...)
+          jsResult = propValue.apply(obj, this.js_fromStArray(args));
+        } else {
+          if (args.length == 0) {
+            // do this[selector]
+            jsResult = propValue;
+          } else if (args.length == 1) {
+            // do this[selector] = arg0
+            obj[propName] = this.js_fromStObject(args[0]);
+          } else {
+            // cannot do this[selector] = arg0, arg1, ...
+            return this.js_setError(
+              "Property " + propName + " is not a function"
+            );
+          }
+        }
+      }
+    } catch (err) {
+      return this.js_setError(err.message);
+    }
+    this.signalSemaphoreWithIndex(semaIdx);
+    this.js_stResult = this.makeStObject(jsResult, rcvr.sqClass);
+    return this.popNIfOK(argCount);
+  },
+  js_primitiveGetCallResult: function (argCount) {
+    return this.popNandPushIfOK(argCount + 1, this.js_stResult);
+  },
   js_primitiveAsString: function (argCount) {
     var obj = this.js_objectOrGlobal(this.stackNonInteger(0));
     return this.popNandPushIfOK(argCount + 1, this.makeStString(String(obj)));
@@ -119,21 +181,23 @@ Object.extend(Squeak.Primitives.prototype, "JavaScriptPlugin", {
   },
   js_primitiveInitCallbacks: function (argCount) {
     // set callback semaphore for js_fromStBlock()
-    this.js_callbackSema = this.stackInteger(0);
-    this.js_activeCallback = null;
+    this.js_syncCallbackSema = this.stackInteger(0);
+    this.js_activeCallbackStack = [];
     return this.popNIfOK(argCount);
   },
   js_primitiveGetActiveCallbackBlock: function (argCount) {
     // we're inside an active callback, get block
-    var callback = this.js_activeCallback;
-    if (!callback) return this.js_setError("No active callback");
+    if (this.js_activeCallbackStack.length === 0)
+      return this.js_setError("No active callback");
+    var callback = this.js_activeCallbackStack[this.js_activeCallbackStack.length - 1];
     return this.popNandPushIfOK(argCount + 1, callback.block);
   },
   js_primitiveGetActiveCallbackArgs: function (argCount) {
     // we're inside an active callback, get args
+    if (this.js_activeCallbackStack.length === 0)
+      return this.js_setError("No active callback");
     var proxyClass = this.stackNonInteger(argCount),
-      callback = this.js_activeCallback;
-    if (!callback) return this.js_setError("No active callback");
+      callback = this.js_activeCallbackStack[this.js_activeCallbackStack.length - 1];
     try {
       // make array with expected number of arguments for block
       var array = this.makeStArray(callback.args, proxyClass);
@@ -144,9 +208,9 @@ Object.extend(Squeak.Primitives.prototype, "JavaScriptPlugin", {
   },
   js_primitiveReturnFromCallback: function (argCount) {
     if (argCount !== 1) return false;
-    if (!this.js_activeCallback) return this.js_setError("No active callback");
+    if (this.js_activeCallbackStack.length === 0) return this.js_setError("No active callback");
     // set result so the interpret loop in js_executeCallback() terminates
-    this.js_activeCallback.result = this.vm.pop();
+    this.js_activeCallbackStack[this.js_activeCallbackStack.length - 1].result = this.vm.pop();
     this.vm.breakOut(); // stop interpreting ASAP
     return true;
   },
@@ -204,7 +268,7 @@ Object.extend(Squeak.Primitives.prototype, "JavaScriptPlugin", {
   },
   js_fromStBlock: function (block) {
     // create callback function from block or closure
-    if (!this.js_callbackSema)
+    if (!this.js_syncCallbackSema)
       // image recognizes error string and will try again
       throw Error("CallbackSemaphore not set");
     // block holds onto thisContext
@@ -217,39 +281,39 @@ Object.extend(Squeak.Primitives.prototype, "JavaScriptPlugin", {
       var args = [];
       for (var i = 0; i < numArgs; i++) args.push(arguments[i]);
       let res
-      squeak.js_executeCallback(block, args, (r) => (res = r), (e) => console.error(e))
+      squeak.js_executeSyncCallback(block, args, (r) => (res = r), (e) => console.error(e))
       return res
     };
   },
   js_executeCallbackAsync: function (block, args, resolve, reject) {
+    throw new Error("SqueakJS async callback nyi")
     var squeak = this;
     function again() {
       squeak.js_executeCallbackAsync(block, args, resolve, reject);
     }
     if (!this.js_activeCallback && !this.vm.frozen) {
-      this.js_executeCallback(block, args, resolve, reject);
+      this.js_executeAsyncCallback(block, args, resolve, reject);
     } else {
       self.setTimeout(again, 0);
     }
   },
-  js_executeCallback: function (block, args, resolve, reject) {
-    if (this.js_activeCallback)
-      return console.error("Callback: already active");
+  js_executeSyncCallback: function (block, args, resolve, reject) {
     // make block and args available to primitiveGetActiveCallback
-    this.js_activeCallback = {
+    var callback = {
       block: block,
       args: args,
       result: null,
     };
+    this.js_activeCallbackStack.push(callback);
     // switch to callback handler process ASAP
-    this.signalSemaphoreWithIndex(this.js_callbackSema);
+    this.signalSemaphoreWithIndex(this.js_syncCallbackSema);
     this.vm.forceInterruptCheck();
     // interpret until primitiveReturnFromCallback sets result
-    var timeout = Date.now() + 500;
-    while (Date.now() < timeout && !this.js_activeCallback.result)
+    var timeout = Date.now() + Number.POSITIVE_INFINITY;
+    while (Date.now() < timeout && !callback.result)
       this.vm.interpret();
-    var result = this.js_activeCallback.result;
-    this.js_activeCallback = null;
+    var result = callback.result;
+    this.js_activeCallbackStack.pop();
     if (result) {
       // return result to JS caller as JS object or string
       try {
@@ -260,6 +324,8 @@ Object.extend(Squeak.Primitives.prototype, "JavaScriptPlugin", {
     } else {
       reject(Error("SqueakJS timeout"));
     }
+  },
+  js_executeAsyncCallback: function (block, args, resolve, reject) {
   },
   js_objectOrGlobal: function (sqObject) {
     return "jsObject" in sqObject ? sqObject.jsObject : self;
