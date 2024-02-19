@@ -8,6 +8,8 @@ import {
 } from "../../external/preact-hooks.mjs";
 import htm from "../../external/htm.mjs";
 import { Component, createContext, createRef } from "../../external/preact.mjs";
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+mermaid.initialize({ startOnLoad: false });
 const html = htm.bind(h);
 
 /** actor to column map */
@@ -788,6 +790,47 @@ const Topbar = ({
   `;
 };
 
+const StateMachines = () => {
+    const config = useContext(DiagramConfig);
+    const { actors, stateSpaceByActor } = config;
+    useEffect(() => {
+        mermaid.run({
+            querySelector: ".mermaid",
+        })
+    }, [config])
+
+    // take transitions from stateSpaceByActor and create state machines using mermaid tags
+
+    const stateMachines = actors.map((actor) => {
+        if (actor === "$messages") return "";
+        const transitions = stateSpaceByActor[actor];
+        const transitionsAsMermaid = Object.entries(transitions).map(
+            ([from, tos]) => {
+                const tosAsMermaid = Array.from(tos)
+                    .map((to) => `  ${from} --> ${to}`)
+                    .join("\n")
+                return tosAsMermaid
+            },
+        ).join("\n");
+        return `stateDiagram-v2
+    ${transitionsAsMermaid}`;
+    });
+
+    return html`
+    <div class="gridWrapper" style=${{ width: "100%" }}>
+        ${stateMachines.map(
+        (sm, i) =>
+            sm
+                ? html`<div style=${{ ...gridElementStyle(i, 0) }}>
+                        <h4>${actors[i]}</h4>
+                        <div class="mermaid">${sm}</pre>
+                    </div>`
+                : html`<div></div>`,
+    )}
+    </div >
+    `;
+}
+
 const State = ({ graph, initNodes }) => {
     const [currNode, setCurrNode] = useState(graph.nodes.get(initNodes[0].id));
     const [previewEdge, setPreviewEdge] = useState(null);
@@ -837,7 +880,8 @@ const State = ({ graph, initNodes }) => {
       <${InitStateSelection} />
       <${Topbar} ...${props} />
       <${Diagram} ...${props} />
-    </div>
+      <${StateMachines} />
+    </div >
   `;
 };
 
@@ -866,6 +910,31 @@ const GraphProvider = ({ spec }) => {
         return m;
     };
     const outgoingEdges = computeOutgoingEdges();
+
+    const computeStateSpaceOf = (actor) => {
+        const stateTransitionsTransactionManager = {}
+        for (const e of edges) {
+            const varStateSpaceBefore = spec.transformation.actorSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.from), query)).flat();
+            const varStateSpaceAfter = spec.transformation.actorSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.to), query)).flat();
+            if (!varStateSpaceBefore || !varStateSpaceAfter) {
+                continue;
+            }
+            const beforeJson = JSON.stringify(varStateSpaceBefore);
+            const afterJson = JSON.stringify(varStateSpaceAfter);
+
+            if (stateTransitionsTransactionManager[beforeJson] === undefined) {
+                stateTransitionsTransactionManager[beforeJson] = new Set([afterJson]);
+            } else {
+                stateTransitionsTransactionManager[beforeJson].add(afterJson);
+            }
+        }
+        return stateTransitionsTransactionManager
+    }
+    const stateSpaceByActor = spec.transformation.actors.reduce((acc, actor) => {
+        if (!spec.transformation.actorSelectors[actor]) return acc;
+        acc[actor] = computeStateSpaceOf(actor)
+        return acc
+    }, {})
 
     const graph = { nodes, edges, outgoingEdges, nodesList };
 
@@ -901,6 +970,7 @@ const GraphProvider = ({ spec }) => {
             (acc, a, i) => acc.set(a, i + 1),
             new Map(),
         ),
+        stateSpaceByActor
     };
 
     return [
