@@ -1,3 +1,4 @@
 OrderedDictionary {
-	'sandblocks/xr-project/squeak/SqueakXR' : #SquotTonelSerializer
+	'sandblocks/xr-project/squeak/SqueakXR' : #SquotTonelSerializer,
+	'sandblocks/xr-project/squeak/JSBridge' : #SquotTonelSerializer
 }

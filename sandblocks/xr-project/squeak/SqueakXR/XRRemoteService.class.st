@@ -51,9 +51,19 @@ XRRemoteService >> postSource: aWebRequest [
 { #category : #'as yet unclassified' }
 XRRemoteService >> source [
 
+	^ (#(SqueakXR 'JSBridge-Core') collect: [:category | self sourceFor: category])
+		reduce: [:acc :cur |
+			(acc at: #extensionMethods) addAll: (cur at: #extensionMethods).
+			(acc at: #packageSources) addAll: (cur at: #packageSources).
+			acc]
+]
+
+{ #category : #'as yet unclassified' }
+XRRemoteService >> sourceFor: aCategory [
+
 	| extensionMethods packageSources |
 	
-	packageSources := (SystemOrganization superclassOrder: 'SqueakXR') collect: [:cls |
+	packageSources := (SystemOrganization superclassOrder: aCategory) collect: [:cls |
 		{
 			#name -> (cls name).
 			#definition -> (cls definition).
@@ -63,7 +73,7 @@ XRRemoteService >> source [
 				cls class sourceCodeAt: selector])
 		} as: Dictionary].
 	
-	extensionMethods := ((SystemNavigation new allExtensionMethodsOfPackage: 'SqueakXR')
+	extensionMethods := ((SystemNavigation new allExtensionMethodsOfPackage: aCategory)
 		groupBy: #actualClass) associations
 			collect: [:classAndMethods |
 				(classAndMethods key name) -> (classAndMethods value collect: #sourceString)]
