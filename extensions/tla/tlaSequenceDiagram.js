@@ -88,52 +88,76 @@ function nestedKeys(varTree) {
  *  msgs: string[]
  * }}
  */
-function edgeToVizData({ reads, writes, label }, currNode, nextNode) {
-    const { actorSelectors } = useContext(DiagramConfig)
+function edgeToVizData({ reads, writes, label }) {
+    const { actorSelectors, messagesSelector } = useContext(DiagramConfig)
 
     const actorsFreqs = []
     for (const actor in actorSelectors) {
         // disambiguate between reads and writes
         const onlyReads = { reads }
         const readFreq = actorSelectors[actor].flatMap(s => jmespath.search(onlyReads, s) ?? []).length
+        const receivedAsyncMessages = jmespath.search(onlyReads, messagesSelector)
 
         const onlyWrites = { writes }
         const writeFreq = actorSelectors[actor].flatMap(s => jmespath.search(onlyWrites, s) ?? []).length
+        const sentAsyncMessages = jmespath.search(onlyWrites, messagesSelector)
 
         const sum = readFreq + writeFreq
-        actorsFreqs.push({ actor, readFreq, writeFreq, sum })
+        actorsFreqs.push({ actor, readFreq, writeFreq, sum, receivedAsyncMessages, sentAsyncMessages })
     }
 
     // TODO what should we do with unmapped vars?
     // TODO what if only unmapped vars? or one action not mapped?
 
     // this is the actor where the lifeline is activated
-    const activatedActor = actorsFreqs.reduce((acc, el) => el.sum > acc.sum ? el : acc).actor
+    const activated = actorsFreqs.reduce((acc, el) => el.sum > acc.sum ? el : acc)
+    const activatedActor = activated.actor
     const actorFreqsWithoutActivated = actorsFreqs.filter(({ actor }) => actor !== activatedActor)
 
-    const toMsgs = (acc, { actor, readFreq, writeFreq }) => {
+    const toSyncMsgs = (acc, { actor, readFreq, writeFreq }) => {
+        // we interpret reads and writes as synchronous messages:
         if (readFreq > 0) {
-            acc.push({ to: actor, type: "read", label: `read` })
+            acc.push({ to: actor, type: "receive", label: `read` })
         }
         if (writeFreq > 0) {
-            acc.push({ to: actor, type: "write", label: `write` })
+            acc.push({ to: actor, type: "send", label: `write` })
         }
         return acc
     }
 
+    const getAsyncMsgsOf = ({ sentAsyncMessages, receivedAsyncMessages }) => {
+        // we interpret messages over sets as asynchronous messages:
+        const asyncMsgs = []
+        if (sentAsyncMessages.length > 0) {
+            for (const msg of sentAsyncMessages) {
+                asyncMsgs.push({ from: activatedActor, type: "async-send", label: "", key: JSON.stringify(msg) })
+            }
+        }
+        if (receivedAsyncMessages.length > 0) {
+            for (const msg of receivedAsyncMessages) {
+                asyncMsgs.push({ to: activatedActor, type: "async-receive", label: "", key: JSON.stringify(msg) })
+            }
+        }
+        return asyncMsgs
+    }
+
     // correct the line below to set inital propery
-    const msgs = actorFreqsWithoutActivated.reduce(toMsgs, [])
+    const msgs = [
+        ...actorFreqsWithoutActivated.reduce(toSyncMsgs, []),
+        ...getAsyncMsgsOf(activated),
+    ]
 
     return { label, actor: activatedActor, msgs }
 }
 
-const Lifeline = ({ numRows, column }) => {
+const Lifeline = ({ numRows, column, label }) => {
     const lifelineStyle = {
         gridColumn: column,
         gridRow: `2 / span ${numRows}`,
         width: "50%",
         height: "100%",
         borderRight: "1px solid grey",
+        visibility: label === "$messages" ? "hidden" : "visible",
     }
 
     return html`<div style=${lifelineStyle}></div>`
@@ -156,6 +180,7 @@ const Actor = ({ row, col, label }) => {
         height: "min-content",
         justifySelf: "center",
         alignSelf: "end",
+        visibility: label === "$messages" ? "hidden" : "visible",
     }
 
     return html`
@@ -195,8 +220,9 @@ class LinePositioning extends Component {
     refFrom = createRef()
     refTo = createRef()
 
-    getLabelIdentifier() {
-        return `${this.props.fromCol}-${this.props.toCol}-${this.props.row}-${this.props.label}`
+    constructor(props) {
+        super(props)
+        this.state = { line: null }
     }
 
     calcLineData() {
@@ -210,13 +236,12 @@ class LinePositioning extends Component {
         const yOffsetTo = this.refTo.current.offsetTop
         const xOffsetTo = this.refTo.current.offsetLeft
 
-        const { width: widthFrom, height: heightFrom } = this.refFrom.current.getBoundingClientRect()
+        const { width: widthFrom, height: heightFrom } = this.refFrom.current.getBoundingClientRect() // TODO also to for refTo
 
         const xOffsetCenter = (widthFrom / 2)
         // in action we have a top margin of 12px such that there's some gap between
         // successive actions, which we need to account for
         const yOffset = (heightFrom - delayActionStartPx) * this.props.yRelativePosition
-
 
         const line = {
             xFrom: xOffsetFrom + xOffsetCenter,
@@ -224,31 +249,35 @@ class LinePositioning extends Component {
             xTo: xOffsetTo + xOffsetCenter,
             yTo: yOffsetTo + yOffset + delayActionStartPx,
             label: this.props.label,
-            key: this.getLabelIdentifier(),
             type: this.props.type,
+            key: this.props.key
         }
         return line
     }
 
     componentDidMount() {
         const line = this.calcLineData()
-        this.props.setLines(lines => [...lines, line])
+        this.setState({ line })
     }
 
-    componentWillUnmount() {
-        this.props.setLines(lines => lines.filter(l => l.key !== this.getLabelIdentifier()))
+    componentDidUpdate(prevProps) {
+        if (this.props.key !== prevProps.key) {
+            const line = this.calcLineData()
+            this.setState({ line })
+        }
     }
 
     /** yRelativePosition is the percentage [0,1] where the message starts and ends */
-    render({ fromCol, toCol, row, label, yRelativePosition, setLines }) {
+    render({ fromCol, toCol, fromRow, toRow, label, yRelativePosition, setLines, key }) {
         return html`
-            <div ref=${this.refFrom} style=${gridElementStyle(fromCol, row)}></div>
-            <div ref=${this.refTo} style=${gridElementStyle(toCol, row)}></div>
+            <div ref=${this.refFrom} style=${gridElementStyle(fromCol, fromRow)}></div>
+            <div ref=${this.refTo} style=${gridElementStyle(toCol, toRow)}></div>
+            ${this.state?.line ? html`<${SVGArrow} ...${this.state.line} />` : ""}
             `
     }
 }
 
-const MessageArrows = ({ lines, numCols, numRows }) => {
+const SVGArrow = ({ xFrom, yFrom, xTo, yTo, label, type }) => {
     const svgStyle = {
         position: "absolute",
         width: "100%",
@@ -285,12 +314,10 @@ const MessageArrows = ({ lines, numCols, numRows }) => {
                 </marker>
         </defs>
         <!-- add line and text in the middle of it -->
-        ${lines.map(({ xFrom, yFrom, xTo, yTo, label, type }) => html`
         <g>
             <text style=${textStyle} x=${xFrom + (xTo - xFrom) / 2} y=${yFrom + (yTo - yFrom) / 2 - 8}>${label}</text>
             <line style=${lineStyle} x1=${xFrom} y1=${yFrom} x2=${xTo} y2=${yTo} />
         </g>
-        `)}
     </svg>`
 }
 
@@ -359,7 +386,7 @@ const ActionInspector = ({ actionVizData, startRow, close }) => {
     `
 }
 
-const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
+const MessagesPositionsCompution = ({ vizData, setLines }) => {
     const { a2c } = useContext(DiagramConfig)
 
     // depending on if messages are read or write messages,
@@ -367,33 +394,74 @@ const MessagesPositionsCompution = ({ vizData, lines, setLines }) => {
     const computeMessagePositions = ({ actor, msgs }, i) => {
         const row = i + 2
 
-        const readMsgs = msgs.filter(m => m.type !== "write")
-        const writeMsgs = msgs.filter(m => m.type === "write")
-
-        const readMsgPositions = readMsgs.map((m, j) => {
+        const syncRcvMsgs = msgs.filter(m => m.type === "receive")
+        const sycnRcvMsgPositions = syncRcvMsgs.map((m, j) => {
             const fromCol = a2c.get(m.to)
             const toCol = a2c.get(actor)
             // reads start at the beginning up to the middle
-            const yRelativePosition = j / readMsgs.length / 2
-            return { fromCol, toCol, row, label: m.label, yRelativePosition, type: m.type }
+            const yRelativePosition = j / syncRcvMsgs.length / 2
+            return { fromCol, toCol, fromRow: row, toRow: row, label: m.label, yRelativePosition, type: m.type }
         })
 
-        const writeMsgPositions = writeMsgs.map((m, j) => {
+        const syncSentMsgs = msgs.filter(m => m.type === "send")
+        const syncSentMsgPositions = syncSentMsgs.map((m, j) => {
             const fromCol = a2c.get(actor)
             const toCol = a2c.get(m.to)
             // writes start at the end up to the middle
-            const yRelativePosition = 1.0 - j / writeMsgs.length / 2
-            return { fromCol, toCol, row, label: m.label, yRelativePosition, type: m.type }
+            const yRelativePosition = 1.0 - j / syncSentMsgs.length / 2
+            return { fromCol, toCol, fromRow: row, toRow: row, label: m.label, yRelativePosition, type: m.type }
         })
 
-        const msgsWithoutSelfReferences = [...readMsgPositions, ...writeMsgPositions].filter(m => m.fromCol !== m.toCol)
+        const msgsWithoutSelfReferences = [...sycnRcvMsgPositions, ...syncSentMsgPositions].filter(m => m.fromCol !== m.toCol)
 
         return msgsWithoutSelfReferences
     }
+    const syncMsgs = vizData.flatMap(computeMessagePositions)
 
-    return vizData
-        .flatMap(computeMessagePositions)
-        .map((p) => html`<${LinePositioning} ...${p} lines=${lines} setLines=${setLines} />`)
+    const asyncMsgs = []
+    for (let i = 0; i < vizData.length; i++) {
+        const fromRow = i + 2
+        const future = vizData.slice(i + 1, vizData.length)
+        const sentMsgs = vizData[i].msgs.filter(m => m.type === "async-send")
+        for (const msg of sentMsgs) {
+            // for each sent message we gather all received msgs
+            const receivedMsgs = []
+            future.forEach((d, j) => {
+                const rcvMsgs = d.msgs.filter(m => m.type === "async-receive")
+                for (const m of rcvMsgs) {
+                    if (m.key === msg.key) {
+                        receivedMsgs.push({ ...m, toRow: i + 1 + j + 2 })
+                    }
+                }
+            })
+
+            // each sentMsg->receivedMsg pair is a line
+            for (const rcvMsg of receivedMsgs) {
+                const fromCol = a2c.get(vizData[i].actor)
+                const toCol = a2c.get(rcvMsg.to)
+                const yRelativePosition = 0.5
+                asyncMsgs.push({ fromCol, toCol, fromRow, toRow: rcvMsg.toRow, label: "", yRelativePosition, type: "async-success" })
+            }
+            if (receivedMsgs.length === 0) {
+                // if no received message, we still want to draw a line into the reserved space for messages
+                const fromCol = a2c.get(vizData[i].actor)
+                const toCol = a2c.get("$messages")
+                const yRelativePosition = 0.5
+                asyncMsgs.push({ fromCol, toCol, fromRow, toRow: fromRow, label: "", yRelativePosition, type: "async-pending" })
+            }
+        }
+    }
+
+    const toKey = (m) => `${m.fromCol}-${m.toCol}-${m.fromRow}-${m.toRow}-${m.label}-${m.yRelativePosition}`
+
+    return [...syncMsgs, ...asyncMsgs]
+        .map((m) => html`<${LinePositioning} ...${m} key=${toKey(m)} />`)
+}
+
+const Messages = ({ vizData }) => {
+    return html`
+    <${MessagesPositionsCompution} vizData=${vizData} />
+    `
 }
 
 const EdgePickerButton = (props) => {
@@ -411,9 +479,6 @@ const EdgePickerButton = (props) => {
 
 const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCurrNode, setPreviewEdge, vizData }) => {
     const { a2c, actors } = useContext(DiagramConfig)
-
-    const [lines, setLines] = useState([])
-
     const [inspectEdge, setInspectEdge] = useState(null)
 
     const toggle = (i) => {
@@ -440,10 +505,9 @@ const Diagram = ({ graph, prevEdges, setPrevEdges, previewEdge, currNode, setCur
             <div style=${{ padding: "16px 32px 16px 16px", display: "flex", flex: "1 0 0", overflowY: "scroll" }}>
                 <div class="gridWrapper" style=${{ width: "100%" }}>
                     ${actors.map(a => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`)}
-                    ${actors.map(a => html`<${Lifeline} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
+                    ${actors.map(a => html`<${Lifeline} label=${a} numRows=${vizData.length + 1} column=${a2c.get(a)} />`)}
                     ${vizData.map((d, i) => html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d}/>`)}
-                    <${MessagesPositionsCompution} vizData=${vizData} lines=${lines} setLines=${setLines} />
-                    <${MessageArrows} lines=${lines} numCols=${actors.length} numRows=${vizData.length + 1} />
+                    <${Messages} vizData=${vizData} />
                     <!-- last row with fixed height to still show some of the lifeline -->
                     ${actors.map((_, i) => html`<div style=${{ ...gridElementStyle(i + 1, vizData.length + 2), height: "32px" }}></div>`)}
                     ${vizData.map((_, i) => html`<div style=${{ gridColumn: `1 / span ${actors.length}`, gridRow: `${i + 2}`, zIndex: 3 }} class="field" onClick=${() => toggle(i)}></div>`)}
@@ -476,7 +540,7 @@ const Topbar = ({ graph, prevEdges, currNode, setPreviewEdge, setCurrNode, setPr
         }
     }
 
-    const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e]) => edgeToVizData(e, currNode, graph.nodes.get(e.to)).actor === a))
+    const nextActionsPerActorIndex = actors.map(a => nextEdges.filter(([_, e], i, arr) => edgeToVizData(e).actor === a))
 
     const keysMappingToActors = nestedKeys(varToActor)
     // TODO what about keys not mapping to actors
@@ -561,10 +625,7 @@ const State = ({ graph, initNodes }) => {
 
 
     const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges
-
-    const prevNodes = edges.map(e => graph.nodes.get(e.from))
-    const nextNodes = edges.map(e => graph.nodes.get(e.to))
-    const vizData = edges.map((e, i) => edgeToVizData(e, prevNodes[i], nextNodes[i]))
+    const vizData = edges.map(edgeToVizData)
 
     const props = { graph, prevEdges, setPrevEdges, previewEdge, setPreviewEdge, currNode, setCurrNode, vizData }
 
@@ -647,7 +708,7 @@ const GraphProvider = ({ spec }) => {
     const config = {
         actors: spec.transformation.actors,
         actorSelectors: spec.transformation.actorSelectors,
-        messageActors: spec.transformation.messageActors ?? [],
+        messagesSelector: spec.transformation.messagesSelector ?? "",
         a2c: spec.transformation.actors.reduce((acc, a, i) => acc.set(a, i + 1), new Map())
     }
 
