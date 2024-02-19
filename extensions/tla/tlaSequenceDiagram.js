@@ -217,7 +217,7 @@ const Actor = ({ row, col, label }) => {
     return html` <div style=${actorStyle}>${label}</div> `;
 };
 
-const delayActionStartPx = 24;
+const delayActionStartPx = 12;
 const actionLineWidth = 3;
 /** an action is the point where the diagram's lifeline is activated */
 const Action = ({ row, col, label, msgs }) => {
@@ -259,28 +259,29 @@ class LinePositioning extends Component {
             return;
         }
 
-        const yOffsetFrom = this.refFrom.current.offsetTop;
-        const xOffsetFrom = this.refFrom.current.offsetLeft;
-        const yOffsetTo = this.refTo.current.offsetTop;
-        const xOffsetTo = this.refTo.current.offsetLeft;
+        const yStartFrom = this.refFrom.current.offsetTop;
+        const xStartFrom = this.refFrom.current.offsetLeft;
+        const yStartTo = this.refTo.current.offsetTop;
+        const xStartTo = this.refTo.current.offsetLeft;
 
         const { width: widthFrom, height: heightFrom } =
-            this.refFrom.current.getBoundingClientRect(); // TODO also to for refTo
+            this.refFrom.current.getBoundingClientRect();
 
-        const xOffsetCenter = widthFrom / 2;
-        // in action we have a top margin of 12px such that there's some gap between
-        // successive actions, which we need to account for
-        const yOffset =
-            (heightFrom - delayActionStartPx) * this.props.yRelativePosition;
+        const { width: widthTo, height: heightTo } =
+            this.refFrom.current.getBoundingClientRect();
+
+        // in action we have a top margin such that there's some gap between
+        // successive actions, which we need to subtract because its included in heightFrom and heightTo
+        const yOffsetMessageSend = (heightFrom - delayActionStartPx) * this.props.yRelativePositionFrom;
+        const yOffsetMessageRcv = (heightFrom - delayActionStartPx) * this.props.yRelativePositionTo;
 
         const line = {
-            xFrom: xOffsetFrom + xOffsetCenter,
-            yFrom: yOffsetFrom + yOffset + delayActionStartPx,
-            xTo: xOffsetTo + xOffsetCenter,
-            yTo: yOffsetTo + yOffset + delayActionStartPx,
+            xFrom: xStartFrom + (widthFrom / 2),
+            yFrom: yStartFrom + yOffsetMessageSend + delayActionStartPx,
+            xTo: xStartTo + (widthTo / 2),
+            yTo: yStartTo + yOffsetMessageRcv + delayActionStartPx,
             label: this.props.label,
             type: this.props.type,
-            key: this.props.key,
         };
         return line;
     }
@@ -481,7 +482,8 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
                 fromRow: row,
                 toRow: row,
                 label: m.label,
-                yRelativePosition,
+                yRelativePositionFrom: yRelativePosition,
+                yRelativePositionTo: yRelativePosition,
                 type: m.type,
             };
         });
@@ -523,7 +525,8 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
                     fromRow,
                     toRow: rcvMsg.toRow,
                     label: "",
-                    yRelativePosition,
+                    yRelativePositionFrom: 1.0, // start at bottom of sender
+                    yRelativePositionTo: 0,
                     type: "async-success",
                 });
             }
@@ -531,14 +534,14 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
                 // if no received message, we still want to draw a line into the reserved space for messages
                 const fromCol = a2c.get(vizData[i].actor);
                 const toCol = a2c.get("$messages");
-                const yRelativePosition = 0.5;
                 asyncMsgs.push({
                     fromCol,
                     toCol,
                     fromRow,
                     toRow: fromRow,
                     label: "",
-                    yRelativePosition,
+                    yRelativePositionFrom: 1.0,
+                    yRelativePositionTo: 1.0,
                     type: "async-pending",
                 });
             }
@@ -546,7 +549,7 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
     }
 
     const toKey = (m) =>
-        `${m.fromCol}-${m.toCol}-${m.fromRow}-${m.toRow}-${m.label}-${m.yRelativePosition}`;
+        `${m.fromCol}-${m.toCol}-${m.fromRow}-${m.toRow}-${m.label}-${m.yRelativePositionFrom}-${m.yRelativePositionTo}`;
 
     return [...syncMsgs, ...asyncMsgs].map(
         (m) => html`<${LinePositioning} ...${m} key=${toKey(m)} />`,
@@ -729,7 +732,7 @@ const Topbar = ({
 
     return html`
     <div style=${diagramContainerStyle}>
-      <div class="gridWrapper" style=${{ gridGap: "16px" }}>
+      <!-- <div class="gridWrapper" style=${{ gridGap: "16px" }}>
         ${actors.map(
         (a, i) =>
             html` <div
@@ -754,7 +757,7 @@ const Topbar = ({
               </table>
             </div>`,
     )}
-      </div>
+      </div> -->
       <h4>Choose Next Action</h4>
       <div class="gridWrapper">
         ${nextActionsPerActorIndex.map(
