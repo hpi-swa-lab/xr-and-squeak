@@ -684,17 +684,17 @@ const Topbar = ({
             "rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px",
     };
 
-    const nextEdges = Object.entries(graph.outgoingEdges.get(currNode.id));
+    const nextEdges = graph.outgoingEdges.get(currNode.id);
 
-    const selectNodeFn = ([to, e]) => {
+    const selectNodeFn = (e) => {
         return () => {
-            setCurrNode(graph.nodes.get(to));
+            setCurrNode(graph.nodes.get(e.to));
             setPrevEdges([...prevEdges, e]);
         };
     };
 
     const nextActionsPerActorIndex = actors.map((a) =>
-        nextEdges.filter(([_, e], i, arr) => edgeToVizData(e).actor === a),
+        nextEdges.filter(e => edgeToVizData(e).actor === a),
     );
 
     const keysMappingToActors = nestedKeys(varToActor);
@@ -771,9 +771,9 @@ const Topbar = ({
             }}
             >
               ${actions.map(
-                ([to, e]) => html`
+                (e) => html`
                         <${EdgePickerButton} 
-                            onClick=${selectNodeFn([to, e])}
+                            onClick=${selectNodeFn(e)}
                             onMouseEnter=${() => setPreviewEdge(e)}
                             onMouseLeave=${() => setPreviewEdge(null)}
                             >
@@ -853,17 +853,14 @@ const GraphProvider = ({ spec }) => {
     const computeOutgoingEdges = () => {
         const m = new Map();
         for (const n of nodesList) {
-            m.set(n.id, {});
+            m.set(n.id, []);
         }
 
         for (const e of edges) {
-            const outgoing = m.get(e.from);
-            if (outgoing[e.to]) {
-                // TODO here we discard any edges that have the same transition
-                // this would be cases where the another action has the same result for this state
-                continue;
-            }
-            outgoing[e.to] = e;
+            const outgoingFrom = m.get(e.from);
+            // TODO here we discard any edges that have the same transition
+            // this would be cases where the another action has the same result for this state, i.e. stuttering steps
+            outgoingFrom.push(e);
         }
 
         return m;
