@@ -682,8 +682,6 @@ const Topbar = ({
 
     const diagramContainerStyle = {
         padding: "16px 32px 16px 16px",
-        boxShadow:
-            "rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px",
     };
 
     const nextEdges = graph.outgoingEdges.get(currNode.id);
@@ -790,18 +788,12 @@ const Topbar = ({
   `;
 };
 
-const StateMachines = () => {
+const StateMachine = ({ actor }) => {
     const config = useContext(DiagramConfig);
-    const { actors, stateSpaceByActor } = config;
-    useEffect(() => {
-        mermaid.run({
-            querySelector: ".mermaid",
-        })
-    }, [config])
+    const { stateSpaceByActor } = config;
+    const mermaidContainerRef = useRef(null);
 
-    // take transitions from stateSpaceByActor and create state machines using mermaid tags
-
-    const stateMachines = actors.map((actor) => {
+    const getMermaidOutput = () => {
         if (actor === "$messages") return "";
         const transitions = stateSpaceByActor[actor];
 
@@ -823,34 +815,43 @@ const StateMachines = () => {
             return tosAsMermaid
         }
         ).join("\n");
-        return `stateDiagram-v2
+        const mermaidOutput = `stateDiagram-v2
     direction TB
     classDef defaultStateStyle fill:none,color:black,stroke-width:1px,stroke:black,font-size:1em
+    classDef selectedStateStyle fill:grey,color:black,stroke-width:1px,stroke:black,font-size:1em
 ${stylesClassesMermaid}
 ${stateDefsMermaid}
 
 ${transitionsAsMermaid}`;
-    });
+        return mermaidOutput
+    }
+
+    useEffect(() => {
+        if (mermaidContainerRef.current) {
+            // mermaid adds a "data-processed" attribute to the diagram after processing it
+            // after processing, the innerHTML will be svg elements, so we
+            // reset it
+            mermaidContainerRef.current.removeAttribute("data-processed");
+            mermaidContainerRef.current.innerHTML = getMermaidOutput()
+        }
+        mermaid.run({
+            querySelector: ".mermaid",
+        })
+    }, [config, actor])
 
     return html`
-    <div class="gridWrapper" style=${{ width: "100%" }}>
-        ${stateMachines.map(
-        (sm, i) =>
-            sm
-                ? html`<div style=${{ ...gridElementStyle(i + 1, 0) }}>
-                        <h4>${actors[i]}</h4>
-                        <div class="mermaid">${sm}</pre>
-                    </div>`
-                : html`<div style=${{ ...gridElementStyle(i + 1, 0) }}></div>`,
-    )}
-    </div >
-    `;
+    <div style=${{ width: "100%" }}>
+        <div class="mermaid" ref=${mermaidContainerRef}></div>    
+    </div >`;
 }
+
 
 const State = ({ graph, initNodes }) => {
     const [currNode, setCurrNode] = useState(graph.nodes.get(initNodes[0].id));
     const [previewEdge, setPreviewEdge] = useState(null);
     const [prevEdges, setPrevEdges] = useState([]);
+    const config = useContext(DiagramConfig);
+    const [selectedActor, setSelectedActor] = useState(config.actors[0] === "$messages" ? config.actors[1] : config.actors[0]);
 
     const containerStyle = {
         display: "flex",
@@ -879,25 +880,50 @@ const State = ({ graph, initNodes }) => {
             setPrevEdges([]);
         };
 
-        return [
-            html`<label for="init">Choose initial state:</label>`,
-            html`<select
-        id="init"
-        value=${currNode.id}
-        onChange=${(e) => resetInitNode(e.target.value)}
-      >
-        ${initNodes.map((n) => html`<option value=${n.id}>${n.id}</option>`)}
-      </select>`,
-        ];
+        return html`
+        <div style=${{ padding: "4px 4px 4px 16px" }}>
+            <label for="init">Choose initial state:</label>
+            <select
+                id="init"
+                value=${currNode.id}
+                onChange=${(e) => resetInitNode(e.target.value)}
+            >
+                ${initNodes.map((n) => html`<option value=${n.id}>${n.id}</option>`)}
+            </select>
+        </div>`
     };
 
+    const ActorSelector = () => {
+        return html`
+        <div style=${{ padding: "4px 4px 4px 16px" }}>
+            <label for="actor">Choose actor:</label>
+            <select
+                id="actor"
+                value=${selectedActor}
+                onChange=${(e) => setSelectedActor(e.target.value)}
+            >
+                ${config.actors.map((a) => html`<option value=${a}>${a}</option>`)}
+            </select>
+        </div>`
+    }
+
+    // a grid layout where the right column shows the StateMachines component
+    // and the remaining space shows the rest
     return html`
     <div style=${containerStyle}>
-      <${InitStateSelection} />
-      <${Topbar} ...${props} />
-      <${Diagram} ...${props} />
-      <${StateMachines} />
-    </div >
+        <div style=${{ display: "grid", gridTemplateColumns: "2fr 1fr", height: "100%" }}>
+            <div style=${containerStyle}>
+                <${InitStateSelection} />
+                <${Topbar} ...${props} />
+                <${Diagram} ...${props} />
+            </div >
+            <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0", padding: "0 16px 0 0" }}>
+                <h4>${selectedActor}</h4>
+                <${ActorSelector} />
+                <${StateMachine} actor=${selectedActor}/>
+            </div>
+        </div>
+    </div>
   `;
 };
 
@@ -961,30 +987,6 @@ const GraphProvider = ({ spec }) => {
     }, {})
 
     const graph = { nodes, edges, outgoingEdges, nodesList };
-
-    const mergeTrees = (acc, n) => {
-        const varsTree = n.vars;
-
-        const dfs = (accChild, child) => {
-            if (Array.isArray(child) || typeof child !== "object") {
-                return;
-            }
-
-            for (const k of Object.keys(child)) {
-                if (accChild[k] === undefined) {
-                    accChild[k] = {};
-                }
-                dfs(accChild[k], child[k]);
-            }
-        };
-
-        dfs(acc, varsTree);
-
-        return acc;
-    };
-
-    const allVarScopes = graph.nodesList.reduce(mergeTrees, {});
-    console.log(allVarScopes);
 
     const config = {
         actors: spec.transformation.actors,
