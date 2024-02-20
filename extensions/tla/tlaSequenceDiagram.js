@@ -804,16 +804,32 @@ const StateMachines = () => {
     const stateMachines = actors.map((actor) => {
         if (actor === "$messages") return "";
         const transitions = stateSpaceByActor[actor];
-        const transitionsAsMermaid = Object.entries(transitions).map(
-            ([from, tos]) => {
-                const tosAsMermaid = Array.from(tos)
-                    .map((to) => `  ${from} --> ${to}`)
-                    .join("\n")
-                return tosAsMermaid
-            },
+
+        const keyStates = Object.keys(transitions)
+        const transitionStates = Object.values(transitions).flatMap((tos) => Array.from(tos))
+        const states = [...new Set([...keyStates, ...transitionStates])]
+        const aliasByState = states.reduce((acc, state, i) => {
+            acc[state] = i + 1
+            return acc
+        }, {})
+        const stateDefsMermaid = states.map((state, i) => `  state "${state}" as ${aliasByState[state]}`).join("\n")
+
+        const stylesClassesMermaid = states.map((state, i) => `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
+
+        const transitionsAsMermaid = Object.entries(transitions).map(([from, tos]) => {
+            const tosAsMermaid = Array.from(tos)
+                .map((to) => `  ${aliasByState[from]} --> ${aliasByState[to]}`)
+                .join("\n")
+            return tosAsMermaid
+        }
         ).join("\n");
         return `stateDiagram-v2
-    ${transitionsAsMermaid}`;
+    direction TB
+    classDef defaultStateStyle fill:none,color:black,stroke-width:1px,stroke:black,font-size:1em
+${stylesClassesMermaid}
+${stateDefsMermaid}
+
+${transitionsAsMermaid}`;
     });
 
     return html`
@@ -821,11 +837,11 @@ const StateMachines = () => {
         ${stateMachines.map(
         (sm, i) =>
             sm
-                ? html`<div style=${{ ...gridElementStyle(i, 0) }}>
+                ? html`<div style=${{ ...gridElementStyle(i + 1, 0) }}>
                         <h4>${actors[i]}</h4>
                         <div class="mermaid">${sm}</pre>
                     </div>`
-                : html`<div></div>`,
+                : html`<div style=${{ ...gridElementStyle(i + 1, 0) }}></div>`,
     )}
     </div >
     `;
@@ -914,17 +930,25 @@ const GraphProvider = ({ spec }) => {
     const computeStateSpaceOf = (actor) => {
         const stateTransitionsTransactionManager = {}
         for (const e of edges) {
-            const varStateSpaceBefore = spec.transformation.actorSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.from), query)).flat();
-            const varStateSpaceAfter = spec.transformation.actorSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.to), query)).flat();
+            const varStateSpaceBefore = spec.transformation.stateSpaceSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.from), query)).flat();
+            const varStateSpaceAfter = spec.transformation.stateSpaceSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.to), query)).flat();
             if (!varStateSpaceBefore || !varStateSpaceAfter) {
                 continue;
             }
-            const beforeJson = JSON.stringify(varStateSpaceBefore);
-            const afterJson = JSON.stringify(varStateSpaceAfter);
+            const beforeJson = JSON.stringify(varStateSpaceBefore).replace(/\"/g, "")
+            const afterJson = JSON.stringify(varStateSpaceAfter).replace(/\"/g, "")
+
+            if (beforeJson === afterJson) {
+                // TODO
+                // this could either be a stuttering step of this actor or a step of another actor
+                // we currently discard these cases, even though we would like the stuttering
+                // step of this actors
+                continue
+            }
 
             if (stateTransitionsTransactionManager[beforeJson] === undefined) {
                 stateTransitionsTransactionManager[beforeJson] = new Set([afterJson]);
-            } else {
+            } else if (!stateTransitionsTransactionManager[beforeJson].has(afterJson)) {
                 stateTransitionsTransactionManager[beforeJson].add(afterJson);
             }
         }
