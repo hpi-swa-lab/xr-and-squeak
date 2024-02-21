@@ -2,7 +2,10 @@ Class {
 	#name : #XRHtmlPanel,
 	#superclass : #XRObject,
 	#instVars : [
-		'element'
+		'element',
+		'containingElement',
+		'canvasTexture',
+		'canvas'
 	],
 	#category : #SqueakXR
 }
@@ -14,6 +17,38 @@ XRHtmlPanel >> boundingRect [
 ]
 
 { #category : #accessing }
+XRHtmlPanel >> canvas [
+
+	^ canvas ifNil: [
+		canvas := (JS window document createElement: 'canvas')
+			setAttribute: #width to: 200;
+			setAttribute: #height to: 200;
+			yourself]
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> canvasTexture [
+
+	^ canvasTexture ifNil: [
+		canvasTexture := (Three CanvasTexture new: self canvas)
+			colorSpace: Three SRGBColorSpace;
+			yourself]
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> containingElement [
+
+	^ containingElement ifNil: [
+		containingElement := JS window document createElement: 'div'.
+		containingElement style
+			position: #fixed;
+			top: '0';
+			left: '0';
+			overflow: #hidden.
+		containingElement]
+]
+
+{ #category : #accessing }
 XRHtmlPanel >> element [
 
 	^ element
@@ -22,7 +57,14 @@ XRHtmlPanel >> element [
 { #category : #accessing }
 XRHtmlPanel >> element: anHtmlElement [
 
-	element := anHtmlElement
+	element ifNotNil: [self containingElement removeChild: element].
+	element := anHtmlElement.
+	
+	"discard overflowing margins"
+	element style overflow: #hidden.
+	
+	self containingElement appendChild: element.
+	self updateTexture.
 ]
 
 { #category : #'as yet unclassified' }
@@ -47,8 +89,8 @@ XRHtmlPanel >> handlePointing: pointingInformation [
 			#cancelable -> true.
 			# view -> JS window} as: Dictionary).
 	
-	
-	self withElementSelectableDo: [clickedElement dispatchEvent: event]
+	self withElementSelectableDo: [clickedElement dispatchEvent: event].
+	self updateTexture
 ]
 
 { #category : #accessing }
@@ -64,50 +106,60 @@ XRHtmlPanel >> htmlElementSizeAsVector3 [
 
 { #category : #initializing }
 XRHtmlPanel >> initializeThreeObject [
+	
+	| geometry material |
+	geometry := Three PlaneGeometry
+		new: 1m
+		height: 1m.
+	material := Three MeshLambertMaterial
+		new: ({#map -> self canvasTexture} as: Dictionary).
+	
+	^ (Three Mesh
+		new: geometry
+		material: material)
+		userData: ({#isPointable -> true} as: Dictionary);
+		yourself
+]
 
-	| button clickCounter count htmlMesh text updateCounter |
-	self element: (JS window document createElement: 'div').
-	self element setAttribute: 'id' to: 'test-id'.
-	"IMPORTANT: overflow: hidden prevents offset in viewport if children have margins etc"
-	"self element setAttribute: 'style' to: 'width: 200px; height: 200px; background: #FFB; overflow-wrap: break-word; overflow: hidden; position: fixed; top: 0; left: 0'."
-	self element style
-		width: '200px';
-		height: '200px';
-		background: '#ffb';
-		at: 'overflow-wrap' put: 'break-word';
-		overflow: 'hidden';
-		position: 'fixed';
-		top: '0';
-		left: '0';
-		at: 'z-index' put: 0.
-	self world elementContainer appendChild: element.
+{ #category : #'as yet unclassified' }
+XRHtmlPanel >> updateTexture [
+	"rendering to HTML canvas adapted from https://stackoverflow.com/a/25760896"
+	| ctx img svg svgBlob svgObjectUrl |
 	
-	text := JS window document createElement: 'h1'.
-	text innerHTML: 'Test UI'.
-	self element appendChild: text.
+	ctx := self canvas getContext: #'2d'.
 	
-	count := 0.
-	clickCounter := JS window document createElement: 'p'.
-	updateCounter := [clickCounter innerHTML: 'The button was clicked ', count asString, ' times'].
-	updateCounter value.
-	self element appendChild: clickCounter.
+	svg := '
+		<svg xmlns="http://www.w3.org/2000/svg" width="{1}" height="{2}">
+			<foreignObject width="100%" height="100%">
+				<div xmlns="http://www.w3.org/1999/xhtml">{3}</div>
+			</foreignObject>
+		</svg>' format: {200. 200. self element outerHTML}.
 	
-	button := JS window document createElement: 'button'.
-	button innerHTML: 'Click me!'.
-	button onclick: [count := count + 1. updateCounter value].
-	self element appendChild: button.
+	svgBlob := JS Blob new: {svg} options: ({#type -> 'image/svg+xml;charset=utf-8'} as: Dictionary).
+	svgObjectUrl := JS URL createObjectURL: svgBlob.
 	
-	htmlMesh := JS HTMLMesh new: self element.
-	htmlMesh userData: ({#isPointable -> true} as: Dictionary).
-	
-	^ htmlMesh
+	img := JS Image new.
+	img addEventListener: #load do: [
+		ctx drawImage: img dx: 0 dy: 0.
+		JS URL revokeObjectURL: svgObjectUrl.
+		self canvasTexture needsUpdate: true.].
+	img src: svgObjectUrl.
 ]
 
 { #category : #'as yet unclassified' }
 XRHtmlPanel >> withElementSelectableDo: aBlock [
 
 	"This method ensures that JS methods like elementByPoint work correctly, which expect that the element is visible and on top"
-	self world elementContainer removeChild: self element.
-	self world elementContainer appendChild: self element.
+	self world elementContainer removeChild: self containingElement.
+	self world elementContainer appendChild: self containingElement.
 	aBlock value.
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> world: aWorld [
+
+	self world ifNotNil: [:world | world removeChild: self containingElement].
+	
+	super world: aWorld.
+	self world elementContainer appendChild: self containingElement.
 ]

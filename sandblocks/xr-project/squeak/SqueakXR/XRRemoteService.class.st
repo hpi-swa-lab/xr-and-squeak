@@ -53,9 +53,8 @@ XRRemoteService >> source [
 
 	^ (#(SqueakXR 'JSBridge-Core') collect: [:category | self sourceFor: category])
 		reduce: [:acc :cur |
-			(acc at: #extensionMethods) addAll: (cur at: #extensionMethods).
-			(acc at: #packageSources) addAll: (cur at: #packageSources).
-			acc]
+			acc keysAndValuesDo: [:key :value |
+				value addAll: (cur at: key)]]
 ]
 
 { #category : #'as yet unclassified' }

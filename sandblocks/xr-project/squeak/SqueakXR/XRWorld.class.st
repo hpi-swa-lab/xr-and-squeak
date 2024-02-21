@@ -77,7 +77,7 @@ XRWorld >> createHands [
 			world: self;
 			index: 1;
 			yourself.
-	} do: [:hand | self scene add: hand threeObject]
+	} do: [:hand | self add: hand]
 	
 ]
 
@@ -105,7 +105,7 @@ XRWorld >> createScene [
  		normalize.
 	self scene
 		add: light;
-		add: (Three AmbientLight new: 16rffffff intensity: 0.5).
+		add: (Three AmbientLight new: 16rffffff intensity: 1.0).
 	
 	self
 		createCamera;
@@ -188,6 +188,7 @@ XRWorld >> setupDocument [
 { #category : #setup }
 XRWorld >> start [
 
+	| createTestElement |
 	self
 		createRenderer;
 		createScene;
@@ -204,10 +205,38 @@ XRWorld >> start [
 	cube position set: 0m y: 1.5m z: -10m.
 	self scene add: cube.
 	
-	(self add: XRHtmlPanel new)
-		position: (Three Vector3 new: 0m y: 1.5m z: -0.5m).
-	(self add: XRHtmlPanel new)
-		position: (Three Vector3 new: 0.5m y: 1.5m z: -0.5m).
+	createTestElement := [ | button clickCounter count element text updateCounter |
+		element := JS window document createElement: 'div'.
+		element setAttribute: 'id' to: 'test-id'.
+		element style
+			width: '200px';
+			height: '200px';
+			background: '#ffb';
+			at: 'overflow-wrap' put: 'break-word';
+			at: #'z-index' put: 0;
+			at: #'font-family' put: #'sans-serif';
+			at: #'font-size' put: '10px'.
+	
+		text := JS window document createElement: 'h1'.
+		text innerHTML: 'Test UI'.
+		element appendChild: text.
+	
+		count := 0.
+		clickCounter := JS window document createElement: 'p'.
+		updateCounter := [clickCounter innerHTML: 'The button was clicked ', count asString, ' times'].
+		updateCounter value.
+		element appendChild: clickCounter.
+	
+		button := JS window document createElement: 'button'.
+		button innerHTML: 'Click me!'.
+		button onclick: [count := count + 1. updateCounter value].
+		element appendChild: button.
+		
+		element].
+	
+	self add: (XRHtmlPanel new
+		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
+		element: createTestElement value).
 ]
 
 { #category : #setup }
