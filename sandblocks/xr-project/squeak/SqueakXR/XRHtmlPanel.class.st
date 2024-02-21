@@ -5,7 +5,8 @@ Class {
 		'element',
 		'containingElement',
 		'canvasTexture',
-		'canvas'
+		'canvas',
+		'mutationObserver'
 	],
 	#category : #SqueakXR
 }
@@ -59,11 +60,16 @@ XRHtmlPanel >> element: anHtmlElement [
 
 	element ifNotNil: [self containingElement removeChild: element].
 	element := anHtmlElement.
+	self mutationObserver disconnect.
 	
 	"discard overflowing margins"
 	element style overflow: #hidden.
 	
 	self containingElement appendChild: element.
+	self mutationObserver observe: element config: ({
+		#subtree -> true.
+		#childList -> true.
+		#attributes -> true.} as: Dictionary).
 	self updateTexture.
 ]
 
@@ -119,6 +125,20 @@ XRHtmlPanel >> initializeThreeObject [
 		material: material)
 		userData: ({#isPointable -> true} as: Dictionary);
 		yourself
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> mutationObserver [
+
+	^ mutationObserver ifNil: [
+		mutationObserver := JS MutationObserver new: [:mutations :observer |
+			self onMutation: mutations observer: observer]]
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> onMutation: mutations observer: observer [
+
+	self updateTexture
 ]
 
 { #category : #'as yet unclassified' }
