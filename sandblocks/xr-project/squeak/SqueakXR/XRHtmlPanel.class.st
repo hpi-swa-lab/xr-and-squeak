@@ -6,7 +6,10 @@ Class {
 		'containingElement',
 		'canvasTexture',
 		'canvas',
-		'mutationObserver'
+		'mutationObserver',
+		'htmlDimensions',
+		'canvasDimensions',
+		'scale'
 	],
 	#category : #SqueakXR
 }
@@ -14,17 +17,31 @@ Class {
 { #category : #accessing }
 XRHtmlPanel >> boundingRect [
 
-	^ element getBoundingClientRect
+	^ self element getBoundingClientRect
 ]
 
 { #category : #accessing }
 XRHtmlPanel >> canvas [
 
 	^ canvas ifNil: [
-		canvas := (JS window document createElement: 'canvas')
-			setAttribute: #width to: 200;
-			setAttribute: #height to: 200;
-			yourself]
+		canvas := JS window document createElement: 'canvas']
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> canvasDimensions [
+
+	^ canvasDimensions
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> canvasDimensions: aPoint [
+
+	canvasDimensions := aPoint.
+	
+	self canvas
+		setAttribute: #width to: canvasDimensions first;
+		setAttribute: #height to: canvasDimensions second.
+	self updateScale
 ]
 
 { #category : #accessing }
@@ -58,13 +75,13 @@ XRHtmlPanel >> element [
 { #category : #accessing }
 XRHtmlPanel >> element: anHtmlElement [
 
-	element ifNotNil: [self containingElement removeChild: element].
+	element ifNotNil: [
+		self containingElement removeChild: element.
+		self mutationObserver disconnect].
+	
 	element := anHtmlElement.
-	self mutationObserver disconnect.
 	
-	"discard overflowing margins"
-	element style overflow: #hidden.
-	
+	element style overflow: #hidden. "discard overflowing margins"
 	self containingElement appendChild: element.
 	self mutationObserver observe: element config: ({
 		#subtree -> true.
@@ -97,6 +114,15 @@ XRHtmlPanel >> handlePointing: pointingInformation [
 	
 	self withElementSelectableDo: [clickedElement dispatchEvent: event].
 	self updateTexture
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> htmlDimensions [
+
+	| rect |
+	rect := self boundingRect.
+	"TODO: the proper solution is to re-add Point to the minimal image"
+	^ {rect width. rect height}
 ]
 
 { #category : #accessing }
@@ -135,10 +161,38 @@ XRHtmlPanel >> mutationObserver [
 			self onMutation: mutations observer: observer]]
 ]
 
-{ #category : #accessing }
+{ #category : #'as yet unclassified' }
 XRHtmlPanel >> onMutation: mutations observer: observer [
 
 	self updateTexture
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> scale [
+
+	^ scale ifNil: [scale := 1.0]
+]
+
+{ #category : #accessing }
+XRHtmlPanel >> scale: aNumber [
+
+	scale := aNumber.
+	self updateScale
+]
+
+{ #category : #'as yet unclassified' }
+XRHtmlPanel >> updateScale [
+
+	| dimensions width |
+	dimensions := self canvasDimensions.
+	width := dimensions second isZero
+		ifTrue: [1.0]
+		ifFalse: [dimensions first / dimensions second].
+
+	self threeObject scale
+		set: width * self scale
+		y: self scale
+		z: self scale
 ]
 
 { #category : #'as yet unclassified' }
@@ -146,20 +200,26 @@ XRHtmlPanel >> updateTexture [
 	"rendering to HTML canvas adapted from https://stackoverflow.com/a/25760896"
 	| ctx img svg svgBlob svgObjectUrl |
 	
-	ctx := self canvas getContext: #'2d'.
+	htmlDimensions := self htmlDimensions.
+	self canvasDimensions = htmlDimensions ifFalse: [
+		self canvasDimensions: htmlDimensions].
 	
 	svg := '
 		<svg xmlns="http://www.w3.org/2000/svg" width="{1}" height="{2}">
 			<foreignObject width="100%" height="100%">
 				<div xmlns="http://www.w3.org/1999/xhtml">{3}</div>
 			</foreignObject>
-		</svg>' format: {200. 200. self element outerHTML}.
+		</svg>' format: {
+			self canvasDimensions first.
+			self canvasDimensions second.
+			self element outerHTML}.
 	
 	svgBlob := JS Blob new: {svg} options: ({#type -> 'image/svg+xml;charset=utf-8'} as: Dictionary).
 	svgObjectUrl := JS URL createObjectURL: svgBlob.
 	
 	img := JS Image new.
 	img addEventListener: #load do: [
+		ctx := self canvas getContext: #'2d'.
 		ctx drawImage: img dx: 0 dy: 0.
 		JS URL revokeObjectURL: svgObjectUrl.
 		self canvasTexture needsUpdate: true.].
@@ -182,4 +242,5 @@ XRHtmlPanel >> world: aWorld [
 	
 	super world: aWorld.
 	self world elementContainer appendChild: self containingElement.
+	self updateTexture.
 ]

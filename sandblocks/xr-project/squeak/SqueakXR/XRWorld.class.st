@@ -209,7 +209,7 @@ XRWorld >> start [
 		element := JS window document createElement: 'div'.
 		element setAttribute: 'id' to: 'test-id'.
 		element style
-			width: '200px';
+			width: '400px';
 			height: '200px';
 			background: '#ffb';
 			at: 'overflow-wrap' put: 'break-word';
