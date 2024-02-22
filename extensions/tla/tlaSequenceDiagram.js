@@ -731,6 +731,21 @@ const Topbar = ({
     </tr>`;
     };
 
+    const UndoButton = () => {
+        return html`
+        <button
+            style=${{ height: "min-content" }}
+            onClick=${() => {
+                if (prevEdges.length > 0) {
+                    setCurrNode(graph.nodes.get(prevEdges[prevEdges.length - 1].from));
+                    setPrevEdges(prevEdges => prevEdges.slice(0, prevEdges.length - 1));
+                }
+            }}
+        >
+            Undo
+        </button>`;
+    }
+
     return html`
     <div style=${diagramContainerStyle}>
       <!-- <div class="gridWrapper" style=${{ gridGap: "16px" }}>
@@ -759,7 +774,10 @@ const Topbar = ({
             </div>`,
     )}
       </div> -->
-      <h4>Choose Next Action</h4>
+      <div style=${{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <h4>Choose Next Action</h4>
+        <${UndoButton} />
+      </div>
       <div class="gridWrapper">
         ${nextActionsPerActorIndex.map(
         (actions, i) => html`
