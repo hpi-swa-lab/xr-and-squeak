@@ -230,7 +230,7 @@ const Actor = ({ row, col, label, setSelectedActor, isSelected }) => {
 const delayActionStartPx = 8;
 const actionLineWidth = 3;
 /** an action is the point where the diagram's lifeline is activated */
-const Action = ({ row, col, label, heightIncreaseFactor }) => {
+const Action = ({ row, col, label, heightIncreaseFactor, isPreview }) => {
     const boxStyle = {
         ...gridElementStyle(col, row),
         width: `${actionLineWidth}%`,
@@ -239,6 +239,7 @@ const Action = ({ row, col, label, heightIncreaseFactor }) => {
         backgroundColor: "white",
         marginLeft: "calc(50% - 1.5%)",
         marginTop: `${delayActionStartPx}px`,
+        opacity: isPreview ? 0.5 : 1,
     };
 
     const labelStyle = {
@@ -614,7 +615,7 @@ const Diagram = ({
         )}
           ${vizData.map(
             (d, i) =>
-                html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} heightIncreaseFactor=${heightIncreaseFactor} />`,
+                html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} heightIncreaseFactor=${heightIncreaseFactor} isPreview=${previewEdge && i === vizData.length - 1} />`,
         )}
           <${MessagesPositionsCompution} vizData=${vizData} showMessagePayload=${showMessagePayload} heightIncreaseFactor=${heightIncreaseFactor} />
           <!-- last row with fixed height to still show some of the lifeline -->
