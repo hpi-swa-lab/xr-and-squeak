@@ -214,6 +214,7 @@ const Actor = ({ row, col, label }) => {
         justifySelf: "center",
         alignSelf: "end",
         visibility: label === "$messages" ? "hidden" : "visible",
+        wordBreak: "break-all"
     };
 
     return html` <div style=${actorStyle}>${label}</div> `;
@@ -788,13 +789,12 @@ const Topbar = ({
   `;
 };
 
-const StateMachine = ({ actor, currentState }) => {
+const StateMachine = ({ actor, currentState, previewedState }) => {
     const config = useContext(DiagramConfig);
     const { stateSpaceByActor } = config;
     const mermaidContainerRef = useRef(null);
-
-    const actorStateSpace = config.stateSpaceSelectors[actor].flatMap(query => jmespath.search(currentState, query)).flat();
-    const actorState = JSON.stringify(actorStateSpace).replace(/\"/g, "")
+    const actorState = nodeToStateDescription(config.stateSpaceSelectors[actor], currentState)
+    const previewedActorState = previewedState ? nodeToStateDescription(config.stateSpaceSelectors[actor], previewedState) : "NONE"
 
     const getMermaidOutput = () => {
         if (actor === "$messages") return "";
@@ -811,7 +811,9 @@ const StateMachine = ({ actor, currentState }) => {
 
         const stylesClassesMermaid = states.map((state, i) => state === actorState
             ? `  class ${aliasByState[state]} selectedStateStyle`
-            : `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
+            : state === previewedActorState
+                ? `  class ${aliasByState[state]} previewStateStyle`
+                : `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
 
         const transitionsAsMermaid = Object.entries(transitions).map(([from, tos]) => {
             const tosAsMermaid = Array.from(tos)
@@ -824,6 +826,7 @@ const StateMachine = ({ actor, currentState }) => {
     direction TB
     classDef defaultStateStyle fill:white,color:black,stroke-width:1px,stroke:black,font-size:1em
     classDef selectedStateStyle fill:grey,color:black,stroke-width:1px,stroke:black,font-size:1em
+    classDef previewStateStyle fill:lightgrey,color:black,stroke-width:1px,stroke:black,font-size:1em
 ${stylesClassesMermaid}
 ${stateDefsMermaid}
 
@@ -842,7 +845,7 @@ ${transitionsAsMermaid}`;
         mermaid.run({
             querySelector: ".mermaid",
         })
-    }, [config, actor, currentState])
+    }, [config, actor, currentState, previewedState])
 
     return html`
     <div style=${{ width: "100%" }}>
@@ -916,7 +919,7 @@ const State = ({ graph, initNodes }) => {
     // and the remaining space shows the rest
     return html`
     <div style=${containerStyle}>
-        <div style=${{ display: "grid", gridTemplateColumns: "60% 40%", height: "100%" }}>
+        <div style=${{ display: "grid", gridTemplateColumns: "50% 50%", height: "100%" }}>
             <div style=${containerStyle}>
                 <${InitStateSelection} />
                 <${Topbar} ...${props} />
@@ -925,12 +928,22 @@ const State = ({ graph, initNodes }) => {
             <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0", padding: "0 16px 0 0" }}>
                 <h4>${selectedActor}</h4>
                 <${ActorSelector} />
-                <${StateMachine} actor=${selectedActor} currentState=${currNode}/>
+                <${StateMachine} actor=${selectedActor} currentState=${currNode} previewedState=${graph.nodes.get(previewEdge?.to)}/>
             </div>
         </div>
     </div>
   `;
 };
+
+const nodeToStateDescription = (selectors, node) => {
+    const description = selectors.flatMap(([query, annotation, fallback]) => {
+        const results = jmespath.search(node, query)
+        if (!results) return [] // this will be removed in the subsequent flattening
+        if (results.length === 0) return fallback ?? []
+        return annotation.replace(/@/g, JSON.stringify(results[0]).replace(/\"/g, ""))
+    }).flat().join("\n");
+    return description
+}
 
 const GraphProvider = ({ spec }) => {
     // only do computation-heavy operations on whole graph once
@@ -961,13 +974,10 @@ const GraphProvider = ({ spec }) => {
     const computeStateSpaceOf = (actor) => {
         const stateTransitionsTransactionManager = {}
         for (const e of edges) {
-            const varStateSpaceBefore = spec.transformation.stateSpaceSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.from), query)).flat();
-            const varStateSpaceAfter = spec.transformation.stateSpaceSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.to), query)).flat();
-            if (!varStateSpaceBefore || !varStateSpaceAfter) {
-                continue;
-            }
-            const beforeJson = JSON.stringify(varStateSpaceBefore).replace(/\"/g, "")
-            const afterJson = JSON.stringify(varStateSpaceAfter).replace(/\"/g, "")
+            const varStateSpaceBefore = nodeToStateDescription(spec.transformation.stateSpaceSelectors[actor], nodes.get(e.from))
+            const varStateSpaceAfter = nodeToStateDescription(spec.transformation.stateSpaceSelectors[actor], nodes.get(e.to))
+            const beforeJson = varStateSpaceBefore
+            const afterJson = varStateSpaceAfter
 
             if (beforeJson === afterJson) {
                 // TODO
@@ -1064,6 +1074,7 @@ export const SequenceDiagram = () => {
           text-align: center;
           cursor: pointer;
           touch-action: manipulation;
+          word-break: break-all;
         }
 
         .edgepicker:hover {
