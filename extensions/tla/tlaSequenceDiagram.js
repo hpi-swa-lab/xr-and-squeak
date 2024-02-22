@@ -584,32 +584,14 @@ const Diagram = ({
     selectedActor,
     setSelectedActor,
     showMessagePayload,
-    heightIncreaseFactor
+    heightIncreaseFactor,
+    previewEdge
 }) => {
     const { a2c, actors } = useContext(DiagramConfig);
     const [inspectEdge, setInspectEdge] = useState(null);
 
-    const toggle = (i) => {
-        setInspectEdge((v) => {
-            if (v === i) {
-                return null;
-            }
-            return i;
-        });
-    };
-
     return html`
     <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0" }}>
-      <style>
-        .field {
-        }
-
-        .field:hover {
-          transition: background-color 0.3s ease-in-out;
-          background-color: rgb(240, 240, 241, 0.5);
-          cursor: pointer;
-        }
-      </style>
       <div
         style=${{
             padding: "16px 32px 16px 16px",
@@ -643,18 +625,6 @@ const Diagram = ({
                         ...gridElementStyle(i + 1, vizData.length + 2),
                         height: "32px",
                     }}
-              ></div>`,
-        )}
-          ${vizData.map(
-            (_, i) =>
-                html`<div
-                style=${{
-                        gridColumn: `1 / span ${actors.length}`,
-                        gridRow: `${i + 2}`,
-                        zIndex: 3,
-                    }}
-                class="field"
-                onClick=${() => toggle(i)}
               ></div>`,
         )}
           ${inspectEdge !== null
