@@ -206,9 +206,9 @@ const Actor = ({ row, col, label }) => {
     const actorStyle = {
         ...gridElementStyle(col, row),
         fontWeight: 600,
-        padding: "16px 16px",
+        padding: "8px 8px",
         border: "1px solid black",
-        margin: "0 8px",
+        margin: "0 4px",
         width: "fit-content",
         height: "min-content",
         justifySelf: "center",
@@ -219,14 +219,14 @@ const Actor = ({ row, col, label }) => {
     return html` <div style=${actorStyle}>${label}</div> `;
 };
 
-const delayActionStartPx = 12;
+const delayActionStartPx = 8;
 const actionLineWidth = 3;
 /** an action is the point where the diagram's lifeline is activated */
 const Action = ({ row, col, label, msgs }) => {
     const boxStyle = {
         ...gridElementStyle(col, row),
         width: `${actionLineWidth}%`,
-        height: `calc(2em * ${msgs.length + 1})`,
+        height: "2.5em", //`calc(1em * ${msgs.length + 1})`,
         border: "1px solid black",
         backgroundColor: "white",
         marginLeft: "calc(50% - 1.5%)",
@@ -235,9 +235,9 @@ const Action = ({ row, col, label, msgs }) => {
 
     const labelStyle = {
         position: "absolute",
-        transform: "translateY(60%)",
+        transform: "translateY(50%)",
         whiteSpace: "nowrap",
-        marginLeft: "12px",
+        marginLeft: "8px",
         fontWeight: "bold",
     };
 
@@ -788,10 +788,13 @@ const Topbar = ({
   `;
 };
 
-const StateMachine = ({ actor }) => {
+const StateMachine = ({ actor, currentState }) => {
     const config = useContext(DiagramConfig);
     const { stateSpaceByActor } = config;
     const mermaidContainerRef = useRef(null);
+
+    const actorStateSpace = config.stateSpaceSelectors[actor].flatMap(query => jmespath.search(currentState, query)).flat();
+    const actorState = JSON.stringify(actorStateSpace).replace(/\"/g, "")
 
     const getMermaidOutput = () => {
         if (actor === "$messages") return "";
@@ -806,7 +809,9 @@ const StateMachine = ({ actor }) => {
         }, {})
         const stateDefsMermaid = states.map((state, i) => `  state "${state}" as ${aliasByState[state]}`).join("\n")
 
-        const stylesClassesMermaid = states.map((state, i) => `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
+        const stylesClassesMermaid = states.map((state, i) => state === actorState
+            ? `  class ${aliasByState[state]} selectedStateStyle`
+            : `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
 
         const transitionsAsMermaid = Object.entries(transitions).map(([from, tos]) => {
             const tosAsMermaid = Array.from(tos)
@@ -817,7 +822,7 @@ const StateMachine = ({ actor }) => {
         ).join("\n");
         const mermaidOutput = `stateDiagram-v2
     direction TB
-    classDef defaultStateStyle fill:none,color:black,stroke-width:1px,stroke:black,font-size:1em
+    classDef defaultStateStyle fill:white,color:black,stroke-width:1px,stroke:black,font-size:1em
     classDef selectedStateStyle fill:grey,color:black,stroke-width:1px,stroke:black,font-size:1em
 ${stylesClassesMermaid}
 ${stateDefsMermaid}
@@ -829,15 +834,15 @@ ${transitionsAsMermaid}`;
     useEffect(() => {
         if (mermaidContainerRef.current) {
             // mermaid adds a "data-processed" attribute to the diagram after processing it
+            mermaidContainerRef.current.removeAttribute("data-processed");
             // after processing, the innerHTML will be svg elements, so we
             // reset it
-            mermaidContainerRef.current.removeAttribute("data-processed");
             mermaidContainerRef.current.innerHTML = getMermaidOutput()
         }
         mermaid.run({
             querySelector: ".mermaid",
         })
-    }, [config, actor])
+    }, [config, actor, currentState])
 
     return html`
     <div style=${{ width: "100%" }}>
@@ -856,8 +861,8 @@ const State = ({ graph, initNodes }) => {
     const containerStyle = {
         display: "flex",
         flexDirection: "column",
-        width: "100%",
         flex: "1 0 0",
+        width: "100%",
     };
 
     const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges;
@@ -911,7 +916,7 @@ const State = ({ graph, initNodes }) => {
     // and the remaining space shows the rest
     return html`
     <div style=${containerStyle}>
-        <div style=${{ display: "grid", gridTemplateColumns: "2fr 1fr", height: "100%" }}>
+        <div style=${{ display: "grid", gridTemplateColumns: "60% 40%", height: "100%" }}>
             <div style=${containerStyle}>
                 <${InitStateSelection} />
                 <${Topbar} ...${props} />
@@ -920,7 +925,7 @@ const State = ({ graph, initNodes }) => {
             <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0", padding: "0 16px 0 0" }}>
                 <h4>${selectedActor}</h4>
                 <${ActorSelector} />
-                <${StateMachine} actor=${selectedActor}/>
+                <${StateMachine} actor=${selectedActor} currentState=${currNode}/>
             </div>
         </div>
     </div>
@@ -996,7 +1001,8 @@ const GraphProvider = ({ spec }) => {
             (acc, a, i) => acc.set(a, i + 1),
             new Map(),
         ),
-        stateSpaceByActor
+        stateSpaceByActor,
+        stateSpaceSelectors: spec.transformation.stateSpaceSelectors
     };
 
     return [
