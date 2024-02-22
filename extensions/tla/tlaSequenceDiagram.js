@@ -202,7 +202,7 @@ const gridElementStyle = (column, row) => ({
     textAlign: "center",
 });
 
-const Actor = ({ row, col, label }) => {
+const Actor = ({ row, col, label, setSelectedActor }) => {
     const actorStyle = {
         ...gridElementStyle(col, row),
         fontWeight: 600,
@@ -214,10 +214,16 @@ const Actor = ({ row, col, label }) => {
         justifySelf: "center",
         alignSelf: "end",
         visibility: label === "$messages" ? "hidden" : "visible",
-        wordBreak: "break-all"
+        wordBreak: "break-all",
+        cursor: "pointer"
     };
 
-    return html` <div style=${actorStyle}>${label}</div> `;
+    return html`
+    <div style=${actorStyle} onClick=${(e) => {
+            if (label !== "$messages") setSelectedActor(label)
+        }}>
+        ${label}
+    </div> `;
 };
 
 const delayActionStartPx = 8;
@@ -580,6 +586,7 @@ const Diagram = ({
     setCurrNode,
     setPreviewEdge,
     vizData,
+    setSelectedActor
 }) => {
     const { a2c, actors } = useContext(DiagramConfig);
     const [inspectEdge, setInspectEdge] = useState(null);
@@ -615,7 +622,7 @@ const Diagram = ({
       >
         <div class="gridWrapper" style=${{ width: "100%" }}>
           ${actors.map(
-            (a) => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`,
+            (a) => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} setSelectedActor=${setSelectedActor} />`,
         )}
           ${actors.map(
             (a) =>
@@ -898,6 +905,7 @@ const State = ({ graph, initNodes }) => {
         currNode,
         setCurrNode,
         vizData,
+        setSelectedActor
     };
 
     const InitStateSelection = () => {
@@ -928,7 +936,7 @@ const State = ({ graph, initNodes }) => {
                 value=${selectedActor}
                 onChange=${(e) => setSelectedActor(e.target.value)}
             >
-                ${config.actors.map((a) => html`<option value=${a}>${a}</option>`)}
+                ${config.actors.filter(a => a !== "$messages").map((a) => html`<option value=${a}>${a}</option>`)}
             </select>
         </div>`
     }
