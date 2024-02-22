@@ -12975,7 +12975,7 @@ function checkCompressedPointssegments(points, nSegments) {
 }
 
 
-/*	Check if the given shape can be handled by the engine. 
+/*	Check if the given shape can be handled by the engine.
 	Since there are a number of requirements this is an extra method. */
 
 function checkCompressedShapesegmentsleftFillsrightFillslineWidthslineFillsfillIndexList(points, nSegments, leftFills, rightFills, lineWidths, lineFills, fillIndexList) {
@@ -13289,7 +13289,7 @@ function computeBezierSplitAtHalf(index) {
 }
 
 
-/*	Get both values from the two boundaries of the given bezier 
+/*	Get both values from the two boundaries of the given bezier
 	and compute the actual position/width of the line */
 
 function computeFinalWideBezierValueswidth(bezier, lineWidth) {
@@ -14608,7 +14608,7 @@ function findNextExternalFillFromAET() {
 	leftX = (rightX = fillMaxXGet());
 	while (aetStartGet() < aetUsedGet()) {
 
-		/* TODO: We should check if leftX from last operation 
+		/* TODO: We should check if leftX from last operation
 			is  greater than leftX from next edge.
 			Currently, we rely here on spanEndAA
 			from the span buffer fill. */
@@ -16112,7 +16112,7 @@ function moduleUnloaded(aModuleName) {
 }
 
 
-/*	The entry at index is not in the right position of the AET. 
+/*	The entry at index is not in the right position of the AET.
 	Move it to the left until the position is okay. */
 
 function moveAETEntryFromedgex(index, edge, xValue) {
@@ -18379,7 +18379,7 @@ function showFilldepthrightX(fillIndex, depth, rightX) {
 }
 
 function smallSqrtTable() {
-	var theTable = 
+	var theTable =
 	[0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6];
 
 	return theTable;
@@ -18477,7 +18477,7 @@ function stepToFirstBezier() {
 
 
 /*	Initialize the bezier at yValue.
-	TODO: Check if reducing maxSteps from 2*deltaY to deltaY 
+	TODO: Check if reducing maxSteps from 2*deltaY to deltaY
 		brings a *significant* performance improvement.
 		In theory this should make for double step performance
 		but will cost in quality. Might be that the AA stuff will
@@ -19098,7 +19098,7 @@ function subdivideBezierFrom(index) {
 }
 
 
-/*	Check if the given bezier curve is monoton in Y, and, if desired in X. 
+/*	Check if the given bezier curve is monoton in Y, and, if desired in X.
 	If not, subdivide it */
 
 function subdivideToBeMonotoninX(base, doTestX) {
@@ -19887,8 +19887,8 @@ function OLDrgbDiffwith(sourceWord, destinationWord) {
 }
 
 
-/*	Tally pixels into the color map.  Note that the source should be 
-	specified = destination, in order for the proper color map checks 
+/*	Tally pixels into the color map.  Note that the source should be
+	specified = destination, in order for the proper color map checks
 	to be performed at setup.
 	Note that the region is not clipped to bit boundaries, but only to the
 	nearest (enclosing) word.  This is because copyLoop does not do
@@ -20122,7 +20122,7 @@ function alphaPaintConstwith(sourceWord, destinationWord) {
 }
 
 
-/*	This version assumes 
+/*	This version assumes
 		combinationRule = 34
 		sourcePixSize = 32
 		destPixSize = 16
@@ -20249,12 +20249,12 @@ function alphaSourceBlendBits16() {
 }
 
 
-/*	This version assumes 
+/*	This version assumes
 		combinationRule = 34
 		sourcePixSize = destPixSize = 32
 		sourceForm ~= destForm.
 	Note: The inner loop has been optimized for dealing
-		with the special cases of srcAlpha = 0.0 and srcAlpha = 1.0 
+		with the special cases of srcAlpha = 0.0 and srcAlpha = 1.0
 	 */
 
 function alphaSourceBlendBits32() {
@@ -20272,7 +20272,7 @@ function alphaSourceBlendBits32() {
 	/* This particular method should be optimized in itself */
 	/* Give the compile a couple of hints */
 	/* The following should be declared as pointers so the compiler will
-	notice that they're used for accessing memory locations 
+	notice that they're used for accessing memory locations
 	(good to know on an Intel architecture) but then the increments
 	would be different between ST code and C code so must hope the
 	compiler notices what happens (MS Visual C does) */
@@ -20344,7 +20344,7 @@ function alphaSourceBlendBits32() {
 }
 
 
-/*	This version assumes 
+/*	This version assumes
 		combinationRule = 34
 		sourcePixSize = 32
 		destPixSize = 8
@@ -21122,38 +21122,38 @@ function copyLoopPixMap() {
 	]. */
 
 function default8To32Table() {
-	var theTable = [ 
-0x0, 0xFF000001, 0xFFFFFFFF, 0xFF808080, 0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFF00FFFF, 
-0xFFFFFF00, 0xFFFF00FF, 0xFF202020, 0xFF404040, 0xFF606060, 0xFF9F9F9F, 0xFFBFBFBF, 0xFFDFDFDF, 
-0xFF080808, 0xFF101010, 0xFF181818, 0xFF282828, 0xFF303030, 0xFF383838, 0xFF484848, 0xFF505050, 
-0xFF585858, 0xFF686868, 0xFF707070, 0xFF787878, 0xFF878787, 0xFF8F8F8F, 0xFF979797, 0xFFA7A7A7, 
-0xFFAFAFAF, 0xFFB7B7B7, 0xFFC7C7C7, 0xFFCFCFCF, 0xFFD7D7D7, 0xFFE7E7E7, 0xFFEFEFEF, 0xFFF7F7F7, 
-0xFF000001, 0xFF003300, 0xFF006600, 0xFF009900, 0xFF00CC00, 0xFF00FF00, 0xFF000033, 0xFF003333, 
-0xFF006633, 0xFF009933, 0xFF00CC33, 0xFF00FF33, 0xFF000066, 0xFF003366, 0xFF006666, 0xFF009966, 
-0xFF00CC66, 0xFF00FF66, 0xFF000099, 0xFF003399, 0xFF006699, 0xFF009999, 0xFF00CC99, 0xFF00FF99, 
-0xFF0000CC, 0xFF0033CC, 0xFF0066CC, 0xFF0099CC, 0xFF00CCCC, 0xFF00FFCC, 0xFF0000FF, 0xFF0033FF, 
-0xFF0066FF, 0xFF0099FF, 0xFF00CCFF, 0xFF00FFFF, 0xFF330000, 0xFF333300, 0xFF336600, 0xFF339900, 
-0xFF33CC00, 0xFF33FF00, 0xFF330033, 0xFF333333, 0xFF336633, 0xFF339933, 0xFF33CC33, 0xFF33FF33, 
-0xFF330066, 0xFF333366, 0xFF336666, 0xFF339966, 0xFF33CC66, 0xFF33FF66, 0xFF330099, 0xFF333399, 
-0xFF336699, 0xFF339999, 0xFF33CC99, 0xFF33FF99, 0xFF3300CC, 0xFF3333CC, 0xFF3366CC, 0xFF3399CC, 
-0xFF33CCCC, 0xFF33FFCC, 0xFF3300FF, 0xFF3333FF, 0xFF3366FF, 0xFF3399FF, 0xFF33CCFF, 0xFF33FFFF, 
-0xFF660000, 0xFF663300, 0xFF666600, 0xFF669900, 0xFF66CC00, 0xFF66FF00, 0xFF660033, 0xFF663333, 
-0xFF666633, 0xFF669933, 0xFF66CC33, 0xFF66FF33, 0xFF660066, 0xFF663366, 0xFF666666, 0xFF669966, 
-0xFF66CC66, 0xFF66FF66, 0xFF660099, 0xFF663399, 0xFF666699, 0xFF669999, 0xFF66CC99, 0xFF66FF99, 
-0xFF6600CC, 0xFF6633CC, 0xFF6666CC, 0xFF6699CC, 0xFF66CCCC, 0xFF66FFCC, 0xFF6600FF, 0xFF6633FF, 
-0xFF6666FF, 0xFF6699FF, 0xFF66CCFF, 0xFF66FFFF, 0xFF990000, 0xFF993300, 0xFF996600, 0xFF999900, 
-0xFF99CC00, 0xFF99FF00, 0xFF990033, 0xFF993333, 0xFF996633, 0xFF999933, 0xFF99CC33, 0xFF99FF33, 
-0xFF990066, 0xFF993366, 0xFF996666, 0xFF999966, 0xFF99CC66, 0xFF99FF66, 0xFF990099, 0xFF993399, 
-0xFF996699, 0xFF999999, 0xFF99CC99, 0xFF99FF99, 0xFF9900CC, 0xFF9933CC, 0xFF9966CC, 0xFF9999CC, 
-0xFF99CCCC, 0xFF99FFCC, 0xFF9900FF, 0xFF9933FF, 0xFF9966FF, 0xFF9999FF, 0xFF99CCFF, 0xFF99FFFF, 
-0xFFCC0000, 0xFFCC3300, 0xFFCC6600, 0xFFCC9900, 0xFFCCCC00, 0xFFCCFF00, 0xFFCC0033, 0xFFCC3333, 
-0xFFCC6633, 0xFFCC9933, 0xFFCCCC33, 0xFFCCFF33, 0xFFCC0066, 0xFFCC3366, 0xFFCC6666, 0xFFCC9966, 
-0xFFCCCC66, 0xFFCCFF66, 0xFFCC0099, 0xFFCC3399, 0xFFCC6699, 0xFFCC9999, 0xFFCCCC99, 0xFFCCFF99, 
-0xFFCC00CC, 0xFFCC33CC, 0xFFCC66CC, 0xFFCC99CC, 0xFFCCCCCC, 0xFFCCFFCC, 0xFFCC00FF, 0xFFCC33FF, 
-0xFFCC66FF, 0xFFCC99FF, 0xFFCCCCFF, 0xFFCCFFFF, 0xFFFF0000, 0xFFFF3300, 0xFFFF6600, 0xFFFF9900, 
-0xFFFFCC00, 0xFFFFFF00, 0xFFFF0033, 0xFFFF3333, 0xFFFF6633, 0xFFFF9933, 0xFFFFCC33, 0xFFFFFF33, 
-0xFFFF0066, 0xFFFF3366, 0xFFFF6666, 0xFFFF9966, 0xFFFFCC66, 0xFFFFFF66, 0xFFFF0099, 0xFFFF3399, 
-0xFFFF6699, 0xFFFF9999, 0xFFFFCC99, 0xFFFFFF99, 0xFFFF00CC, 0xFFFF33CC, 0xFFFF66CC, 0xFFFF99CC, 
+	var theTable = [
+0x0, 0xFF000001, 0xFFFFFFFF, 0xFF808080, 0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFF00FFFF,
+0xFFFFFF00, 0xFFFF00FF, 0xFF202020, 0xFF404040, 0xFF606060, 0xFF9F9F9F, 0xFFBFBFBF, 0xFFDFDFDF,
+0xFF080808, 0xFF101010, 0xFF181818, 0xFF282828, 0xFF303030, 0xFF383838, 0xFF484848, 0xFF505050,
+0xFF585858, 0xFF686868, 0xFF707070, 0xFF787878, 0xFF878787, 0xFF8F8F8F, 0xFF979797, 0xFFA7A7A7,
+0xFFAFAFAF, 0xFFB7B7B7, 0xFFC7C7C7, 0xFFCFCFCF, 0xFFD7D7D7, 0xFFE7E7E7, 0xFFEFEFEF, 0xFFF7F7F7,
+0xFF000001, 0xFF003300, 0xFF006600, 0xFF009900, 0xFF00CC00, 0xFF00FF00, 0xFF000033, 0xFF003333,
+0xFF006633, 0xFF009933, 0xFF00CC33, 0xFF00FF33, 0xFF000066, 0xFF003366, 0xFF006666, 0xFF009966,
+0xFF00CC66, 0xFF00FF66, 0xFF000099, 0xFF003399, 0xFF006699, 0xFF009999, 0xFF00CC99, 0xFF00FF99,
+0xFF0000CC, 0xFF0033CC, 0xFF0066CC, 0xFF0099CC, 0xFF00CCCC, 0xFF00FFCC, 0xFF0000FF, 0xFF0033FF,
+0xFF0066FF, 0xFF0099FF, 0xFF00CCFF, 0xFF00FFFF, 0xFF330000, 0xFF333300, 0xFF336600, 0xFF339900,
+0xFF33CC00, 0xFF33FF00, 0xFF330033, 0xFF333333, 0xFF336633, 0xFF339933, 0xFF33CC33, 0xFF33FF33,
+0xFF330066, 0xFF333366, 0xFF336666, 0xFF339966, 0xFF33CC66, 0xFF33FF66, 0xFF330099, 0xFF333399,
+0xFF336699, 0xFF339999, 0xFF33CC99, 0xFF33FF99, 0xFF3300CC, 0xFF3333CC, 0xFF3366CC, 0xFF3399CC,
+0xFF33CCCC, 0xFF33FFCC, 0xFF3300FF, 0xFF3333FF, 0xFF3366FF, 0xFF3399FF, 0xFF33CCFF, 0xFF33FFFF,
+0xFF660000, 0xFF663300, 0xFF666600, 0xFF669900, 0xFF66CC00, 0xFF66FF00, 0xFF660033, 0xFF663333,
+0xFF666633, 0xFF669933, 0xFF66CC33, 0xFF66FF33, 0xFF660066, 0xFF663366, 0xFF666666, 0xFF669966,
+0xFF66CC66, 0xFF66FF66, 0xFF660099, 0xFF663399, 0xFF666699, 0xFF669999, 0xFF66CC99, 0xFF66FF99,
+0xFF6600CC, 0xFF6633CC, 0xFF6666CC, 0xFF6699CC, 0xFF66CCCC, 0xFF66FFCC, 0xFF6600FF, 0xFF6633FF,
+0xFF6666FF, 0xFF6699FF, 0xFF66CCFF, 0xFF66FFFF, 0xFF990000, 0xFF993300, 0xFF996600, 0xFF999900,
+0xFF99CC00, 0xFF99FF00, 0xFF990033, 0xFF993333, 0xFF996633, 0xFF999933, 0xFF99CC33, 0xFF99FF33,
+0xFF990066, 0xFF993366, 0xFF996666, 0xFF999966, 0xFF99CC66, 0xFF99FF66, 0xFF990099, 0xFF993399,
+0xFF996699, 0xFF999999, 0xFF99CC99, 0xFF99FF99, 0xFF9900CC, 0xFF9933CC, 0xFF9966CC, 0xFF9999CC,
+0xFF99CCCC, 0xFF99FFCC, 0xFF9900FF, 0xFF9933FF, 0xFF9966FF, 0xFF9999FF, 0xFF99CCFF, 0xFF99FFFF,
+0xFFCC0000, 0xFFCC3300, 0xFFCC6600, 0xFFCC9900, 0xFFCCCC00, 0xFFCCFF00, 0xFFCC0033, 0xFFCC3333,
+0xFFCC6633, 0xFFCC9933, 0xFFCCCC33, 0xFFCCFF33, 0xFFCC0066, 0xFFCC3366, 0xFFCC6666, 0xFFCC9966,
+0xFFCCCC66, 0xFFCCFF66, 0xFFCC0099, 0xFFCC3399, 0xFFCC6699, 0xFFCC9999, 0xFFCCCC99, 0xFFCCFF99,
+0xFFCC00CC, 0xFFCC33CC, 0xFFCC66CC, 0xFFCC99CC, 0xFFCCCCCC, 0xFFCCFFCC, 0xFFCC00FF, 0xFFCC33FF,
+0xFFCC66FF, 0xFFCC99FF, 0xFFCCCCFF, 0xFFCCFFFF, 0xFFFF0000, 0xFFFF3300, 0xFFFF6600, 0xFFFF9900,
+0xFFFFCC00, 0xFFFFFF00, 0xFFFF0033, 0xFFFF3333, 0xFFFF6633, 0xFFFF9933, 0xFFFFCC33, 0xFFFFFF33,
+0xFFFF0066, 0xFFFF3366, 0xFFFF6666, 0xFFFF9966, 0xFFFFCC66, 0xFFFFFF66, 0xFFFF0099, 0xFFFF3399,
+0xFFFF6699, 0xFFFF9999, 0xFFFFCC99, 0xFFFFFF99, 0xFFFF00CC, 0xFFFF33CC, 0xFFFF66CC, 0xFFFF99CC,
 0xFFFFCCCC, 0xFFFFFFCC, 0xFFFF00FF, 0xFFFF33FF, 0xFFFF66FF, 0xFFFF99FF, 0xFFFFCCFF, 0xFFFFFFFF];
 	return theTable;
 }
@@ -21771,8 +21771,8 @@ function loadBitBltSourceForm() {
 }
 
 
-/*	ColorMap, if not nil, must be longWords, and 
-	2^N long, where N = sourceDepth for 1, 2, 4, 8 bits, 
+/*	ColorMap, if not nil, must be longWords, and
+	2^N long, where N = sourceDepth for 1, 2, 4, 8 bits,
 	or N = 9, 12, or 15 (3, 4, 5 bits per color) for 16 or 32 bits. */
 
 function loadColorMap() {
@@ -21922,13 +21922,13 @@ function loadWarpBltFrom(bbObj) {
 
 
 /*	Get a pointer to the bits of any OS surfaces. */
-/*	Notes: 
+/*	Notes:
 	* For equal source/dest handles only one locking operation is performed.
 	This is to prevent locking of overlapping areas which does not work with
-	certain APIs (as an example, DirectDraw prevents locking of overlapping areas). 
-	A special case for non-overlapping but equal source/dest handle would 
-	be possible but we would have to transfer this information over to 
-	unlockSurfaces somehow (currently, only one unlock operation is 
+	certain APIs (as an example, DirectDraw prevents locking of overlapping areas).
+	A special case for non-overlapping but equal source/dest handle would
+	be possible but we would have to transfer this information over to
+	unlockSurfaces somehow (currently, only one unlock operation is
 	performed for equal source and dest handles). Also, this would require
 	a change in the notion of ioLockSurface() which is right now interpreted
 	as a hint and not as a requirement to lock only the specific portion of
@@ -22855,7 +22855,7 @@ function rgbAddwith(sourceWord, destinationWord) {
 }
 
 
-/*	This version assumes 
+/*	This version assumes
 		combinationRule = 41
 		sourcePixSize = 32
 		destPixSize = 16
@@ -22964,12 +22964,12 @@ function rgbComponentAlpha16() {
 }
 
 
-/*	This version assumes 
+/*	This version assumes
 		combinationRule = 41
 		sourcePixSize = destPixSize = 32
 		sourceForm ~= destForm.
 	Note: The inner loop has been optimized for dealing
-		with the special case of aR = aG = aB = 0 
+		with the special case of aR = aG = aB = 0
 	 */
 
 function rgbComponentAlpha32() {
@@ -22987,7 +22987,7 @@ function rgbComponentAlpha32() {
 	/* This particular method should be optimized in itself */
 	/* Give the compile a couple of hints */
 	/* The following should be declared as pointers so the compiler will
-	notice that they're used for accessing memory locations 
+	notice that they're used for accessing memory locations
 	(good to know on an Intel architecture) but then the increments
 	would be different between ST code and C code so must hope the
 	compiler notices what happens (MS Visual C does) */
@@ -23041,12 +23041,12 @@ function rgbComponentAlpha32() {
 }
 
 
-/*	
+/*
 	componentAlphaModeColor is the color,
 	sourceWord contains an alpha value for each component of RGB
 	each of which is encoded as0 meaning 0.0 and 255 meaning 1.0 .
 	the rule is...
-	
+
 	color = componentAlphaModeColor.
 	colorAlpha = componentAlphaModeAlpha.
 	mask = sourceWord.
@@ -23151,7 +23151,7 @@ function rgbComponentAlpha32with(sourceWord, destinationWord) {
 }
 
 
-/*	This version assumes 
+/*	This version assumes
 		combinationRule = 41
 		sourcePixSize = 32
 		destPixSize = 8
@@ -23269,12 +23269,12 @@ function rgbComponentAlpha8() {
 }
 
 
-/*	
+/*
 	componentAlphaModeColor is the color,
 	sourceWord contains an alpha value for each component of RGB
 	each of which is encoded as0 meaning 0.0 and 255 meaning 1.0 .
 	the rule is...
-	
+
 	color = componentAlphaModeColor.
 	colorAlpha = componentAlphaModeAlpha.
 	mask = sourceWord.
@@ -23703,8 +23703,8 @@ function subWordwith(sourceWord, destinationWord) {
 
 
 /*	Tally pixels into the color map.  Those tallied are exactly those
-	in the destination rectangle.  Note that the source should be 
-	specified == destination, in order for the proper color map checks 
+	in the destination rectangle.  Note that the source should be
+	specified == destination, in order for the proper color map checks
 	to be performed at setup. */
 
 function tallyIntoMapwith(sourceWord, destinationWord) {
@@ -23760,7 +23760,7 @@ function tallyMapAtput(idx, value) {
 
 
 /*	Shortcut for stuff that's being run from the balloon engine.
-	Since we do this at each scan line we should avoid the expensive 
+	Since we do this at each scan line we should avoid the expensive
 	setup for source and destination. */
 /*	We need a source. */
 
@@ -25646,13 +25646,13 @@ var interpreterProxy = null;
 var jpegBits = null;
 var jpegBitsSize = 0;
 var jpegNaturalOrder = [
-	0, 1, 8, 16, 9, 2, 3, 10, 
-	17, 24, 32, 25, 18, 11, 4, 5, 
-	12, 19, 26, 33, 40, 48, 41, 34, 
-	27, 20, 13, 6, 7, 14, 21, 28, 
-	35, 42, 49, 56, 57, 50, 43, 36, 
-	29, 22, 15, 23, 30, 37, 44, 51, 
-	58, 59, 52, 45, 38, 31, 39, 46, 
+	0, 1, 8, 16, 9, 2, 3, 10,
+	17, 24, 32, 25, 18, 11, 4, 5,
+	12, 19, 26, 33, 40, 48, 41, 34,
+	27, 20, 13, 6, 7, 14, 21, 28,
+	35, 42, 49, 56, 57, 50, 43, 36,
+	29, 22, 15, 23, 30, 37, 44, 51,
+	58, 59, 52, 45, 38, 31, 39, 46,
 	53, 60, 61, 54, 47, 55, 62, 63
 ];
 var jsBitBuffer = 0;
@@ -34288,7 +34288,7 @@ function cDigitDivlenremlenquolen(pDiv, divLen, pRem, remLen, pQuo, quoLen) {
 			mul = q * dnh;
 			hi = mul >>> 8;
 
-			/* Correct overestimate of q.                
+			/* Correct overestimate of q.
 				Max of 2 iterations through loop -- see Knuth vol. 2 */
 
 			lo = mul & 255;
@@ -34353,9 +34353,9 @@ function cDigitDivlenremlenquolen(pDiv, divLen, pRem, remLen, pQuo, quoLen) {
 }
 
 
-/*	Answer the index (in bits) of the high order bit of the receiver, or zero if the    
-	 receiver is zero. This method is allowed (and needed) for     
-	LargeNegativeIntegers as well, since Squeak's LargeIntegers are     
+/*	Answer the index (in bits) of the high order bit of the receiver, or zero if the
+	 receiver is zero. This method is allowed (and needed) for
+	LargeNegativeIntegers as well, since Squeak's LargeIntegers are
 	sign/magnitude. */
 
 function cDigitHighBitlen(pByte, len) {
@@ -34372,7 +34372,7 @@ function cDigitHighBitlen(pByte, len) {
 }
 
 
-/*	Answer the number of indexable fields of a CSmallInteger. This value is 
+/*	Answer the number of indexable fields of a CSmallInteger. This value is
 	   the same as the largest legal subscript. */
 
 function cDigitLengthOfCSI(csi) {
@@ -34522,8 +34522,8 @@ function cDigitMultiplylenwithleninto(pByteShort, shortLen, pByteLong, longLen, 
 }
 
 
-/*	Answer the value of an indexable field in the receiver.              
-	LargePositiveInteger uses bytes of base two number, and each is a       
+/*	Answer the value of an indexable field in the receiver.
+	LargePositiveInteger uses bytes of base two number, and each is a
 	      'digit' base 256. */
 /*	ST indexed! */
 
@@ -34651,7 +34651,7 @@ function cDigitSublenwithleninto(pByteSmall, smallLen, pByteLarge, largeLen, pBy
 }
 
 
-/*	Answer the index of the high order bit of the argument, or zero if the  
+/*	Answer the index of the high order bit of the argument, or zero if the
 	argument is zero. */
 /*	For 64 bit uints there could be added a 32-shift. */
 
@@ -34732,7 +34732,7 @@ function digitLshift(aBytesOop, shiftCount) {
 
 
 /*	Attention: this method invalidates all oop's! Only newBytes is valid at return. */
-/*	Shift right shiftCount bits, 0<=shiftCount.         
+/*	Shift right shiftCount bits, 0<=shiftCount.
 	Discard all digits beyond a, and all zeroes at or below a. */
 /*	Does not normalize. */
 
@@ -34863,7 +34863,7 @@ function digitBitLogicwithopIndex(firstInteger, secondInteger, opIx) {
 }
 
 
-/*	Compare the magnitude of firstInteger with that of secondInteger.      
+/*	Compare the magnitude of firstInteger with that of secondInteger.
 	Return a code of 1, 0, -1 for firstInteger >, = , < secondInteger */
 
 function digitCompareLargewith(firstInteger, secondInteger) {
@@ -35175,7 +35175,7 @@ function normalizeNegative(aLargeNegativeInteger) {
 		}
 		for (i = 1; i <= sLen; i++) {
 
-			/* If all digits same, then = minVal (sr: minVal digits 1 to 3 are 
+			/* If all digits same, then = minVal (sr: minVal digits 1 to 3 are
 				          0) */
 
 			if (digitOfBytesat(aLargeNegativeInteger, i) !== cDigitOfCSIat(minVal, i)) {
@@ -35278,9 +35278,9 @@ function primAnyBitFromTo() {
 }
 
 
-/*	Converts a SmallInteger into a - non normalized! - LargeInteger;          
+/*	Converts a SmallInteger into a - non normalized! - LargeInteger;
 	 aLargeInteger will be returned unchanged. */
-/*	Do not check for forced fail, because we need this conversion to test the 
+/*	Do not check for forced fail, because we need this conversion to test the
 	plugin in ST during forced fail, too. */
 
 function primAsLargeInteger() {
@@ -35442,7 +35442,7 @@ function primDigitAddWith() {
 }
 
 
-/*	Bit logic here is only implemented for positive integers or Zero; if rec 
+/*	Bit logic here is only implemented for positive integers or Zero; if rec
 	or arg is negative, it fails. */
 
 function primDigitBitAnd() {
@@ -35493,7 +35493,7 @@ function primDigitBitLogicWithOp() {
 }
 
 
-/*	Bit logic here is only implemented for positive integers or Zero; if rec 
+/*	Bit logic here is only implemented for positive integers or Zero; if rec
 	or arg is negative, it fails. */
 
 function primDigitBitOr() {
@@ -35598,7 +35598,7 @@ function primDigitBitShiftMagnitude() {
 }
 
 
-/*	Bit logic here is only implemented for positive integers or Zero; if rec 
+/*	Bit logic here is only implemented for positive integers or Zero; if rec
 	or arg is negative, it fails. */
 
 function primDigitBitXor() {
@@ -35795,8 +35795,8 @@ function primDigitCompareWith() {
 }
 
 
-/*	Answer the result of dividing firstInteger by secondInteger. 
-	Fail if parameters are not integers, not normalized or secondInteger is 
+/*	Answer the result of dividing firstInteger by secondInteger.
+	Fail if parameters are not integers, not normalized or secondInteger is
 	zero.  */
 
 function primDigitDivNegative() {
@@ -38808,7 +38808,7 @@ function SocketPlugin() {
           if (endOfRequestIndex >= 0) {
             this.sendBuffer = this.sendBuffer.subarray(endOfRequestIndex + 4);
           } else {
-            this.sendBuffer = null;
+            this.sendBuffer = this.sendBuffer;
           }
 
           // Extract header fields
@@ -38835,9 +38835,19 @@ function SocketPlugin() {
               data = this.sendBuffer.subarray(end - contentLength, end);
             } else if (line.match(/Host:/i)) {
               var host = line.substr(6).trim();
+              var port = this.port;
+              var colonIndex = host.indexOf(':');
+              if (colonIndex > 0) {
+                  port = host.slice(colonIndex + 1);
+                  host = host.slice(0, colonIndex);
+              }
               if (this.host !== host) {
                 console.warn('Host for ' + this.hostAddress + ' was ' + this.host + ' but from HTTP request now ' + host);
                 this.host = host;
+              }
+              if (this.port !== port) {
+                console.warn('Port for ' + this.hostAddress + ' was ' + this.port + ' but from HTTP request now ' + port);
+                this.post = port;
               }
             } if (line.match(/Connection: Upgrade/i)) {
               seenUpgrade = true;
@@ -40740,10 +40750,10 @@ var moduleName = "ZipPlugin 3 November 2014 (e)";
 var readStreamInstSize = 0;
 var writeStreamInstSize = 0;
 var zipBaseDistance = [
-0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 
+0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192,
 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 24576];
 var zipBaseLength = [
-0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 
+0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28,
 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 0];
 var zipBitBuf = 0;
 var zipBitPos = 0;
@@ -40751,64 +40761,64 @@ var zipBlockPos = 0;
 var zipCollection = null;
 var zipCollectionSize = 0;
 var zipCrcTable = [
-0, 1996959894, 3993919788, 2567524794, 124634137, 1886057615, 3915621685, 2657392035, 249268274, 2044508324, 3772115230, 2547177864, 162941995, 2125561021, 3887607047, 2428444049, 
-498536548, 1789927666, 4089016648, 2227061214, 450548861, 1843258603, 4107580753, 2211677639, 325883990, 1684777152, 4251122042, 2321926636, 335633487, 1661365465, 4195302755, 2366115317, 
-997073096, 1281953886, 3579855332, 2724688242, 1006888145, 1258607687, 3524101629, 2768942443, 901097722, 1119000684, 3686517206, 2898065728, 853044451, 1172266101, 3705015759, 2882616665, 
-651767980, 1373503546, 3369554304, 3218104598, 565507253, 1454621731, 3485111705, 3099436303, 671266974, 1594198024, 3322730930, 2970347812, 795835527, 1483230225, 3244367275, 3060149565, 
-1994146192, 31158534, 2563907772, 4023717930, 1907459465, 112637215, 2680153253, 3904427059, 2013776290, 251722036, 2517215374, 3775830040, 2137656763, 141376813, 2439277719, 3865271297, 
-1802195444, 476864866, 2238001368, 4066508878, 1812370925, 453092731, 2181625025, 4111451223, 1706088902, 314042704, 2344532202, 4240017532, 1658658271, 366619977, 2362670323, 4224994405, 
-1303535960, 984961486, 2747007092, 3569037538, 1256170817, 1037604311, 2765210733, 3554079995, 1131014506, 879679996, 2909243462, 3663771856, 1141124467, 855842277, 2852801631, 3708648649, 
-1342533948, 654459306, 3188396048, 3373015174, 1466479909, 544179635, 3110523913, 3462522015, 1591671054, 702138776, 2966460450, 3352799412, 1504918807, 783551873, 3082640443, 3233442989, 
-3988292384, 2596254646, 62317068, 1957810842, 3939845945, 2647816111, 81470997, 1943803523, 3814918930, 2489596804, 225274430, 2053790376, 3826175755, 2466906013, 167816743, 2097651377, 
-4027552580, 2265490386, 503444072, 1762050814, 4150417245, 2154129355, 426522225, 1852507879, 4275313526, 2312317920, 282753626, 1742555852, 4189708143, 2394877945, 397917763, 1622183637, 
-3604390888, 2714866558, 953729732, 1340076626, 3518719985, 2797360999, 1068828381, 1219638859, 3624741850, 2936675148, 906185462, 1090812512, 3747672003, 2825379669, 829329135, 1181335161, 
-3412177804, 3160834842, 628085408, 1382605366, 3423369109, 3138078467, 570562233, 1426400815, 3317316542, 2998733608, 733239954, 1555261956, 3268935591, 3050360625, 752459403, 1541320221, 
-2607071920, 3965973030, 1969922972, 40735498, 2617837225, 3943577151, 1913087877, 83908371, 2512341634, 3803740692, 2075208622, 213261112, 2463272603, 3855990285, 2094854071, 198958881, 
-2262029012, 4057260610, 1759359992, 534414190, 2176718541, 4139329115, 1873836001, 414664567, 2282248934, 4279200368, 1711684554, 285281116, 2405801727, 4167216745, 1634467795, 376229701, 
-2685067896, 3608007406, 1308918612, 956543938, 2808555105, 3495958263, 1231636301, 1047427035, 2932959818, 3654703836, 1088359270, 936918000, 2847714899, 3736837829, 1202900863, 817233897, 
+0, 1996959894, 3993919788, 2567524794, 124634137, 1886057615, 3915621685, 2657392035, 249268274, 2044508324, 3772115230, 2547177864, 162941995, 2125561021, 3887607047, 2428444049,
+498536548, 1789927666, 4089016648, 2227061214, 450548861, 1843258603, 4107580753, 2211677639, 325883990, 1684777152, 4251122042, 2321926636, 335633487, 1661365465, 4195302755, 2366115317,
+997073096, 1281953886, 3579855332, 2724688242, 1006888145, 1258607687, 3524101629, 2768942443, 901097722, 1119000684, 3686517206, 2898065728, 853044451, 1172266101, 3705015759, 2882616665,
+651767980, 1373503546, 3369554304, 3218104598, 565507253, 1454621731, 3485111705, 3099436303, 671266974, 1594198024, 3322730930, 2970347812, 795835527, 1483230225, 3244367275, 3060149565,
+1994146192, 31158534, 2563907772, 4023717930, 1907459465, 112637215, 2680153253, 3904427059, 2013776290, 251722036, 2517215374, 3775830040, 2137656763, 141376813, 2439277719, 3865271297,
+1802195444, 476864866, 2238001368, 4066508878, 1812370925, 453092731, 2181625025, 4111451223, 1706088902, 314042704, 2344532202, 4240017532, 1658658271, 366619977, 2362670323, 4224994405,
+1303535960, 984961486, 2747007092, 3569037538, 1256170817, 1037604311, 2765210733, 3554079995, 1131014506, 879679996, 2909243462, 3663771856, 1141124467, 855842277, 2852801631, 3708648649,
+1342533948, 654459306, 3188396048, 3373015174, 1466479909, 544179635, 3110523913, 3462522015, 1591671054, 702138776, 2966460450, 3352799412, 1504918807, 783551873, 3082640443, 3233442989,
+3988292384, 2596254646, 62317068, 1957810842, 3939845945, 2647816111, 81470997, 1943803523, 3814918930, 2489596804, 225274430, 2053790376, 3826175755, 2466906013, 167816743, 2097651377,
+4027552580, 2265490386, 503444072, 1762050814, 4150417245, 2154129355, 426522225, 1852507879, 4275313526, 2312317920, 282753626, 1742555852, 4189708143, 2394877945, 397917763, 1622183637,
+3604390888, 2714866558, 953729732, 1340076626, 3518719985, 2797360999, 1068828381, 1219638859, 3624741850, 2936675148, 906185462, 1090812512, 3747672003, 2825379669, 829329135, 1181335161,
+3412177804, 3160834842, 628085408, 1382605366, 3423369109, 3138078467, 570562233, 1426400815, 3317316542, 2998733608, 733239954, 1555261956, 3268935591, 3050360625, 752459403, 1541320221,
+2607071920, 3965973030, 1969922972, 40735498, 2617837225, 3943577151, 1913087877, 83908371, 2512341634, 3803740692, 2075208622, 213261112, 2463272603, 3855990285, 2094854071, 198958881,
+2262029012, 4057260610, 1759359992, 534414190, 2176718541, 4139329115, 1873836001, 414664567, 2282248934, 4279200368, 1711684554, 285281116, 2405801727, 4167216745, 1634467795, 376229701,
+2685067896, 3608007406, 1308918612, 956543938, 2808555105, 3495958263, 1231636301, 1047427035, 2932959818, 3654703836, 1088359270, 936918000, 2847714899, 3736837829, 1202900863, 817233897,
 3183342108, 3401237130, 1404277552, 615818150, 3134207493, 3453421203, 1423857449, 601450431, 3009837614, 3294710456, 1567103746, 711928724, 3020668471, 3272380065, 1510334235, 755167117];
 var zipDistTable = null;
 var zipDistTableSize = 0;
 var zipDistanceCodes = [
-0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 
-8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 
-10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 
-11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 
-12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 
-12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 
-13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 
-13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 
-14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
-14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
-14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
-14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 
-15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
-15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
-15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
-15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 
-0, 0, 16, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 
-22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 
-24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 
-25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 
-26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
-26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 
-27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
-27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 
-28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
-28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
-28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
-28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 
-29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
-29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
-29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 
+0, 1, 2, 3, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7,
+8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9,
+10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+0, 0, 16, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21,
+22, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23,
+24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25,
+26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26,
+26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26,
+27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
+27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
+28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,
+29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
+29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
+29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29];
 var zipDistanceFreq = null;
 var zipDistances = null;
 var zipExtraDistanceBits = [
-0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 
+0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
 var zipExtraLengthBits = [
-0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 
+0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
 var zipHashHead = null;
 var zipHashTail = null;
@@ -40821,21 +40831,21 @@ var zipLiteralSize = 0;
 var zipLiterals = null;
 var zipMatchCount = 0;
 var zipMatchLengthCodes = [
-257, 258, 259, 260, 261, 262, 263, 264, 265, 265, 266, 266, 267, 267, 268, 268, 
-269, 269, 269, 269, 270, 270, 270, 270, 271, 271, 271, 271, 272, 272, 272, 272, 
-273, 273, 273, 273, 273, 273, 273, 273, 274, 274, 274, 274, 274, 274, 274, 274, 
-275, 275, 275, 275, 275, 275, 275, 275, 276, 276, 276, 276, 276, 276, 276, 276, 
-277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 
-278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 
-279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 
-280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 
-281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 
-281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 
-282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 
-282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 
-283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 
-283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 
-284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 
+257, 258, 259, 260, 261, 262, 263, 264, 265, 265, 266, 266, 267, 267, 268, 268,
+269, 269, 269, 269, 270, 270, 270, 270, 271, 271, 271, 271, 272, 272, 272, 272,
+273, 273, 273, 273, 273, 273, 273, 273, 274, 274, 274, 274, 274, 274, 274, 274,
+275, 275, 275, 275, 275, 275, 275, 275, 276, 276, 276, 276, 276, 276, 276, 276,
+277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277,
+278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278, 278,
+279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279, 279,
+280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280, 280,
+281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281,
+281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281, 281,
+282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282,
+282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282, 282,
+283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283,
+283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283, 283,
+284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284,
 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284, 284];
 var zipPosition = 0;
 var zipReadLimit = 0;
@@ -41554,7 +41564,7 @@ function primitiveZipSendBlock() {
 }
 
 
-/*	Require: 
+/*	Require:
 		zipCollection, zipCollectionSize, zipPosition,
 		zipBitBuf, zipBitPos.
 	 */
@@ -41702,7 +41712,7 @@ function shouldFlush() {
 	}
 	if ((zipMatchCount * 10) <= zipLiteralCount) {
 
-		/* This is basically random data. 
+		/* This is basically random data.
 		There is no need to flush early since the overhead
 		for encoding the trees will add to the overall size */
 
@@ -41895,84 +41905,84 @@ registerPlugin();
 //
 // LZ-based compression algorithm, version 1.3.3
 var LZString$1 = {
-  
-  
+
+
   // private property
   _keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
   _f : String.fromCharCode,
-  
+
   compressToBase64 : function (input) {
     if (input == null) return "";
     var output = "";
     var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
     var i = 0;
-    
+
     input = LZString$1.compress(input);
-    
+
     while (i < input.length*2) {
-      
+
       if (i%2==0) {
         chr1 = input.charCodeAt(i/2) >> 8;
         chr2 = input.charCodeAt(i/2) & 255;
-        if (i/2+1 < input.length) 
+        if (i/2+1 < input.length)
           chr3 = input.charCodeAt(i/2+1) >> 8;
-        else 
+        else
           chr3 = NaN;
       } else {
         chr1 = input.charCodeAt((i-1)/2) & 255;
         if ((i+1)/2 < input.length) {
           chr2 = input.charCodeAt((i+1)/2) >> 8;
           chr3 = input.charCodeAt((i+1)/2) & 255;
-        } else 
+        } else
           chr2=chr3=NaN;
       }
       i+=3;
-      
+
       enc1 = chr1 >> 2;
       enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
       enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
       enc4 = chr3 & 63;
-      
+
       if (isNaN(chr2)) {
         enc3 = enc4 = 64;
       } else if (isNaN(chr3)) {
         enc4 = 64;
       }
-      
+
       output = output +
         LZString$1._keyStr.charAt(enc1) + LZString$1._keyStr.charAt(enc2) +
           LZString$1._keyStr.charAt(enc3) + LZString$1._keyStr.charAt(enc4);
-      
+
     }
-    
+
     return output;
   },
-  
+
   decompressFromBase64 : function (input) {
     if (input == null) return "";
     var output = "",
-        ol = 0, 
+        ol = 0,
         output_,
         chr1, chr2, chr3,
         enc1, enc2, enc3, enc4,
         i = 0, f=LZString$1._f;
-    
+
     input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
-    
+
     while (i < input.length) {
-      
+
       enc1 = LZString$1._keyStr.indexOf(input.charAt(i++));
       enc2 = LZString$1._keyStr.indexOf(input.charAt(i++));
       enc3 = LZString$1._keyStr.indexOf(input.charAt(i++));
       enc4 = LZString$1._keyStr.indexOf(input.charAt(i++));
-      
+
       chr1 = (enc1 << 2) | (enc2 >> 4);
       chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
       chr3 = ((enc3 & 3) << 6) | enc4;
-      
+
       if (ol%2==0) {
         output_ = chr1 << 8;
-        
+
         if (enc3 != 64) {
           output += f(output_ | chr2);
         }
@@ -41981,7 +41991,7 @@ var LZString$1 = {
         }
       } else {
         output = output + f(output_ | chr1);
-        
+
         if (enc3 != 64) {
           output_ = chr2 << 8;
         }
@@ -41991,9 +42001,9 @@ var LZString$1 = {
       }
       ol+=3;
     }
-    
+
     return LZString$1.decompress(output);
-    
+
   },
 
   compressToUTF16 : function (input) {
@@ -42003,9 +42013,9 @@ var LZString$1 = {
         current,
         status = 0,
         f = LZString$1._f;
-    
+
     input = LZString$1.compress(input);
-    
+
     for (i=0 ; i<input.length ; i++) {
       c = input.charCodeAt(i);
       switch (status++) {
@@ -42071,10 +42081,10 @@ var LZString$1 = {
           break;
       }
     }
-    
+
     return output + f(current + 32);
   },
-  
+
 
   decompressFromUTF16 : function (input) {
     if (input == null) return "";
@@ -42083,10 +42093,10 @@ var LZString$1 = {
         status=0,
         i = 0,
         f = LZString$1._f;
-    
+
     while (i < input.length) {
       c = input.charCodeAt(i) - 32;
-      
+
       switch (status++) {
         case 0:
           current = c << 1;
@@ -42152,18 +42162,18 @@ var LZString$1 = {
           status=0;
           break;
       }
-      
-      
+
+
       i++;
     }
-    
+
     return LZString$1.decompress(output);
     //return output;
-    
+
   },
 
 
-  
+
   compress: function (uncompressed) {
     if (uncompressed == null) return "";
     var i, value,
@@ -42175,19 +42185,19 @@ var LZString$1 = {
         context_enlargeIn= 2, // Compensate for the first entry which should not count
         context_dictSize= 3,
         context_numBits= 2,
-        context_data_string="", 
-        context_data_val=0, 
+        context_data_string="",
+        context_data_val=0,
         context_data_position=0,
         ii,
         f=LZString$1._f;
-    
+
     for (ii = 0; ii < uncompressed.length; ii += 1) {
       context_c = uncompressed.charAt(ii);
       if (!Object.prototype.hasOwnProperty.call(context_dictionary,context_c)) {
         context_dictionary[context_c] = context_dictSize++;
         context_dictionaryToCreate[context_c] = true;
       }
-      
+
       context_wc = context_w + context_c;
       if (Object.prototype.hasOwnProperty.call(context_dictionary,context_wc)) {
         context_w = context_wc;
@@ -42261,8 +42271,8 @@ var LZString$1 = {
             }
             value = value >> 1;
           }
-          
-          
+
+
         }
         context_enlargeIn--;
         if (context_enlargeIn == 0) {
@@ -42274,7 +42284,7 @@ var LZString$1 = {
         context_w = String(context_c);
       }
     }
-    
+
     // Output the code for w.
     if (context_w !== "") {
       if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate,context_w)) {
@@ -42346,8 +42356,8 @@ var LZString$1 = {
           }
           value = value >> 1;
         }
-        
-        
+
+
       }
       context_enlargeIn--;
       if (context_enlargeIn == 0) {
@@ -42355,7 +42365,7 @@ var LZString$1 = {
         context_numBits++;
       }
     }
-    
+
     // Mark the end of the stream
     value = 2;
     for (i=0 ; i<context_numBits ; i++) {
@@ -42369,7 +42379,7 @@ var LZString$1 = {
       }
       value = value >> 1;
     }
-    
+
     // Flush the last char
     while (true) {
       context_data_val = (context_data_val << 1);
@@ -42381,7 +42391,7 @@ var LZString$1 = {
     }
     return context_data_string;
   },
-  
+
   decompress: function (compressed) {
     if (compressed == null) return "";
     if (compressed == "") return null;
@@ -42398,11 +42408,11 @@ var LZString$1 = {
         c,
         f = LZString$1._f,
         data = {string:compressed, val:compressed.charCodeAt(0), position:32768, index:1};
-    
+
     for (i = 0; i < 3; i += 1) {
       dictionary[i] = i;
     }
-    
+
     bits = 0;
     maxpower = Math.pow(2,2);
     power=1;
@@ -42416,9 +42426,9 @@ var LZString$1 = {
       bits |= (resb>0 ? 1 : 0) * power;
       power <<= 1;
     }
-    
+
     switch (next = bits) {
-      case 0: 
+      case 0:
           bits = 0;
           maxpower = Math.pow(2,8);
           power=1;
@@ -42434,7 +42444,7 @@ var LZString$1 = {
           }
         c = f(bits);
         break;
-      case 1: 
+      case 1:
           bits = 0;
           maxpower = Math.pow(2,16);
           power=1;
@@ -42450,7 +42460,7 @@ var LZString$1 = {
           }
         c = f(bits);
         break;
-      case 2: 
+      case 2:
         return "";
     }
     dictionary[3] = c;
@@ -42459,7 +42469,7 @@ var LZString$1 = {
       if (data.index > data.string.length) {
         return "";
       }
-      
+
       bits = 0;
       maxpower = Math.pow(2,numBits);
       power=1;
@@ -42475,7 +42485,7 @@ var LZString$1 = {
       }
 
       switch (c = bits) {
-        case 0: 
+        case 0:
           bits = 0;
           maxpower = Math.pow(2,8);
           power=1;
@@ -42494,7 +42504,7 @@ var LZString$1 = {
           c = dictSize-1;
           enlargeIn--;
           break;
-        case 1: 
+        case 1:
           bits = 0;
           maxpower = Math.pow(2,16);
           power=1;
@@ -42512,15 +42522,15 @@ var LZString$1 = {
           c = dictSize-1;
           enlargeIn--;
           break;
-        case 2: 
+        case 2:
           return result;
       }
-      
+
       if (enlargeIn == 0) {
         enlargeIn = Math.pow(2, numBits);
         numBits++;
       }
-      
+
       if (dictionary[c]) {
         entry = dictionary[c];
       } else {
@@ -42531,18 +42541,18 @@ var LZString$1 = {
         }
       }
       result += entry;
-      
+
       // Add w+entry[0] to the dictionary.
       dictionary[dictSize++] = w + entry.charAt(0);
       enlargeIn--;
-      
+
       w = entry;
-      
+
       if (enlargeIn == 0) {
         enlargeIn = Math.pow(2, numBits);
         numBits++;
       }
-      
+
     }
   }
 };

@@ -216,6 +216,7 @@ export class SBSelection extends EventTarget {
   }
 
   moveToNext(editor, delta) {
+    
     let node = followingEditablePart(
       this.viewForMove(
         editor,
