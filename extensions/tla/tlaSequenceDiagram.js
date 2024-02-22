@@ -202,7 +202,7 @@ const gridElementStyle = (column, row) => ({
     textAlign: "center",
 });
 
-const Actor = ({ row, col, label, setSelectedActor }) => {
+const Actor = ({ row, col, label, setSelectedActor, isSelected }) => {
     const actorStyle = {
         ...gridElementStyle(col, row),
         fontWeight: 600,
@@ -215,7 +215,8 @@ const Actor = ({ row, col, label, setSelectedActor }) => {
         alignSelf: "end",
         visibility: label === "$messages" ? "hidden" : "visible",
         wordBreak: "break-all",
-        cursor: "pointer"
+        cursor: "pointer",
+        backgroundColor: isSelected ? "lightgrey" : "white",
     };
 
     return html`
@@ -229,11 +230,11 @@ const Actor = ({ row, col, label, setSelectedActor }) => {
 const delayActionStartPx = 8;
 const actionLineWidth = 3;
 /** an action is the point where the diagram's lifeline is activated */
-const Action = ({ row, col, label, msgs }) => {
+const Action = ({ row, col, label, heightIncreaseFactor }) => {
     const boxStyle = {
         ...gridElementStyle(col, row),
         width: `${actionLineWidth}%`,
-        height: "2.5em", //`calc(1em * ${msgs.length + 1})`,
+        height: `calc(2.5em * ${heightIncreaseFactor})`,
         border: "1px solid black",
         backgroundColor: "white",
         marginLeft: "calc(50% - 1.5%)",
@@ -248,9 +249,10 @@ const Action = ({ row, col, label, msgs }) => {
         fontWeight: "bold",
     };
 
-    return html` <div style=${boxStyle}>
-    <div style=${labelStyle}>${label}</div>
-  </div>`;
+    return html`
+    <div style=${boxStyle}>
+        <div style=${labelStyle}>${label}</div>
+    </div>`;
 };
 
 class LinePositioning extends Component {
@@ -453,7 +455,7 @@ const ActionInspector = ({ actionVizData, startRow, close }) => {
   `;
 };
 
-const MessagesPositionsCompution = ({ vizData, setLines }) => {
+const MessagesPositionsCompution = ({ vizData, showMessagePayload, heightIncreaseFactor }) => {
     const { a2c } = useContext(DiagramConfig);
 
     // depending on if messages are read or write messages,
@@ -533,7 +535,7 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
                     toCol,
                     fromRow,
                     toRow: rcvMsg.toRow,
-                    label: "",
+                    label: showMessagePayload ? rcvMsg.key : "",
                     yRelativePositionFrom: 1.0, // start at bottom of sender
                     yRelativePositionTo: 0,
                     type: "async-success",
@@ -548,7 +550,7 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
                     toCol,
                     fromRow,
                     toRow: fromRow,
-                    label: "",
+                    label: showMessagePayload ? msg.key : "",
                     yRelativePositionFrom: 1.0,
                     yRelativePositionTo: 1.0,
                     type: "async-pending",
@@ -558,10 +560,10 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
     }
 
     const toKey = (m) =>
-        `${m.fromCol}-${m.toCol}-${m.fromRow}-${m.toRow}-${m.label}-${m.yRelativePositionFrom}-${m.yRelativePositionTo}`;
+        `${m.fromCol}-${m.toCol}-${m.fromRow}-${m.toRow}-${m.label}-${m.yRelativePositionFrom}-${m.yRelativePositionTo}-${heightIncreaseFactor}`;
 
     return [...syncMsgs, ...asyncMsgs].map(
-        (m) => html`<${LinePositioning} ...${m} key=${toKey(m)} />`,
+        (m) => html`<${LinePositioning} ...${m} key=${toKey(m)} heightIncreaseFactor=${heightIncreaseFactor} />`,
     );
 };
 
@@ -578,15 +580,11 @@ const EdgePickerButton = (props) => {
 };
 
 const Diagram = ({
-    graph,
-    prevEdges,
-    setPrevEdges,
-    previewEdge,
-    currNode,
-    setCurrNode,
-    setPreviewEdge,
     vizData,
-    setSelectedActor
+    selectedActor,
+    setSelectedActor,
+    showMessagePayload,
+    heightIncreaseFactor
 }) => {
     const { a2c, actors } = useContext(DiagramConfig);
     const [inspectEdge, setInspectEdge] = useState(null);
@@ -622,7 +620,7 @@ const Diagram = ({
       >
         <div class="gridWrapper" style=${{ width: "100%" }}>
           ${actors.map(
-            (a) => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} setSelectedActor=${setSelectedActor} />`,
+            (a) => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} isSelected=${a === selectedActor} setSelectedActor=${setSelectedActor} />`,
         )}
           ${actors.map(
             (a) =>
@@ -634,9 +632,9 @@ const Diagram = ({
         )}
           ${vizData.map(
             (d, i) =>
-                html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} />`,
+                html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} heightIncreaseFactor=${heightIncreaseFactor} />`,
         )}
-          <${MessagesPositionsCompution} vizData=${vizData} />
+          <${MessagesPositionsCompution} vizData=${vizData} showMessagePayload=${showMessagePayload} heightIncreaseFactor=${heightIncreaseFactor} />
           <!-- last row with fixed height to still show some of the lifeline -->
           ${actors.map(
             (_, i) =>
@@ -680,6 +678,7 @@ const Topbar = ({
     setCurrNode,
     setPrevEdges,
     vizData,
+    setShowMessagePayload
 }) => {
     const { actors, varToActor } = useContext(DiagramConfig);
 
@@ -753,6 +752,16 @@ const Topbar = ({
         </button>`;
     }
 
+    const ToggleMsgLabelsButton = () => {
+        return html`
+        <button
+            style=${{ height: "min-content" }}
+            onClick=${() => setShowMessagePayload((v) => !v)}
+        >
+            Toggle Message Payload Visibility
+        </button>`;
+    }
+
     return html`
     <div style=${diagramContainerStyle}>
       <!-- <div class="gridWrapper" style=${{ gridGap: "16px" }}>
@@ -783,6 +792,7 @@ const Topbar = ({
       </div> -->
       <div style=${{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <h4>Choose Next Action</h4>
+        <${ToggleMsgLabelsButton} />
         <${UndoButton} />
       </div>
       <div class="gridWrapper">
@@ -885,6 +895,8 @@ const State = ({ graph, initNodes }) => {
     const [prevEdges, setPrevEdges] = useState([]);
     const config = useContext(DiagramConfig);
     const [selectedActor, setSelectedActor] = useState(config.actors[0] === "$messages" ? config.actors[1] : config.actors[0]);
+    const [showMessagePayload, setShowMessagePayload] = useState(false);
+    const [heightIncreaseFactor, setHeightIncreaseFactor] = useState(1);
 
     const containerStyle = {
         display: "flex",
@@ -905,7 +917,11 @@ const State = ({ graph, initNodes }) => {
         currNode,
         setCurrNode,
         vizData,
-        setSelectedActor
+        selectedActor,
+        setSelectedActor,
+        showMessagePayload,
+        setShowMessagePayload,
+        heightIncreaseFactor
     };
 
     const InitStateSelection = () => {
@@ -941,6 +957,21 @@ const State = ({ graph, initNodes }) => {
         </div>`
     }
 
+    const ActionHeightSlider = () => {
+        return html`
+        <div style=${{ padding: "4px 4px 4px 16px" }}>
+            <label for="height">Choose action height:</label>
+            <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value=${heightIncreaseFactor}
+                onChange=${(e) => setHeightIncreaseFactor(e.target.value)}
+            />
+        </div>`
+    }
+
     // a grid layout where the right column shows the StateMachines component
     // and the remaining space shows the rest
     return html`
@@ -948,6 +979,7 @@ const State = ({ graph, initNodes }) => {
         <div style=${{ display: "grid", gridTemplateColumns: "50% 50%", height: "100%" }}>
             <div style=${containerStyle}>
                 <${InitStateSelection} />
+                <${ActionHeightSlider} />
                 <${Topbar} ...${props} />
                 <${Diagram} ...${props} />
             </div >
