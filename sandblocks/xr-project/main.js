@@ -84,8 +84,11 @@ export class XRProject extends SqueakProject {
     }
   }
 
-  startWorld() {
-    sqEval('XRWorld start');
+  async startWorld() {
+    const result = await sqEval('XRWorld start');
+    if (result instanceof Error) {
+      console.error("An error occurred while starting the XR world.", result);
+    }
   }
 
   renderBackground() {
