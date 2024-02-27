@@ -786,7 +786,7 @@ const Topbar = ({
   `;
 };
 
-const StateMachine = ({ actor, currentState, previewedState }) => {
+const StateDiagram = ({ actor, currentState, previewedState }) => {
     const config = useContext(DiagramConfig);
     const { stateSpaceByActor } = config;
     const mermaidContainerRef = useRef(null);
@@ -797,9 +797,9 @@ const StateMachine = ({ actor, currentState, previewedState }) => {
         if (actor === "$messages") return "";
         const transitions = stateSpaceByActor[actor];
 
-        const keyStates = Object.keys(transitions)
-        const transitionStates = Object.values(transitions).flatMap((tos) => Array.from(tos))
-        const states = [...new Set([...keyStates, ...transitionStates])]
+        const fromStateDescriptions = Object.keys(transitions)
+        const toStateDescriptions = Object.values(transitions).flatMap((toMap) => [...Object.keys(toMap)])
+        const states = [...new Set([...fromStateDescriptions, ...toStateDescriptions])]
         const aliasByState = states.reduce((acc, state, i) => {
             acc[state] = i + 1
             return acc
@@ -812,9 +812,9 @@ const StateMachine = ({ actor, currentState, previewedState }) => {
                 ? `  class ${aliasByState[state]} previewStateStyle`
                 : `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
 
-        const transitionsAsMermaid = Object.entries(transitions).map(([from, tos]) => {
-            const tosAsMermaid = Array.from(tos)
-                .map((to) => `  ${aliasByState[from]} --> ${aliasByState[to]}`)
+        const transitionsAsMermaid = Object.entries(transitions).map(([from, tosMap]) => {
+            const tosAsMermaid = Object.entries(tosMap)
+                .map(([k, labels]) => [...labels].map(l => `  ${aliasByState[from]} --> ${aliasByState[k]}: ${l}`).join("\n"))
                 .join("\n")
             return tosAsMermaid
         }
@@ -948,7 +948,7 @@ const State = ({ graph, initNodes }) => {
             <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0", padding: "0 16px 0 0" }}>
                 <h4>${selectedActor}</h4>
                 <${ActorSelector} />
-                <${StateMachine} actor=${selectedActor} currentState=${currNode} previewedState=${graph.nodes.get(previewEdge?.to)}/>
+                <${StateDiagram} actor=${selectedActor} currentState=${currNode} previewedState=${graph.nodes.get(previewEdge?.to)}/>
             </div>
         </div>
     </div>
@@ -992,7 +992,7 @@ const GraphProvider = ({ spec }) => {
     const outgoingEdges = computeOutgoingEdges();
 
     const computeStateSpaceOf = (actor) => {
-        const stateTransitionsTransactionManager = {}
+        const stateTransitionsByBeforeState = {}
         for (const e of edges) {
             const varStateSpaceBefore = nodeToStateDescription(spec.transformation.stateSpaceSelectors[actor], nodes.get(e.from))
             const varStateSpaceAfter = nodeToStateDescription(spec.transformation.stateSpaceSelectors[actor], nodes.get(e.to))
@@ -1007,13 +1007,18 @@ const GraphProvider = ({ spec }) => {
                 continue
             }
 
-            if (stateTransitionsTransactionManager[beforeJson] === undefined) {
-                stateTransitionsTransactionManager[beforeJson] = new Set([afterJson]);
-            } else if (!stateTransitionsTransactionManager[beforeJson].has(afterJson)) {
-                stateTransitionsTransactionManager[beforeJson].add(afterJson);
+            if (stateTransitionsByBeforeState[beforeJson] === undefined) {
+                const labelsByToTransition = {}
+                labelsByToTransition[afterJson] = new Set([e.label])
+                stateTransitionsByBeforeState[beforeJson] = labelsByToTransition
+            } else if (!stateTransitionsByBeforeState[beforeJson][afterJson]) {
+                stateTransitionsByBeforeState[beforeJson][afterJson] = new Set([e.label]);
+            } else {
+                // we have multiple transitions from the same from state to the same to state
+                stateTransitionsByBeforeState[beforeJson][afterJson].add(e.label)
             }
         }
-        return stateTransitionsTransactionManager
+        return stateTransitionsByBeforeState
     }
     const stateSpaceByActor = spec.transformation.actors.reduce((acc, actor) => {
         if (!spec.transformation.actorSelectors[actor]) return acc;
