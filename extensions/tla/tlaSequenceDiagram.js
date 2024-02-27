@@ -206,21 +206,12 @@ const Actor = ({ row, col, label, setSelectedActor, isSelected }) => {
     const actorStyle = {
         ...gridElementStyle(col, row),
         fontWeight: 600,
-        padding: "8px 8px",
-        border: "1px solid black",
         margin: "0 4px",
-        width: "fit-content",
-        height: "min-content",
-        justifySelf: "center",
-        alignSelf: "end",
         visibility: label === "$messages" ? "hidden" : "visible",
-        wordBreak: "break-all",
-        cursor: "pointer",
-        backgroundColor: isSelected ? "lightgrey" : "white",
     };
 
     return html`
-    <div style=${actorStyle} onClick=${(e) => {
+    <div class="button" style=${actorStyle} onClick=${(e) => {
             if (label !== "$messages") setSelectedActor(label)
         }}>
         ${label}
@@ -577,7 +568,7 @@ const EdgePickerButton = (props) => {
         };
     }, []);
 
-    return html` <button class="edgepicker" ...${props} />`;
+    return html` <button class="button" ...${props} />`;
 };
 
 const Diagram = ({
@@ -1094,7 +1085,7 @@ export const SequenceDiagram = () => {
     return [
         html`
       <style>
-        .edgepicker {
+        .button {
           background: white;
           border: 1px solid black;
           box-sizing: border-box;
@@ -1106,7 +1097,7 @@ export const SequenceDiagram = () => {
           word-break: break-all;
         }
 
-        .edgepicker:hover {
+        .button:hover {
           background-color: rgb(240, 240, 241);
         }
       </style>
