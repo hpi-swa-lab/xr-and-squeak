@@ -820,7 +820,7 @@ const StateDiagram = ({ actor, currentState, previewedState }) => {
         }
         ).join("\n");
         const mermaidOutput = `stateDiagram-v2
-    direction TB
+    direction LR
     classDef defaultStateStyle fill:white,color:black,stroke-width:1px,stroke:black,font-size:1em
     classDef selectedStateStyle fill:grey,color:black,stroke-width:1px,stroke:black,font-size:1em
     classDef previewStateStyle fill:lightgrey,color:black,stroke-width:1px,stroke:black,font-size:1em
