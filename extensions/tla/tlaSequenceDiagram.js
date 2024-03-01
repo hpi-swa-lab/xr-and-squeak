@@ -1009,13 +1009,13 @@ const GraphProvider = ({ spec }) => {
 
             if (stateTransitionsByBeforeState[beforeJson] === undefined) {
                 const labelsByToTransition = {}
-                labelsByToTransition[afterJson] = new Set([e.label])
+                labelsByToTransition[afterJson] = new Set([e.label + e.parameters])
                 stateTransitionsByBeforeState[beforeJson] = labelsByToTransition
             } else if (!stateTransitionsByBeforeState[beforeJson][afterJson]) {
-                stateTransitionsByBeforeState[beforeJson][afterJson] = new Set([e.label]);
+                stateTransitionsByBeforeState[beforeJson][afterJson] = new Set([e.label + e.parameters]);
             } else {
                 // we have multiple transitions from the same from state to the same to state
-                stateTransitionsByBeforeState[beforeJson][afterJson].add(e.label)
+                stateTransitionsByBeforeState[beforeJson][afterJson].add(e.label + e.parameters)
             }
         }
         return stateTransitionsByBeforeState
