@@ -78,11 +78,42 @@ Class {
 }
 
 { #category : #callbacks }
+JSObjectProxy class >> callSemaphore [
+
+	^ self callSemaphoreInfo first
+	
+]
+
+{ #category : #callbacks }
+JSObjectProxy class >> callSemaphoreIndex [
+
+	^ self callSemaphoreInfo second
+	
+]
+
+{ #category : #callbacks }
+JSObjectProxy class >> callSemaphoreInfo [
+
+	^ JSCallSemaphore value ifNil: [ | sema semaIndex |
+		sema := Semaphore new.
+		semaIndex := Smalltalk registerExternalObject: sema.
+		"JSResourceCleaner instance trackExternalObject: semaIndex ofProcess: Processor activeProcess."
+		JSCallSemaphore value: {sema. semaIndex}]
+]
+
+{ #category : #callbacks }
 JSObjectProxy class >> callbackProcess [
 	[true] whileTrue: [
 		CallbackSemaphore wait.
 		[self handleCallback] fork].
 
+]
+
+{ #category : #callbacks }
+JSObjectProxy class >> cleanupCallSemaphore [
+
+	JSCallSemaphore value ifNotNil: [:semaInfo |
+		Smalltalk unregisterExternalObject: semaInfo first]
 ]
 
 { #category : #'class initialization' }
@@ -104,7 +135,7 @@ JSObjectProxy class >> handleCallback [
 	[result := block valueWithArguments: args]
 		ifError: [:err :rcvr | result := JS Error: err asString].
 	self primReturnFromCallback: result.
-
+	self cleanupCallSemaphore.
 ]
 
 { #category : #callbacks }
@@ -229,34 +260,8 @@ JSObjectProxy >> await: promise [
 { #category : #calling }
 JSObjectProxy >> callIntoJS: aMessage [
 	
-	self primCallIntoJS: aMessage semaphore: self callSemaphoreIndex
+	self primCallIntoJS: aMessage semaphore: self class callSemaphoreIndex
 
-]
-
-{ #category : #calling }
-JSObjectProxy >> callSemaphore [
-
-	^ self callSemaphoreInfo first
-	
-]
-
-{ #category : #calling }
-JSObjectProxy >> callSemaphoreIndex [
-
-	^ self callSemaphoreInfo second
-	
-]
-
-{ #category : #calling }
-JSObjectProxy >> callSemaphoreInfo [
-
-	^ JSCallSemaphore value ifNil: [ | sema |
-		sema := Semaphore new.
-		JSCallSemaphore value: {
-			sema.
-			"TODO consider unregistering the semaphore when to process ends"
-			Smalltalk registerExternalObject: sema}]
-	
 ]
 
 { #category : #accessing }
@@ -316,7 +321,7 @@ JSObjectProxy >> typeof [
 { #category : #calling }
 JSObjectProxy >> waitForCall [
 
-	self callSemaphore wait.
+	self class callSemaphore wait.
 ]
 
 { #category : #private }
