@@ -186,10 +186,17 @@ XRWorld >> setupDocument [
 ]
 
 { #category : #setup }
+XRWorld >> setupEnvironment [
+
+	ToolSet default: XRToolSet
+]
+
+{ #category : #setup }
 XRWorld >> start [
 
 	| createTestElement |
 	self
+		setupEnvironment;
 		createRenderer;
 		createScene;
 		setupDocument.
