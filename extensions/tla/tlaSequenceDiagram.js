@@ -202,48 +202,49 @@ const gridElementStyle = (column, row) => ({
     textAlign: "center",
 });
 
-const Actor = ({ row, col, label }) => {
+const Actor = ({ row, col, label, setSelectedActor, isSelected }) => {
     const actorStyle = {
         ...gridElementStyle(col, row),
         fontWeight: 600,
-        padding: "16px 16px",
-        border: "1px solid black",
-        margin: "0 8px",
-        width: "fit-content",
-        height: "min-content",
-        justifySelf: "center",
-        alignSelf: "end",
+        margin: "0 4px",
         visibility: label === "$messages" ? "hidden" : "visible",
     };
 
-    return html` <div style=${actorStyle}>${label}</div> `;
+    return html`
+    <div class="button" style=${actorStyle} onClick=${(e) => {
+            if (label !== "$messages") setSelectedActor(label)
+        }}>
+        ${label}
+    </div> `;
 };
 
-const delayActionStartPx = 12;
+const delayActionStartPx = 8;
 const actionLineWidth = 3;
 /** an action is the point where the diagram's lifeline is activated */
-const Action = ({ row, col, label, msgs }) => {
+const Action = ({ row, col, label, heightIncreaseFactor, isPreview }) => {
     const boxStyle = {
         ...gridElementStyle(col, row),
         width: `${actionLineWidth}%`,
-        height: `calc(2em * ${msgs.length + 1})`,
+        height: `calc(2.5em * ${heightIncreaseFactor})`,
         border: "1px solid black",
         backgroundColor: "white",
         marginLeft: "calc(50% - 1.5%)",
         marginTop: `${delayActionStartPx}px`,
+        opacity: isPreview ? 0.5 : 1,
     };
 
     const labelStyle = {
         position: "absolute",
-        transform: "translateY(60%)",
+        transform: "translateY(50%)",
         whiteSpace: "nowrap",
-        marginLeft: "12px",
+        marginLeft: "8px",
         fontWeight: "bold",
     };
 
-    return html` <div style=${boxStyle}>
-    <div style=${labelStyle}>${label}</div>
-  </div>`;
+    return html`
+    <div style=${boxStyle}>
+        <div style=${labelStyle}>${label}</div>
+    </div>`;
 };
 
 class LinePositioning extends Component {
@@ -446,7 +447,7 @@ const ActionInspector = ({ actionVizData, startRow, close }) => {
   `;
 };
 
-const MessagesPositionsCompution = ({ vizData, setLines }) => {
+const MessagesPositionsCompution = ({ vizData, showMessagePayload, heightIncreaseFactor }) => {
     const { a2c } = useContext(DiagramConfig);
 
     // depending on if messages are read or write messages,
@@ -526,7 +527,7 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
                     toCol,
                     fromRow,
                     toRow: rcvMsg.toRow,
-                    label: "",
+                    label: showMessagePayload ? rcvMsg.key : "",
                     yRelativePositionFrom: 1.0, // start at bottom of sender
                     yRelativePositionTo: 0,
                     type: "async-success",
@@ -541,7 +542,7 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
                     toCol,
                     fromRow,
                     toRow: fromRow,
-                    label: "",
+                    label: showMessagePayload ? msg.key : "",
                     yRelativePositionFrom: 1.0,
                     yRelativePositionTo: 1.0,
                     type: "async-pending",
@@ -551,10 +552,10 @@ const MessagesPositionsCompution = ({ vizData, setLines }) => {
     }
 
     const toKey = (m) =>
-        `${m.fromCol}-${m.toCol}-${m.fromRow}-${m.toRow}-${m.label}-${m.yRelativePositionFrom}-${m.yRelativePositionTo}`;
+        `${m.fromCol}-${m.toCol}-${m.fromRow}-${m.toRow}-${m.label}-${m.yRelativePositionFrom}-${m.yRelativePositionTo}-${heightIncreaseFactor}`;
 
     return [...syncMsgs, ...asyncMsgs].map(
-        (m) => html`<${LinePositioning} ...${m} key=${toKey(m)} />`,
+        (m) => html`<${LinePositioning} ...${m} key=${toKey(m)} heightIncreaseFactor=${heightIncreaseFactor} />`,
     );
 };
 
@@ -567,43 +568,22 @@ const EdgePickerButton = (props) => {
         };
     }, []);
 
-    return html` <button class="edgepicker" ...${props} />`;
+    return html` <button class="button" ...${props} />`;
 };
 
 const Diagram = ({
-    graph,
-    prevEdges,
-    setPrevEdges,
-    previewEdge,
-    currNode,
-    setCurrNode,
-    setPreviewEdge,
     vizData,
+    selectedActor,
+    setSelectedActor,
+    showMessagePayload,
+    heightIncreaseFactor,
+    previewEdge
 }) => {
     const { a2c, actors } = useContext(DiagramConfig);
     const [inspectEdge, setInspectEdge] = useState(null);
 
-    const toggle = (i) => {
-        setInspectEdge((v) => {
-            if (v === i) {
-                return null;
-            }
-            return i;
-        });
-    };
-
     return html`
     <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0" }}>
-      <style>
-        .field {
-        }
-
-        .field:hover {
-          transition: background-color 0.3s ease-in-out;
-          background-color: rgb(240, 240, 241, 0.5);
-          cursor: pointer;
-        }
-      </style>
       <div
         style=${{
             padding: "16px 32px 16px 16px",
@@ -614,7 +594,7 @@ const Diagram = ({
       >
         <div class="gridWrapper" style=${{ width: "100%" }}>
           ${actors.map(
-            (a) => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} />`,
+            (a) => html`<${Actor} label=${a} col=${a2c.get(a)} row=${1} isSelected=${a === selectedActor} setSelectedActor=${setSelectedActor} />`,
         )}
           ${actors.map(
             (a) =>
@@ -626,9 +606,9 @@ const Diagram = ({
         )}
           ${vizData.map(
             (d, i) =>
-                html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} />`,
+                html`<${Action} row=${i + 2} col=${a2c.get(d.actor)} ...${d} heightIncreaseFactor=${heightIncreaseFactor} isPreview=${previewEdge && i === vizData.length - 1} />`,
         )}
-          <${MessagesPositionsCompution} vizData=${vizData} />
+          <${MessagesPositionsCompution} vizData=${vizData} showMessagePayload=${showMessagePayload} heightIncreaseFactor=${heightIncreaseFactor} />
           <!-- last row with fixed height to still show some of the lifeline -->
           ${actors.map(
             (_, i) =>
@@ -637,18 +617,6 @@ const Diagram = ({
                         ...gridElementStyle(i + 1, vizData.length + 2),
                         height: "32px",
                     }}
-              ></div>`,
-        )}
-          ${vizData.map(
-            (_, i) =>
-                html`<div
-                style=${{
-                        gridColumn: `1 / span ${actors.length}`,
-                        gridRow: `${i + 2}`,
-                        zIndex: 3,
-                    }}
-                class="field"
-                onClick=${() => toggle(i)}
               ></div>`,
         )}
           ${inspectEdge !== null
@@ -672,6 +640,7 @@ const Topbar = ({
     setCurrNode,
     setPrevEdges,
     vizData,
+    setShowMessagePayload
 }) => {
     const { actors, varToActor } = useContext(DiagramConfig);
 
@@ -730,6 +699,31 @@ const Topbar = ({
     </tr>`;
     };
 
+    const UndoButton = () => {
+        return html`
+        <button
+            style=${{ height: "min-content" }}
+            onClick=${() => {
+                if (prevEdges.length > 0) {
+                    setCurrNode(graph.nodes.get(prevEdges[prevEdges.length - 1].from));
+                    setPrevEdges(prevEdges => prevEdges.slice(0, prevEdges.length - 1));
+                }
+            }}
+        >
+            Undo
+        </button>`;
+    }
+
+    const ToggleMsgLabelsButton = () => {
+        return html`
+        <button
+            style=${{ height: "min-content" }}
+            onClick=${() => setShowMessagePayload((v) => !v)}
+        >
+            Toggle Message Payload Visibility
+        </button>`;
+    }
+
     return html`
     <div style=${diagramContainerStyle}>
       <!-- <div class="gridWrapper" style=${{ gridGap: "16px" }}>
@@ -758,7 +752,11 @@ const Topbar = ({
             </div>`,
     )}
       </div> -->
-      <h4>Choose Next Action</h4>
+      <div style=${{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <h4>Choose Next Action</h4>
+        <${ToggleMsgLabelsButton} />
+        <${UndoButton} />
+      </div>
       <div class="gridWrapper">
         ${nextActionsPerActorIndex.map(
         (actions, i) => html`
@@ -788,37 +786,44 @@ const Topbar = ({
   `;
 };
 
-const StateMachine = ({ actor }) => {
+const StateDiagram = ({ actor, currentState, previewedState }) => {
     const config = useContext(DiagramConfig);
     const { stateSpaceByActor } = config;
     const mermaidContainerRef = useRef(null);
+    const actorState = nodeToStateDescription(config.stateSpaceSelectors[actor], currentState)
+    const previewedActorState = previewedState ? nodeToStateDescription(config.stateSpaceSelectors[actor], previewedState) : "NONE"
 
     const getMermaidOutput = () => {
         if (actor === "$messages") return "";
         const transitions = stateSpaceByActor[actor];
 
-        const keyStates = Object.keys(transitions)
-        const transitionStates = Object.values(transitions).flatMap((tos) => Array.from(tos))
-        const states = [...new Set([...keyStates, ...transitionStates])]
+        const fromStateDescriptions = Object.keys(transitions)
+        const toStateDescriptions = Object.values(transitions).flatMap((toMap) => [...Object.keys(toMap)])
+        const states = [...new Set([...fromStateDescriptions, ...toStateDescriptions])]
         const aliasByState = states.reduce((acc, state, i) => {
             acc[state] = i + 1
             return acc
         }, {})
         const stateDefsMermaid = states.map((state, i) => `  state "${state}" as ${aliasByState[state]}`).join("\n")
 
-        const stylesClassesMermaid = states.map((state, i) => `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
+        const stylesClassesMermaid = states.map((state, i) => state === actorState
+            ? `  class ${aliasByState[state]} selectedStateStyle`
+            : state === previewedActorState
+                ? `  class ${aliasByState[state]} previewStateStyle`
+                : `  class ${aliasByState[state]} defaultStateStyle`).join("\n")
 
-        const transitionsAsMermaid = Object.entries(transitions).map(([from, tos]) => {
-            const tosAsMermaid = Array.from(tos)
-                .map((to) => `  ${aliasByState[from]} --> ${aliasByState[to]}`)
+        const transitionsAsMermaid = Object.entries(transitions).map(([from, tosMap]) => {
+            const tosAsMermaid = Object.entries(tosMap)
+                .map(([k, labels]) => [...labels].map(l => `  ${aliasByState[from]} --> ${aliasByState[k]}: ${l}`).join("\n"))
                 .join("\n")
             return tosAsMermaid
         }
         ).join("\n");
         const mermaidOutput = `stateDiagram-v2
-    direction TB
-    classDef defaultStateStyle fill:none,color:black,stroke-width:1px,stroke:black,font-size:1em
+    direction LR
+    classDef defaultStateStyle fill:white,color:black,stroke-width:1px,stroke:black,font-size:1em
     classDef selectedStateStyle fill:grey,color:black,stroke-width:1px,stroke:black,font-size:1em
+    classDef previewStateStyle fill:lightgrey,color:black,stroke-width:1px,stroke:black,font-size:1em
 ${stylesClassesMermaid}
 ${stateDefsMermaid}
 
@@ -829,15 +834,15 @@ ${transitionsAsMermaid}`;
     useEffect(() => {
         if (mermaidContainerRef.current) {
             // mermaid adds a "data-processed" attribute to the diagram after processing it
+            mermaidContainerRef.current.removeAttribute("data-processed");
             // after processing, the innerHTML will be svg elements, so we
             // reset it
-            mermaidContainerRef.current.removeAttribute("data-processed");
             mermaidContainerRef.current.innerHTML = getMermaidOutput()
         }
         mermaid.run({
             querySelector: ".mermaid",
         })
-    }, [config, actor])
+    }, [config, actor, currentState, previewedState])
 
     return html`
     <div style=${{ width: "100%" }}>
@@ -852,12 +857,14 @@ const State = ({ graph, initNodes }) => {
     const [prevEdges, setPrevEdges] = useState([]);
     const config = useContext(DiagramConfig);
     const [selectedActor, setSelectedActor] = useState(config.actors[0] === "$messages" ? config.actors[1] : config.actors[0]);
+    const [showMessagePayload, setShowMessagePayload] = useState(false);
+    const [heightIncreaseFactor, setHeightIncreaseFactor] = useState(1);
 
     const containerStyle = {
         display: "flex",
         flexDirection: "column",
-        width: "100%",
         flex: "1 0 0",
+        width: "100%",
     };
 
     const edges = previewEdge ? [...prevEdges, previewEdge] : prevEdges;
@@ -872,6 +879,11 @@ const State = ({ graph, initNodes }) => {
         currNode,
         setCurrNode,
         vizData,
+        selectedActor,
+        setSelectedActor,
+        showMessagePayload,
+        setShowMessagePayload,
+        heightIncreaseFactor
     };
 
     const InitStateSelection = () => {
@@ -902,8 +914,23 @@ const State = ({ graph, initNodes }) => {
                 value=${selectedActor}
                 onChange=${(e) => setSelectedActor(e.target.value)}
             >
-                ${config.actors.map((a) => html`<option value=${a}>${a}</option>`)}
+                ${config.actors.filter(a => a !== "$messages").map((a) => html`<option value=${a}>${a}</option>`)}
             </select>
+        </div>`
+    }
+
+    const ActionHeightSlider = () => {
+        return html`
+        <div style=${{ padding: "4px 4px 4px 16px" }}>
+            <label for="height">Choose action height:</label>
+            <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value=${heightIncreaseFactor}
+                onChange=${(e) => setHeightIncreaseFactor(e.target.value)}
+            />
         </div>`
     }
 
@@ -911,21 +938,32 @@ const State = ({ graph, initNodes }) => {
     // and the remaining space shows the rest
     return html`
     <div style=${containerStyle}>
-        <div style=${{ display: "grid", gridTemplateColumns: "2fr 1fr", height: "100%" }}>
+        <div style=${{ display: "grid", gridTemplateColumns: "50% 50%", height: "100%" }}>
             <div style=${containerStyle}>
                 <${InitStateSelection} />
+                <${ActionHeightSlider} />
                 <${Topbar} ...${props} />
                 <${Diagram} ...${props} />
             </div >
             <div style=${{ display: "flex", flexDirection: "column", flex: "1 0 0", padding: "0 16px 0 0" }}>
                 <h4>${selectedActor}</h4>
                 <${ActorSelector} />
-                <${StateMachine} actor=${selectedActor}/>
+                <${StateDiagram} actor=${selectedActor} currentState=${currNode} previewedState=${graph.nodes.get(previewEdge?.to)}/>
             </div>
         </div>
     </div>
   `;
 };
+
+const nodeToStateDescription = (selectors, node) => {
+    const description = selectors.flatMap(([query, annotation, fallback]) => {
+        const results = jmespath.search(node, query)
+        if (!results) return [] // this will be removed in the subsequent flattening
+        if (results.length === 0) return fallback ?? []
+        return annotation.replace(/@/g, JSON.stringify(results[0]).replace(/\"/g, ""))
+    }).flat().join("\n");
+    return description
+}
 
 const GraphProvider = ({ spec }) => {
     // only do computation-heavy operations on whole graph once
@@ -954,15 +992,12 @@ const GraphProvider = ({ spec }) => {
     const outgoingEdges = computeOutgoingEdges();
 
     const computeStateSpaceOf = (actor) => {
-        const stateTransitionsTransactionManager = {}
+        const stateTransitionsByBeforeState = {}
         for (const e of edges) {
-            const varStateSpaceBefore = spec.transformation.stateSpaceSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.from), query)).flat();
-            const varStateSpaceAfter = spec.transformation.stateSpaceSelectors[actor].flatMap(query => jmespath.search(nodes.get(e.to), query)).flat();
-            if (!varStateSpaceBefore || !varStateSpaceAfter) {
-                continue;
-            }
-            const beforeJson = JSON.stringify(varStateSpaceBefore).replace(/\"/g, "")
-            const afterJson = JSON.stringify(varStateSpaceAfter).replace(/\"/g, "")
+            const varStateSpaceBefore = nodeToStateDescription(spec.transformation.stateSpaceSelectors[actor], nodes.get(e.from))
+            const varStateSpaceAfter = nodeToStateDescription(spec.transformation.stateSpaceSelectors[actor], nodes.get(e.to))
+            const beforeJson = varStateSpaceBefore
+            const afterJson = varStateSpaceAfter
 
             if (beforeJson === afterJson) {
                 // TODO
@@ -972,13 +1007,18 @@ const GraphProvider = ({ spec }) => {
                 continue
             }
 
-            if (stateTransitionsTransactionManager[beforeJson] === undefined) {
-                stateTransitionsTransactionManager[beforeJson] = new Set([afterJson]);
-            } else if (!stateTransitionsTransactionManager[beforeJson].has(afterJson)) {
-                stateTransitionsTransactionManager[beforeJson].add(afterJson);
+            if (stateTransitionsByBeforeState[beforeJson] === undefined) {
+                const labelsByToTransition = {}
+                labelsByToTransition[afterJson] = new Set([e.label + e.parameters])
+                stateTransitionsByBeforeState[beforeJson] = labelsByToTransition
+            } else if (!stateTransitionsByBeforeState[beforeJson][afterJson]) {
+                stateTransitionsByBeforeState[beforeJson][afterJson] = new Set([e.label + e.parameters]);
+            } else {
+                // we have multiple transitions from the same from state to the same to state
+                stateTransitionsByBeforeState[beforeJson][afterJson].add(e.label + e.parameters)
             }
         }
-        return stateTransitionsTransactionManager
+        return stateTransitionsByBeforeState
     }
     const stateSpaceByActor = spec.transformation.actors.reduce((acc, actor) => {
         if (!spec.transformation.actorSelectors[actor]) return acc;
@@ -996,7 +1036,8 @@ const GraphProvider = ({ spec }) => {
             (acc, a, i) => acc.set(a, i + 1),
             new Map(),
         ),
-        stateSpaceByActor
+        stateSpaceByActor,
+        stateSpaceSelectors: spec.transformation.stateSpaceSelectors
     };
 
     return [
@@ -1049,7 +1090,7 @@ export const SequenceDiagram = () => {
     return [
         html`
       <style>
-        .edgepicker {
+        .button {
           background: white;
           border: 1px solid black;
           box-sizing: border-box;
@@ -1058,9 +1099,10 @@ export const SequenceDiagram = () => {
           text-align: center;
           cursor: pointer;
           touch-action: manipulation;
+          word-break: break-all;
         }
 
-        .edgepicker:hover {
+        .button:hover {
           background-color: rgb(240, 240, 241);
         }
       </style>
