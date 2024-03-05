@@ -73,18 +73,16 @@ XRHand >> createModel [
 	group add: sphere.
 	
 	laser := Three Mesh
-		new: (Three CylinderGeometry
-			new: 5mm
-			radiusBottom: 5mm
-			height: 100m
-			radialSegments: 10)
-		material: ((Three MeshLambertMaterial
+		new: (Three BoxGeometry
+			new: 4mm
+			height: 4mm
+			depth: 100m)
+		material: ((Three MeshBasicMaterial
 			new: ({#color -> 16rff0000} as: Dictionary))
 				transparent: true;
 				opacity: 0.5;
 				yourself).
 	laser position z: -50m.
-	laser rotation x: 90 degreesToRadians.
 	group add: laser.
 	
 	^ group
