@@ -9,13 +9,16 @@ Class {
 		'camera',
 		'hands',
 		'elementContainer',
-		'xrObjects'
+		'xrObjects',
+		'lastTime'
 	],
 	#classVars : [
 		'CurrentService',
-		'CurrentWorld'
+		'CurrentWorld',
+		'RenderFrame',
+		'RenderProcess'
 	],
-	#category : #SqueakXR
+	#category : #'SqueakXR-Core'
 }
 
 { #category : #'as yet unclassified' }
@@ -37,6 +40,56 @@ XRWorld class >> canvasWidth [
 ]
 
 { #category : #'as yet unclassified' }
+XRWorld class >> clearRenderFrame [
+
+	RenderFrame := nil
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld class >> clearRenderProcess [
+
+	self renderProcess: nil
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld class >> current [
+
+	^ CurrentWorld
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld class >> ensureRenderFrame: frame deltaTime: deltaTime world: world [
+
+	^ RenderFrame
+		ifNil: [
+			RenderFrame := XRRenderFrame new
+				deltaTime: deltaTime;
+				frame: frame;
+				world: world]
+		ifNotNil: [
+			RenderFrame isNew: false]
+		
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld class >> renderProcess [
+
+	^ RenderProcess
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld class >> renderProcess: aProcess [
+
+	RenderProcess := aProcess
+]
+
+{ #category : #'as yet unclassified' }
+XRWorld class >> renderProcessIsActive [
+
+	^ Processor activeProcess = self renderProcess
+]
+
+{ #category : #'as yet unclassified' }
 XRWorld class >> start [
 
 	CurrentWorld ifNotNil: #stop.
@@ -46,11 +99,17 @@ XRWorld class >> start [
 { #category : #'as yet unclassified' }
 XRWorld >> add: anXRObject [
 
-	xrObjects add: anXRObject.
+	self xrObjects add: anXRObject.
 	anXRObject world: self.
 	self scene add: anXRObject threeObject.
 	
 	^ anXRObject
+]
+
+{ #category : #setup }
+XRWorld >> animationLoop [
+
+	^ [:time :frame | self renderTime: time frame: frame]
 ]
 
 { #category : #setup }
@@ -90,7 +149,7 @@ XRWorld >> createRenderer [
 		setSize: self class canvasWidth height: self class canvasHeight.
 	self renderer xr enabled: true.
 	
-	self renderer setAnimationLoop: [:time :frame | self renderTime: time frame: frame].
+	self renderer setAnimationLoop: self animationLoop.
 ]
 
 { #category : #setup }
@@ -127,14 +186,32 @@ XRWorld >> elementContainer: anHTMLElement [
 { #category : #initializing }
 XRWorld >> initialize [
 
+	lastTime := 0.
 	xrObjects := OrderedCollection new.
 ]
 
-{ #category : #'as yet unclassified' }
-XRWorld >> renderTime: time frame: frame [
+{ #category : #rendering }
+XRWorld >> render [
 
-	cube rotation y: time / 1000.
 	renderer render: self scene camera: camera
+]
+
+{ #category : #rendering }
+XRWorld >> renderTime: time frame: frameNumber [
+
+	ToolSet doWithDefaultErrorHandling: [ | frame |
+		self class renderProcess: Processor activeProcess.
+		frame := self class ensureRenderFrame: frameNumber
+			deltaTime: time - lastTime
+			world: self.
+		frame isNew ifTrue: [
+			lastTime := time].
+		
+		frame process.
+		
+		self class
+			clearRenderFrame;
+			clearRenderProcess]
 ]
 
 { #category : #accessing }
@@ -202,16 +279,6 @@ XRWorld >> start [
 		setupDocument.
 	
 	"temporary"
-	cube := Three Mesh
-		new: (Three BoxGeometry
-			new: 1m
-			y: 1m
-			z: 1m)
-		material: (Three MeshLambertMaterial
-			new: ({#color -> 16rff0000} as: Dictionary)).
-	cube position set: 0m y: 1.5m z: -10m.
-	self scene add: cube.
-	
 	createTestElement := [ | button clickCounter count element text updateCounter |
 		element := JS window document createElement: 'div'.
 		element setAttribute: 'id' to: 'test-id'.
@@ -244,6 +311,9 @@ XRWorld >> start [
 	self add: (XRHtmlPanel new
 		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
 		element: createTestElement value).
+	
+	self add: (XRRotatingCube new
+		position: (Three Vector3 new: 0m y: 1.5m z: -10m))
 ]
 
 { #category : #setup }
@@ -256,5 +326,17 @@ XRWorld >> stop [
 { #category : #'as yet unclassified' }
 XRWorld >> xrObjectWithIdentifier: anIdentifier [
 
-	^ xrObjects detect: [:xrObject | xrObject matchesIdentifier: anIdentifier]
+	^ self xrObjects detect: [:xrObject | xrObject matchesIdentifier: anIdentifier]
+]
+
+{ #category : #accessing }
+XRWorld >> xrObjects [
+
+	^ xrObjects
+]
+
+{ #category : #accessing }
+XRWorld >> xrObjectsDo: aBlock [
+
+	xrObjects do: aBlock
 ]

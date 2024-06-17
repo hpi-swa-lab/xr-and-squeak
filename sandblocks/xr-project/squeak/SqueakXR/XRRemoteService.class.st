@@ -7,7 +7,7 @@ Class {
 	#classVars : [
 		'CurrentService'
 	],
-	#category : #SqueakXR
+	#category : #'SqueakXR-Core'
 }
 
 { #category : #'as yet unclassified' }
@@ -23,6 +23,22 @@ XRRemoteService class >> stop [
 	CurrentService ifNotNil: [
 		CurrentService stop.
 		CurrentService := nil]
+]
+
+{ #category : #sources }
+XRRemoteService >> extensionMethodSourcesFor: aCollectionOfCategories [
+
+	| sources |
+	sources := Dictionary new.
+	aCollectionOfCategories
+		do: [:category |
+			((SystemNavigation new allExtensionMethodsOfPackage: category)
+				groupBy: #actualClass) associations
+					do: [:classAndMethods |
+						sources
+							at: classAndMethods key name
+							put: (classAndMethods value collect: #sourceString)]].
+	^ sources
 ]
 
 { #category : #requests }
@@ -42,27 +58,16 @@ XRRemoteService >> handleSource: aWebRequest [
 	aWebRequest send405Response: false.
 ]
 
-{ #category : #requests }
-XRRemoteService >> postSource: aWebRequest [
+{ #category : #sources }
+XRRemoteService >> packageSourcesFor: aCollectionOfCategories [
 
-	self notYetImplemented
-]
-
-{ #category : #'as yet unclassified' }
-XRRemoteService >> source [
-
-	^ (#(SqueakXR 'JSBridge-Core') collect: [:category | self sourceFor: category])
-		reduce: [:acc :cur |
-			acc keysAndValuesDo: [:key :value |
-				value addAll: (cur at: key)]]
-]
-
-{ #category : #'as yet unclassified' }
-XRRemoteService >> sourceFor: aCategory [
-
-	| extensionMethods packageSources |
+	| classes |
+	classes := ChangeSet superclassOrder: (
+		(aCollectionOfCategories collect: [:cat |
+			SystemOrganization classesIn: cat])
+		concatenation).
 	
-	packageSources := (SystemOrganization superclassOrder: aCategory) collect: [:cls |
+	^ classes collect: [:cls |
 		{
 			#name -> (cls name).
 			#definition -> (cls definition).
@@ -70,17 +75,26 @@ XRRemoteService >> sourceFor: aCategory [
 				cls sourceCodeAt: selector]).
 			#classMethods -> (cls class selectors collect: [:selector |
 				cls class sourceCodeAt: selector])
-		} as: Dictionary].
-	
-	extensionMethods := ((SystemNavigation new allExtensionMethodsOfPackage: aCategory)
-		groupBy: #actualClass) associations
-			collect: [:classAndMethods |
-				(classAndMethods key name) -> (classAndMethods value collect: #sourceString)]
-			as: Dictionary.
+		} as: Dictionary]
+]
+
+{ #category : #requests }
+XRRemoteService >> postSource: aWebRequest [
+
+	self notYetImplemented
+]
+
+{ #category : #sources }
+XRRemoteService >> source [
+
+	| categories |
+	categories := (#('SqueakXR*' 'JSBridge*') collect: [:cat |
+		SystemOrganization categoriesMatching: cat])
+		concatenation.
 	
 	^ {
-		#packageSources -> packageSources.
-		#extensionMethods -> extensionMethods.
+		#packageSources -> (self packageSourcesFor: categories).
+		#extensionMethods -> (self extensionMethodSourcesFor: categories).
 	} as: Dictionary
 ]
 

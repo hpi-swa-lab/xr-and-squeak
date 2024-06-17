@@ -3,10 +3,24 @@ Class {
 	#superclass : #Object,
 	#instVars : [
 		'world',
-		'threeObject'
+		'threeObject',
+		'children'
 	],
-	#category : #SqueakXR
+	#category : #'SqueakXR-Core'
 }
+
+{ #category : #'add/remove' }
+XRObject >> addChild: anXRObject [
+
+	self children add: anXRObject.
+	self threeObject add: anXRObject threeObject.
+]
+
+{ #category : #accessing }
+XRObject >> children [
+
+	^ children
+]
 
 { #category : #'as yet unclassified' }
 XRObject >> handlePointing: pointingInformation [
@@ -19,9 +33,15 @@ XRObject >> identifier [
 ]
 
 { #category : #initializing }
+XRObject >> initialize [
+
+	children := OrderedCollection new.
+]
+
+{ #category : #initializing }
 XRObject >> initializeThreeObject [
 
-	self subclassResponsibility
+	^ Three Object3D new
 ]
 
 { #category : #'as yet unclassified' }
@@ -40,6 +60,17 @@ XRObject >> position [
 XRObject >> position: aVector3 [
 
 	self threeObject position copy: aVector3
+]
+
+{ #category : #'add/remove' }
+XRObject >> removeChild: anXRObject [
+
+	self children remove: anXRObject.
+	self threeObject remove: anXRObject threeObject.
+]
+
+{ #category : #stepping }
+XRObject >> step: deltaTimeInMs [
 ]
 
 { #category : #accessing }

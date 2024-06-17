@@ -116,6 +116,17 @@ JSObjectProxy class >> cleanupCallSemaphore [
 		Smalltalk unregisterExternalObject: semaInfo first]
 ]
 
+{ #category : #callbacks }
+JSObjectProxy class >> continueHandlingCallback: aBlock [
+	"Use this if the previous handler process was terminated before it was finished."
+	| result |
+	[[result := aBlock value]
+		ifError: [:err :rcvr | result := JS Error: err asString].
+	self primReturnFromCallback: result]
+		ensure: [
+			self cleanupCallSemaphore]
+]
+
 { #category : #'class initialization' }
 JSObjectProxy class >> examples [
 	| comment |

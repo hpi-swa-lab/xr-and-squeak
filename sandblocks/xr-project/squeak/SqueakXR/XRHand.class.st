@@ -5,7 +5,7 @@ Class {
 		'index',
 		'raycaster'
 	],
-	#category : #SqueakXR
+	#category : #'SqueakXR-Core'
 }
 
 { #category : #'as yet unclassified' }
@@ -103,6 +103,7 @@ XRHand >> index: anIndex [
 { #category : #initializing }
 XRHand >> initialize [
 
+	super initialize.
 	self raycaster: Three Raycaster new.
 ]
 

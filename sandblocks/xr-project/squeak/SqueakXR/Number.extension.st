@@ -1,30 +1,30 @@
 Extension { #name : #Number }
 
-{ #category : #'*SqueakXR' }
+{ #category : #'*SqueakXR-Core' }
 Number >> cm [
 
 	^ self * 0.01
 ]
 
-{ #category : #'*SqueakXR' }
+{ #category : #'*SqueakXR-Core' }
 Number >> dm [
 
 	^ self * 0.1
 ]
 
-{ #category : #'*SqueakXR' }
+{ #category : #'*SqueakXR-Core' }
 Number >> km [
 
 	^ self * 1000
 ]
 
-{ #category : #'*SqueakXR' }
+{ #category : #'*SqueakXR-Core' }
 Number >> m [
 
 	^ self
 ]
 
-{ #category : #'*SqueakXR' }
+{ #category : #'*SqueakXR-Core' }
 Number >> mm [
 
 	^ self * 0.001

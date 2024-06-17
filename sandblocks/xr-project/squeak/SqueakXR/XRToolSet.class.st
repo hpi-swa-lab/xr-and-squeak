@@ -1,8 +1,16 @@
 Class {
 	#name : #XRToolSet,
 	#superclass : #Object,
-	#category : #SqueakXR
+	#category : #'SqueakXR-Core'
 }
+
+{ #category : #'as yet unclassified' }
+XRToolSet class >> doWithDefaultErrorHandling: aBlock [
+
+	^ aBlock
+		on: Exception
+		do: [:exception | self handleError: exception]
+]
 
 { #category : #'as yet unclassified' }
 XRToolSet class >> handleError: anError [
@@ -21,5 +29,9 @@ XRToolSet class >> handleError: anError [
 			stream
 				nextPutAll: context asString;
 				nextPut: Character cr.
-			context := context sender]])
+			context := context sender]]).
+	
+	XRWorld renderProcessIsActive ifTrue: [
+		[Processor terminateActive]
+			ensure: [JSObjectProxy continueHandlingCallback: XRWorld current animationLoop]]
 ]

@@ -11,7 +11,7 @@ Class {
 		'canvasDimensions',
 		'scale'
 	],
-	#category : #SqueakXR
+	#category : #'SqueakXR-Core'
 }
 
 { #category : #accessing }

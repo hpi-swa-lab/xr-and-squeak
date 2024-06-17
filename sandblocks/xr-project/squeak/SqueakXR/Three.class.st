@@ -1,7 +1,7 @@
 Class {
 	#name : #Three,
 	#superclass : #Object,
-	#category : #SqueakXR
+	#category : #'SqueakXR-Core'
 }
 
 { #category : #forwarding }
