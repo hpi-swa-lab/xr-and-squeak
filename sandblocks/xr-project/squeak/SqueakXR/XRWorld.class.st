@@ -201,7 +201,8 @@ XRWorld >> renderTime: time frame: frameNumber [
 
 	ToolSet doWithDefaultErrorHandling: [ | frame |
 		self class renderProcess: Processor activeProcess.
-		frame := self class ensureRenderFrame: frameNumber
+		frame := self class
+			ensureRenderFrame: frameNumber
 			deltaTime: time - lastTime
 			world: self.
 		frame isNew ifTrue: [
@@ -313,7 +314,9 @@ XRWorld >> start [
 		element: createTestElement value).
 	
 	self add: (XRRotatingCube new
-		position: (Three Vector3 new: 0m y: 1.5m z: -10m))
+		position: (Three Vector3 new: 0m y: 1.5m z: -10m)).
+	self add: (XRBrokenRotatingCube new
+		position: (Three Vector3 new: 2m y: 1.5m z: -10m))
 ]
 
 { #category : #setup }

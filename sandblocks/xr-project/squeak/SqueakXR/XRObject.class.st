@@ -4,7 +4,8 @@ Class {
 	#instVars : [
 		'world',
 		'threeObject',
-		'children'
+		'children',
+		'erroredInLastFrame'
 	],
 	#category : #'SqueakXR-Core'
 }
@@ -22,6 +23,18 @@ XRObject >> children [
 	^ children
 ]
 
+{ #category : #accessing }
+XRObject >> erroredInLastFrame [
+
+	^ erroredInLastFrame
+]
+
+{ #category : #accessing }
+XRObject >> erroredInLastFrame: aBoolean [
+
+	erroredInLastFrame := aBoolean
+]
+
 { #category : #'as yet unclassified' }
 XRObject >> handlePointing: pointingInformation [
 ]
@@ -36,6 +49,7 @@ XRObject >> identifier [
 XRObject >> initialize [
 
 	children := OrderedCollection new.
+	self erroredInLastFrame: false.
 ]
 
 { #category : #initializing }
@@ -48,6 +62,12 @@ XRObject >> initializeThreeObject [
 XRObject >> matchesIdentifier: aHash [
 
 	^ self identityHash = aHash
+]
+
+{ #category : #stepping }
+XRObject >> mayStep [
+
+	^ self erroredInLastFrame not
 ]
 
 { #category : #accessing }

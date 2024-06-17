@@ -5,7 +5,9 @@ Class {
 		'deltaTime',
 		'frame',
 		'isNew',
-		'world'
+		'world',
+		'xrObjects',
+		'currentObjectIndex'
 	],
 	#category : #'SqueakXR-Core'
 }
@@ -55,8 +57,19 @@ XRRenderFrame >> isNew: aBoolean [
 { #category : #processing }
 XRRenderFrame >> process [
 
-	self world xrObjectsDo: [:xrObject | xrObject step: self deltaTime];
-		render
+	xrObjects ifNil: [xrObjects := self world xrObjects].
+	currentObjectIndex
+		ifNil: [currentObjectIndex := 1]
+		ifNotNil: [
+			(xrObjects at: currentObjectIndex) erroredInLastFrame: true.
+			currentObjectIndex := currentObjectIndex + 1].
+	
+	currentObjectIndex to: xrObjects size do: [:index || object |
+		currentObjectIndex := index.
+		object := xrObjects at: currentObjectIndex.
+		object mayStep ifTrue: [object step: self deltaTime]].
+	
+	self world render
 ]
 
 { #category : #accessing }

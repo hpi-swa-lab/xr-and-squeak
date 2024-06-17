@@ -1,11 +1,11 @@
 Class {
-	#name : #XRRotatingCube,
+	#name : #XRBrokenRotatingCube,
 	#superclass : #XRObject,
 	#category : #'SqueakXR-Misc'
 }
 
 { #category : #'as yet unclassified' }
-XRRotatingCube >> initializeThreeObject [
+XRBrokenRotatingCube >> initializeThreeObject [
 
 	^ Three Mesh
 		new: (Three BoxGeometry
@@ -13,11 +13,13 @@ XRRotatingCube >> initializeThreeObject [
 			height: 1m
 			depth: 1m)
 		material: (Three MeshLambertMaterial
-			new: ({#color -> 16rff0000} as: Dictionary)).
+			new: ({#color -> 16rff00ff} as: Dictionary)).
 ]
 
 { #category : #'as yet unclassified' }
-XRRotatingCube >> step: delta [
+XRBrokenRotatingCube >> step: delta [
 
 	self threeObject rotation y: delta / 1000 + self threeObject rotation y.
+	
+	ThreadSafeRandom next > 0.99 ifTrue: [self error: 'oops']
 ]
