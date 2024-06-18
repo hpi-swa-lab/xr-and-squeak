@@ -3,6 +3,7 @@ import { promisify } from "util";
 import * as fsPath from "path";
 import { fileURLToPath } from "url";
 import http from "http";
+import https from "https";
 import express from "express";
 import cors from "cors";
 import { Server } from "socket.io";
@@ -10,13 +11,32 @@ import { exec, spawn } from "child_process";
 import Gitignore from "gitignore-fs";
 import crypto from "crypto";
 import { hotReload } from "./hot-reload.js";
+import httpProxy from "http-proxy";
+
+let key, cert;
+try {
+  key = fs.readFileSync("localhost-key.pem");
+  cert = fs.readFileSync("localhost.pem");
+} catch (error) {
+  console.error("An error occurred while reading certificate files: ", error);
+}
 
 const app = express();
-const server = http.createServer(app);
+console.log(`Creating ${key ? "https" : "http"} server`);
+const server = key
+  ? https.createServer({ key, cert }, app)
+  : http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
 app.use(cors());
+
+const proxy = httpProxy.createProxyServer();
+app.use("/xrRemoteService", (req, res, next) => {
+  proxy.web(req, res, {
+    target: "http://127.0.0.1:9824"
+  }, next);
+});
 
 app.post("/sb-watch", (req, res) => {
   io.sockets.emit("sb-watch", req.body);
