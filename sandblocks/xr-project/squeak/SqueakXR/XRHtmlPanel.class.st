@@ -62,7 +62,8 @@ XRHtmlPanel >> containingElement [
 			position: #fixed;
 			top: '0';
 			left: '0';
-			overflow: #hidden.
+			overflow: #hidden;
+			visibility: #hidden.
 		containingElement]
 ]
 
@@ -91,6 +92,27 @@ XRHtmlPanel >> element: anHtmlElement [
 ]
 
 { #category : #'as yet unclassified' }
+XRHtmlPanel >> elementFromPoint: aPoint [
+
+	^ self elementFromPoint: aPoint inElement: self element
+]
+
+{ #category : #'as yet unclassified' }
+XRHtmlPanel >> elementFromPoint: aPoint inElement: anHTMLElement [
+
+	| insideRect rect |
+	rect := anHTMLElement getBoundingClientRect.
+	insideRect := (rect left < aPoint x) and: [rect right > aPoint x] and: [rect top < aPoint y] and: [rect bottom > aPoint y].
+	insideRect
+		ifFalse: [^ nil]
+		ifTrue: [
+			(JSArrayWrapper from: anHTMLElement children) do: [:childElement |
+				(self elementFromPoint: aPoint inElement: childElement)
+					ifNotNil: [:element | ^ element]].
+			^ anHTMLElement]
+]
+
+{ #category : #'as yet unclassified' }
 XRHtmlPanel >> handlePointing: pointingInformation [
 
 	| dimensions normalizedPoint point clickPoint clickedElement event |
@@ -104,7 +126,7 @@ XRHtmlPanel >> handlePointing: pointingInformation [
 	normalizedPoint y: 1.0 - (normalizedPoint y + 0.5).
 	
 	clickPoint := normalizedPoint multiply: self htmlElementSizeAsVector3.
-	clickedElement := JS window document elementFromPoint: clickPoint x y: clickPoint y.
+	clickedElement := self elementFromPoint: clickPoint.
 	event := JS MouseEvent
 		new: 'click'
 		options: ({

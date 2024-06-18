@@ -12,7 +12,8 @@ Class {
 XRHand >> castRay [
 
 	| intersection sphere identifier |
-	intersection := self closestIntersectionWithPointableObject.
+	intersection := self closestIntersectionWithPointableObject
+		ifNil: [^ self].
 	
 	sphere := Three Mesh
 		new: (Three SphereGeometry
@@ -112,7 +113,7 @@ XRHand >> initializeThreeObject [
 
 	| obj |
 	obj := self world renderer xr getController: self index.
-	obj addEventListener: 'select' do: [:event | self castRay].
+	obj addEventListener: 'select' do: [:event | ToolSet doWithDefaultErrorHandling: [self castRay]].
 	obj add: self createModel.
 	^ obj
 ]

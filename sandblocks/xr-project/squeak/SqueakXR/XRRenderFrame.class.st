@@ -25,6 +25,12 @@ XRRenderFrame >> deltaTime: aNumber [
 ]
 
 { #category : #accessing }
+XRRenderFrame >> fps [
+
+	^ 1000 / self deltaTime
+]
+
+{ #category : #accessing }
 XRRenderFrame >> frame [
 
 	^ deltaTime
