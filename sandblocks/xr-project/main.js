@@ -52,6 +52,8 @@ export class XRProject extends SqueakProject {
   }
 
   async updateFromRemote() {
+    console.info("Fetching sources...");
+
     const {packageSources, extensionMethods} = await fetch("/xrRemoteService/source")
       .then(response => response.json());
 
@@ -61,6 +63,8 @@ export class XRProject extends SqueakProject {
     }
     
     for (const cls of packageSources) {
+      console.info(`Compiling ${cls.name}...`);
+
       for (const method of cls.instanceMethods) {
         sqCompile(cls.name, method);
       }
@@ -72,10 +76,14 @@ export class XRProject extends SqueakProject {
     }
 
     for (const [cls, methods] of Object.entries(extensionMethods)) {
+      console.info(`Compiling extension methods in ${cls}`);
+
       for (const method of methods) {
         sqCompile(cls, method);
       }
     }
+
+    console.info("Finished compiling!");
   }
 
   async startWorld() {
