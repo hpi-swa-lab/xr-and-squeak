@@ -15,6 +15,8 @@ XRToolSet class >> doWithDefaultErrorHandling: aBlock [
 { #category : #'as yet unclassified' }
 XRToolSet class >> handleError: anError [
 	
+	XRWorld current displayError: anError.
+	
 	Transcript show: (String new: 1000 streamContents: [:stream | | context |
 		stream
 			nextPutAll: '======== An error occurred ========';

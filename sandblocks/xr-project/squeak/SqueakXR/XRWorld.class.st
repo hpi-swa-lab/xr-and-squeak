@@ -10,7 +10,8 @@ Class {
 		'hands',
 		'elementContainer',
 		'xrObjects',
-		'lastTime'
+		'lastTime',
+		'errorPanel'
 	],
 	#classVars : [
 		'CurrentService',
@@ -92,8 +93,9 @@ XRWorld class >> renderProcessIsActive [
 { #category : #'as yet unclassified' }
 XRWorld class >> start [
 
-	CurrentWorld ifNotNil: #stop.
-	CurrentWorld := self new start
+	XRToolSet doWithDefaultErrorHandling: [
+		CurrentWorld ifNotNil: #stop.
+		CurrentWorld := self new start]
 ]
 
 { #category : #'as yet unclassified' }
@@ -169,6 +171,29 @@ XRWorld >> createScene [
 	self
 		createCamera;
 		createHands.
+]
+
+{ #category : #setup }
+XRWorld >> displayError: anError [
+
+	| errorString |
+	errorString := String new: 1000 streamContents: [:stream | | context |
+		stream
+			nextPutAll: '======== An error occurred ========';
+			nextPut: Character cr;
+			nextPutAll: anError asString;
+			nextPut: Character cr;
+			nextPutAll: 'Stack trace:';
+			nextPut: Character cr.
+		
+		context := anError signalerContext.
+		[context] whileNotNil: [
+			stream
+				nextPutAll: context asString;
+				nextPut: Character cr.
+			context := context sender]].
+
+	errorPanel text: errorString
 ]
 
 { #category : #accessing }
@@ -316,7 +341,11 @@ XRWorld >> start [
 	self add: (XRRotatingCube new
 		position: (Three Vector3 new: 0m y: 1.5m z: -10m)).
 	self add: (XRBrokenRotatingCube new
-		position: (Three Vector3 new: 2m y: 1.5m z: -10m))
+		position: (Three Vector3 new: 2m y: 1.5m z: -10m)).
+		
+	errorPanel := XRTextPanel new.
+	self add: (errorPanel
+		position: (Three Vector3 new: -1m y: 1m z: -0.5m))
 ]
 
 { #category : #setup }
@@ -324,6 +353,12 @@ XRWorld >> stop [
 
 	self renderer setAnimationLoop: nil.
 	self renderer dispose.
+]
+
+{ #category : #rendering }
+XRWorld >> update: aSymbol [
+
+	Transcript showln: aSymbol
 ]
 
 { #category : #'as yet unclassified' }
