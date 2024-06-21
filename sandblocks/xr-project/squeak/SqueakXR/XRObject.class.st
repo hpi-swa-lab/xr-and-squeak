@@ -15,6 +15,7 @@ XRObject >> addChild: anXRObject [
 
 	self children add: anXRObject.
 	self threeObject add: anXRObject threeObject.
+	anXRObject world: self world.
 ]
 
 { #category : #accessing }
@@ -85,8 +86,11 @@ XRObject >> position: aVector3 [
 { #category : #'add/remove' }
 XRObject >> removeChild: anXRObject [
 
+	self assert: (self children includes: anXRObject).
+	
 	self children remove: anXRObject.
 	self threeObject remove: anXRObject threeObject.
+	anXRObject world: nil.
 ]
 
 { #category : #stepping }
@@ -111,5 +115,6 @@ XRObject >> world [
 { #category : #accessing }
 XRObject >> world: aWorld [
 
-	world := aWorld
+	world := aWorld.
+	self children do: [:child | child world: aWorld]
 ]

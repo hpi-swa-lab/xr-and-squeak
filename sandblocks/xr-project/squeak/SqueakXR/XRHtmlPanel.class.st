@@ -263,6 +263,8 @@ XRHtmlPanel >> world: aWorld [
 	self world ifNotNil: [:world | world removeChild: self containingElement].
 	
 	super world: aWorld.
-	self world elementContainer appendChild: self containingElement.
-	self updateTexture.
+	
+	self world ifNotNil: [
+		self world elementContainer appendChild: self containingElement.
+		self updateTexture]
 ]
