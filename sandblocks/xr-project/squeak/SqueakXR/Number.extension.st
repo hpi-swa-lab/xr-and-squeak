@@ -1,6 +1,12 @@
 Extension { #name : #Number }
 
 { #category : #'*SqueakXR-Core' }
+Number >> asCSSUnit: aString [
+
+	^ self asString, aString
+]
+
+{ #category : #'*SqueakXR-Core' }
 Number >> cm [
 
 	^ self * 0.01
@@ -28,4 +34,10 @@ Number >> m [
 Number >> mm [
 
 	^ self * 0.001
+]
+
+{ #category : #'*SqueakXR-Core' }
+Number >> px [
+
+	^ self asCSSUnit: 'px'
 ]
