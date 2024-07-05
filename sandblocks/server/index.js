@@ -12,6 +12,7 @@ import Gitignore from "gitignore-fs";
 import crypto from "crypto";
 import { hotReload } from "./hot-reload.js";
 import httpProxy from "http-proxy";
+import ModuleServer from "esmoduleserve/moduleserver.js";
 
 let key, cert;
 try {
@@ -36,6 +37,13 @@ app.use("/xrRemoteService", (req, res, next) => {
   proxy.web(req, res, {
     target: "http://127.0.0.1:9824"
   }, next);
+});
+
+const moduleServer = new ModuleServer({root: "../../node_modules"});
+app.use((req, res, next) => {
+  if (!moduleServer.handleRequest(req, res)) {
+    next();
+  }
 });
 
 app.post("/sb-watch", (req, res) => {

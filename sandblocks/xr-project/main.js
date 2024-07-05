@@ -29,20 +29,21 @@ export class XRProject extends SqueakProject {
     await super.open();
     await ensureSystemChangeCallback(true);
     await this.updateFromRemote();
-    window.THREE = await import(
-      "https://unpkg.com/three@0.160.0/build/three.module.js"
-    );
+
     // TODO: find nicer way to access external objects like this from within squeak (instead of importing like this and using `JS VRButton`)
-    window.VRButton = (
-      await import(
-        "https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js"
-      )
-    ).VRButton;
-    window.HTMLMesh = (
-      await import(
-        "/sandblocks/xr-project/external/HTMLMesh.js"
-      )
-    ).HTMLMesh;
+    window.THREE = await import("/_m/three/build/three.module.js");
+    window.VRButton = (await import("/_m/three/examples/jsm/webxr/VRButton.js")).VRButton;
+    // window.THREE = await import(
+    //   "https://unpkg.com/three@0.160.0/build/three.module.js"
+    // );
+    // // TODO: find nicer way to access external objects like this from within squeak (instead of importing like this and using `JS VRButton`)
+    // window.VRButton = (
+    //   await import(
+    //     "https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js"
+    //   )
+    // ).VRButton;
+
+    window.CodeMirror = await import("/_m/codemirror/dist/index.js");
 
     this.container = document.createElement("div");
     this.container.setAttribute("id", "xr-container")
