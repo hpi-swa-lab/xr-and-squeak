@@ -118,3 +118,11 @@ XRObject >> world: aWorld [
 	world := aWorld.
 	self children do: [:child | child world: aWorld]
 ]
+
+{ #category : #'as yet unclassified' }
+XRObject >> xrObjectWithIdentifier: anIdentifier [
+
+	(self matchesIdentifier: anIdentifier) ifTrue: [^ self].
+	self children do: [:child | (child xrObjectWithIdentifier: anIdentifier) ifNotNil: [:object | ^ object]].
+	^ nil
+]

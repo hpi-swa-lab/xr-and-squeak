@@ -27,7 +27,9 @@ XRHand >> castRay [
 	self world scene add: sphere.
 	
 	identifier := intersection object userData at: #xrObjectIdentifier.
-	(self world xrObjectWithIdentifier: identifier) handlePointing: intersection.
+	"TODO: what if identifier is nil"
+	(self world xrObjectWithIdentifier: identifier) ifNotNil: [:xrObject |
+		xrObject handlePointing: intersection].
 ]
 
 { #category : #private }

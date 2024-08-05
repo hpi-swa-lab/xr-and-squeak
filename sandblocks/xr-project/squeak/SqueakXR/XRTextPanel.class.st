@@ -12,11 +12,13 @@ XRTextPanel >> initialize [
 
 	super initialize.
 
-	element := JS window document createElement: 'div'.
+	element := JS window document createElement: 'pre'.
 	element style
 		width: 400px;
 		height: 400px;
-		background: '#fff'.
+		padding: 30px;
+		background: '#fff';
+		at: #'font-size' put: 10px.
 	 
 	self addChild: (XRHtmlPanel new element: element).
 ]
