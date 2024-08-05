@@ -186,7 +186,7 @@ XRHtmlPanel >> mutationObserver [
 { #category : #'as yet unclassified' }
 XRHtmlPanel >> onMutation: mutations observer: observer [
 
-	self updateTexture
+	self updateTexture.
 ]
 
 { #category : #accessing }
@@ -220,7 +220,7 @@ XRHtmlPanel >> updateScale [
 { #category : #'as yet unclassified' }
 XRHtmlPanel >> updateTexture [
 	"rendering to HTML canvas adapted from https://stackoverflow.com/a/25760896"
-	| ctx img svg svgBlob svgObjectUrl |
+	| ctx img svg svgObjectUrl |
 	
 	htmlDimensions := self htmlDimensions.
 	self canvasDimensions = htmlDimensions ifFalse: [
@@ -236,14 +236,17 @@ XRHtmlPanel >> updateTexture [
 			self canvasDimensions second.
 			self element outerHTML}.
 	
-	svgBlob := JS Blob new: {svg} options: ({#type -> 'image/svg+xml;charset=utf-8'} as: Dictionary).
-	svgObjectUrl := JS URL createObjectURL: svgBlob.
+	"We need to use a data URL instead of a Blob+createObjectURL here
+	because currently Chrome believes that <foreignObject> always taints the canvas.
+	See https://stackoverflow.com/a/32738643"
+	svgObjectUrl := 'data:image/svg+xml;charset=utf-8,', svg.
 	
 	img := JS Image new.
+	img at: #crossOrigin put: #anonymous.
+	JS console log: img.
 	img addEventListener: #load do: [
 		ctx := self canvas getContext: #'2d'.
 		ctx drawImage: img dx: 0 dy: 0.
-		JS URL revokeObjectURL: svgObjectUrl.
 		self canvasTexture needsUpdate: true.].
 	img src: svgObjectUrl.
 ]
