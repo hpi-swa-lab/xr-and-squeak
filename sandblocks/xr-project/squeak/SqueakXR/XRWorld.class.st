@@ -340,12 +340,16 @@ XRWorld >> start [
 	
 	self add: (XRRotatingCube new
 		position: (Three Vector3 new: 0m y: 1.5m z: -10m)).
-	self add: (XRBrokenRotatingCube new
-		position: (Three Vector3 new: 2m y: 1.5m z: -10m)).
+	"self add: (XRBrokenRotatingCube new
+		position: (Three Vector3 new: 2m y: 1.5m z: -10m))."
 		
 	errorPanel := XRTextPanel new.
 	self add: (errorPanel
-		position: (Three Vector3 new: -1m y: 1m z: -0.5m))
+		position: (Three Vector3 new: -1m y: 1m z: -0.5m)).
+	
+	self add: (XRTextEditorPanel new
+		position: (Three Vector3 new: -1m y: 2.1m z: -0.5m);
+		editedClass: XRRotatingCube selector: #step:)
 ]
 
 { #category : #setup }
@@ -364,7 +368,9 @@ XRWorld >> update: aSymbol [
 { #category : #'as yet unclassified' }
 XRWorld >> xrObjectWithIdentifier: anIdentifier [
 
-	^ self xrObjects detect: [:xrObject | xrObject matchesIdentifier: anIdentifier]
+	self xrObjects do: [:xrObject |
+		(xrObject xrObjectWithIdentifier: anIdentifier) ifNotNil: [:obj | ^ obj]].
+	^ nil
 ]
 
 { #category : #accessing }
