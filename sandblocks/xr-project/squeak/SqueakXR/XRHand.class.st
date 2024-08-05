@@ -11,7 +11,7 @@ Class {
 { #category : #'as yet unclassified' }
 XRHand >> castRay [
 
-	| intersection sphere identifier |
+	| intersection sphere identifier event |
 	intersection := self closestIntersectionWithPointableObject
 		ifNil: [^ self].
 	
@@ -27,9 +27,10 @@ XRHand >> castRay [
 	self world scene add: sphere.
 	
 	identifier := intersection object userData at: #xrObjectIdentifier.
+	event := XRPointingEvent new info: intersection.
 	"TODO: what if identifier is nil"
 	(self world xrObjectWithIdentifier: identifier) ifNotNil: [:xrObject |
-		xrObject handlePointing: intersection].
+		xrObject handleEvent: event].
 ]
 
 { #category : #private }

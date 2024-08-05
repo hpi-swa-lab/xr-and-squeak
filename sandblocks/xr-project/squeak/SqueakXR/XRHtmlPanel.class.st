@@ -113,9 +113,11 @@ XRHtmlPanel >> elementFromPoint: aPoint inElement: anHTMLElement [
 ]
 
 { #category : #'as yet unclassified' }
-XRHtmlPanel >> handlePointing: pointingInformation [
+XRHtmlPanel >> handlePointing: anEvent [
 
-	| dimensions normalizedPoint point clickPoint clickedElement event |
+	| dimensions normalizedPoint point clickPoint clickedElement event pointingInformation |
+	pointingInformation := anEvent info.
+	
 	point := self threeObject worldToLocal: pointingInformation point.
 	dimensions := Three Vector3
 		new: pointingInformation object geometry parameters width
@@ -243,7 +245,6 @@ XRHtmlPanel >> updateTexture [
 	
 	img := JS Image new.
 	img at: #crossOrigin put: #anonymous.
-	JS console log: img.
 	img addEventListener: #load do: [
 		ctx := self canvas getContext: #'2d'.
 		ctx drawImage: img dx: 0 dy: 0.

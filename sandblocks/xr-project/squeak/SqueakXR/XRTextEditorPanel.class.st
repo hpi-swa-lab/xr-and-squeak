@@ -47,9 +47,9 @@ XRTextEditorPanel >> editedSelector [
 { #category : #'as yet unclassified' }
 XRTextEditorPanel >> handlePointing: pointingInformation [
 
-	Transcript showln: 'pointingInformation'.
 	"JS console log: pointingInformation."
-	self codeMirror focus
+	self codeMirror focus.
+	Transcript showln: self class asString
 ]
 
 { #category : #'as yet unclassified' }
@@ -60,14 +60,17 @@ XRTextEditorPanel >> initialize [
 	element := JS window document createElement: 'div'.
 	element style
 		width: 400px;
-		height: 400px.
+		height: 400px;
+		background: '#fff';
+		at: #'font-family' put: 'Arial'.
 	self addChild: (XRHtmlPanel new element: element).
-	
-	Transcript showln: (JS String toString: (JS CodeMirror at: #EditorView)).
-	"JS CodeMirror EditorView new: ({
+
+	codeMirrorView := (JS CodeMirror at: #EditorView) new: ({
 		#doc -> 'test'.
 		#parent -> element.
-			} as: Dictionary)"
+			} as: Dictionary).
+	
+	codeMirrorView dom parentElement parentElement style visibility: #visible
 ]
 
 { #category : #'as yet unclassified' }
