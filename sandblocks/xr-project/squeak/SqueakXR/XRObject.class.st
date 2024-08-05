@@ -5,7 +5,8 @@ Class {
 		'world',
 		'threeObject',
 		'children',
-		'erroredInLastFrame'
+		'erroredInLastFrame',
+		'parent'
 	],
 	#category : #'SqueakXR-Core'
 }
@@ -16,6 +17,7 @@ XRObject >> addChild: anXRObject [
 	self children add: anXRObject.
 	self threeObject add: anXRObject threeObject.
 	anXRObject world: self world.
+	anXRObject parent: self.
 ]
 
 { #category : #accessing }
@@ -36,8 +38,23 @@ XRObject >> erroredInLastFrame: aBoolean [
 	erroredInLastFrame := aBoolean
 ]
 
+{ #category : #accessing }
+XRObject >> handleEvent: anEvent [
+
+	anEvent isPointing ifTrue: [self handlePointing: anEvent].
+	
+	(anEvent shouldContinuePropagating and: [self hasParent]) ifTrue: [
+		self parent handleEvent: anEvent]
+]
+
 { #category : #'as yet unclassified' }
 XRObject >> handlePointing: pointingInformation [
+]
+
+{ #category : #'as yet unclassified' }
+XRObject >> hasParent [
+
+	^ self parent notNil
 ]
 
 { #category : #accessing }
@@ -72,6 +89,18 @@ XRObject >> mayStep [
 ]
 
 { #category : #accessing }
+XRObject >> parent [
+
+	^ parent
+]
+
+{ #category : #accessing }
+XRObject >> parent: anXRObject [
+
+	parent := anXRObject
+]
+
+{ #category : #accessing }
 XRObject >> position [
 
 	^ self threeObject position
@@ -91,6 +120,7 @@ XRObject >> removeChild: anXRObject [
 	self children remove: anXRObject.
 	self threeObject remove: anXRObject threeObject.
 	anXRObject world: nil.
+	anXRObject parent: nil.
 ]
 
 { #category : #stepping }

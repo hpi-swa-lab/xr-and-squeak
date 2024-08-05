@@ -27,6 +27,12 @@ XREvent >> initialize [
 ]
 
 { #category : #'as yet unclassified' }
+XREvent >> isPointing [
+
+	^ false
+]
+
+{ #category : #'as yet unclassified' }
 XREvent >> shouldContinuePropagating [
 
 	^ propagating
