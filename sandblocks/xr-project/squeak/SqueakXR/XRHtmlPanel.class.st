@@ -50,6 +50,7 @@ XRHtmlPanel >> canvasTexture [
 	^ canvasTexture ifNil: [
 		canvasTexture := (Three CanvasTexture new: self canvas)
 			colorSpace: Three SRGBColorSpace;
+			magFilter: Three NearestFilter;
 			yourself]
 ]
 
