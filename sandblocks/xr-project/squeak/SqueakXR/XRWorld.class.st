@@ -11,7 +11,8 @@ Class {
 		'elementContainer',
 		'xrObjects',
 		'lastTime',
-		'errorPanel'
+		'errorPanel',
+		'avatar'
 	],
 	#classVars : [
 		'CurrentService',
@@ -114,32 +115,16 @@ XRWorld >> animationLoop [
 	^ [:time :frame | self renderTime: time frame: frame]
 ]
 
-{ #category : #setup }
-XRWorld >> createCamera [
+{ #category : #accessing }
+XRWorld >> avatar [
 
-	camera := Three PerspectiveCamera
-		new: 50
-		aspect: self class aspect
-		near: 0.1
-		far: 100.
-	camera position set: 0m y: 1.6m z: 3m.
-	^ camera
+	^ avatar ifNil: [avatar := XRAvatar new]
 ]
 
-{ #category : #setup }
-XRWorld >> createHands [
+{ #category : #accessing }
+XRWorld >> camera [
 
-	hands := {
-		XRHand new
-			world: self;
-			index: 0;
-			yourself.
-		XRHand new
-			world: self;
-			index: 1;
-			yourself.
-	} do: [:hand | self add: hand]
-	
+	^ self avatar camera
 ]
 
 { #category : #setup }
@@ -167,10 +152,6 @@ XRWorld >> createScene [
 	self scene
 		add: light;
 		add: (Three AmbientLight new: 16rffffff intensity: 1.0).
-	
-	self
-		createCamera;
-		createHands.
 ]
 
 { #category : #setup }
@@ -218,7 +199,7 @@ XRWorld >> initialize [
 { #category : #rendering }
 XRWorld >> render [
 
-	renderer render: self scene camera: camera
+	renderer render: self scene camera: self camera
 ]
 
 { #category : #rendering }
@@ -277,8 +258,8 @@ XRWorld >> setupDocument [
 	self elementContainer: (JS window document createElement: 'div').
 	container appendChild: elementContainer.
 	
-	resize := [camera aspect: self class aspect.
-			camera updateProjectionMatrix.
+	resize := [self camera aspect: XRWorld aspect.
+			self camera updateProjectionMatrix.
 			self renderer setSize: self class canvasWidth height: self class canvasHeight].
 	resize value.
 	
@@ -303,6 +284,9 @@ XRWorld >> start [
 		createRenderer;
 		createScene;
 		setupDocument.
+	
+	self add: self avatar.
+	self avatar createControllerHands.
 	
 	"temporary"
 	createTestElement := [ | button clickCounter count element text updateCounter |
