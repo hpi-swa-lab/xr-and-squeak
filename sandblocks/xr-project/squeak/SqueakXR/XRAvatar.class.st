@@ -3,10 +3,44 @@ Class {
 	#superclass : #XRObject,
 	#instVars : [
 		'camera',
-		'hands'
+		'hands',
+		'lastRotationTime'
 	],
 	#category : #'SqueakXR-Core'
 }
+
+{ #category : #'as yet unclassified' }
+XRAvatar >> applyRotation [
+
+	| axis now |
+	now := DateAndTime now.
+	axis := self rightHand xAxis.
+	((now - lastRotationTime) asMilliSeconds > 200 and: [axis abs > 0.5]) ifTrue: [
+		lastRotationTime := now.
+		self threeObject rotateOnAxis: XRObject up angle: 45 degreesToRadians * axis sign negated]
+]
+
+{ #category : #'as yet unclassified' }
+XRAvatar >> applyTranslation: delta [
+
+	| offset speed rotation |
+	speed := 0.01.
+	offset := Three Vector3
+		new: self leftHand xAxis
+		y: 0
+		z: self leftHand yAxis.
+	offset length < 0.1 ifTrue: [^ self].
+	
+	rotation := Three Quaternion new.
+	self leftHand threeObject getWorldQuaternion: rotation.
+	
+	offset
+		applyQuaternion: rotation;
+		y: 0;
+		normalize;
+		multiplyScalar: speed * delta.
+	self position add: offset.
+]
 
 { #category : #accessing }
 XRAvatar >> camera [
@@ -39,6 +73,13 @@ XRAvatar >> createControllerHands [
 ]
 
 { #category : #initializing }
+XRAvatar >> initialize [
+
+	super initialize.
+	lastRotationTime := DateAndTime epoch.
+]
+
+{ #category : #initializing }
 XRAvatar >> initializeThreeObject [
 
 	| group |
@@ -47,4 +88,23 @@ XRAvatar >> initializeThreeObject [
 		yourself.
 	
 	^ group
+]
+
+{ #category : #accessing }
+XRAvatar >> leftHand [
+
+	^ hands first
+]
+
+{ #category : #accessing }
+XRAvatar >> rightHand [
+
+	^ hands second
+]
+
+{ #category : #'as yet unclassified' }
+XRAvatar >> step: delta [
+
+	self applyTranslation: delta.
+	self applyRotation.
 ]

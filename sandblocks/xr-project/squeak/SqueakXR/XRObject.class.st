@@ -8,8 +8,17 @@ Class {
 		'erroredInLastFrame',
 		'parent'
 	],
+	#classVars : [
+		'Up'
+	],
 	#category : #'SqueakXR-Core'
 }
+
+{ #category : #'as yet unclassified' }
+XRObject class >> up [
+
+	^ Up ifNil: [Up := Three Vector3 new: 0 y: 1 z: 0]
+]
 
 { #category : #'add/remove' }
 XRObject >> addChild: anXRObject [
@@ -147,6 +156,12 @@ XRObject >> world: aWorld [
 
 	world := aWorld.
 	self children do: [:child | child world: aWorld]
+]
+
+{ #category : #accessing }
+XRObject >> worldTransform [
+
+	^ self threeObject matrixWorld
 ]
 
 { #category : #'as yet unclassified' }

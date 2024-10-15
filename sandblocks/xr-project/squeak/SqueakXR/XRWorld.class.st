@@ -2,6 +2,7 @@ Class {
 	#name : #XRWorld,
 	#superclass : #Object,
 	#instVars : [
+		'topLevelXrObjects',
 		'server',
 		'cube',
 		'renderer',
@@ -9,7 +10,6 @@ Class {
 		'camera',
 		'hands',
 		'elementContainer',
-		'xrObjects',
 		'lastTime',
 		'errorPanel',
 		'avatar'
@@ -102,7 +102,7 @@ XRWorld class >> start [
 { #category : #'as yet unclassified' }
 XRWorld >> add: anXRObject [
 
-	self xrObjects add: anXRObject.
+	self topLevelXrObjects add: anXRObject.
 	anXRObject world: self.
 	self scene add: anXRObject threeObject.
 	
@@ -193,7 +193,7 @@ XRWorld >> elementContainer: anHTMLElement [
 XRWorld >> initialize [
 
 	lastTime := 0.
-	xrObjects := OrderedCollection new.
+	topLevelXrObjects := OrderedCollection new.
 ]
 
 { #category : #rendering }
@@ -343,6 +343,12 @@ XRWorld >> stop [
 	self renderer dispose.
 ]
 
+{ #category : #'as yet unclassified' }
+XRWorld >> topLevelXrObjects [
+
+	^ topLevelXrObjects
+]
+
 { #category : #rendering }
 XRWorld >> update: aSymbol [
 
@@ -360,11 +366,13 @@ XRWorld >> xrObjectWithIdentifier: anIdentifier [
 { #category : #accessing }
 XRWorld >> xrObjects [
 
-	^ xrObjects
+	| objectAndAllChildren |
+	objectAndAllChildren := [:object | {object. object children collect: [:child | objectAndAllChildren value: child]}].
+	^ (self topLevelXrObjects collect: [:object | objectAndAllChildren value: object]) flatten
 ]
 
 { #category : #accessing }
 XRWorld >> xrObjectsDo: aBlock [
 
-	xrObjects do: aBlock
+	topLevelXrObjects do: aBlock
 ]

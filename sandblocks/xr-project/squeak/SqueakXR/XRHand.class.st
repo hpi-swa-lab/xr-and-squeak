@@ -3,7 +3,8 @@ Class {
 	#superclass : #XRObject,
 	#instVars : [
 		'index',
-		'raycaster'
+		'raycaster',
+		'inputSource'
 	],
 	#category : #'SqueakXR-Core'
 }
@@ -93,6 +94,12 @@ XRHand >> createModel [
 ]
 
 { #category : #accessing }
+XRHand >> gamepad [
+
+	^ inputSource ifNotNil: [inputSource gamepad]
+]
+
+{ #category : #accessing }
 XRHand >> index [
 
 	^ index
@@ -118,6 +125,14 @@ XRHand >> initializeThreeObject [
 	obj := self world renderer xr getController: self index.
 	obj addEventListener: 'select' do: [:event | ToolSet doWithDefaultErrorHandling: [self castRay]].
 	obj add: self createModel.
+	
+	obj addEventListener: 'connected' do: [:event |
+		inputSource := event data].
+	
+	obj addEventListener: 'disconnected' do: [:event |
+		self assert: inputSource = event data.
+		inputSource := nil].
+	
 	^ obj
 ]
 
@@ -131,4 +146,25 @@ XRHand >> raycaster [
 XRHand >> raycaster: aRaycaster [
 
 	raycaster := aRaycaster
+]
+
+{ #category : #accessing }
+XRHand >> valueOfAxis: anIndex [
+
+	^ self gamepad
+		ifNil: [0]
+		ifNotNil: [:gp |
+			(gp axes at: anIndex) ifNil: [0]]
+]
+
+{ #category : #accessing }
+XRHand >> xAxis [
+
+	^ self valueOfAxis: 2
+]
+
+{ #category : #accessing }
+XRHand >> yAxis [
+
+	^ self valueOfAxis: 3
 ]
