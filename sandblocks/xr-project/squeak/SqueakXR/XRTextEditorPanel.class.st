@@ -49,7 +49,6 @@ XRTextEditorPanel >> handlePointing: pointingInformation [
 
 	"JS console log: pointingInformation."
 	self codeMirror focus.
-	Transcript showln: self class asString
 ]
 
 { #category : #'as yet unclassified' }

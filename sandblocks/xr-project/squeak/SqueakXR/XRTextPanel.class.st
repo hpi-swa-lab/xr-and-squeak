@@ -24,6 +24,12 @@ XRTextPanel >> initialize [
 ]
 
 { #category : #'as yet unclassified' }
+XRTextPanel >> text [
+
+	^ element innerHTML
+]
+
+{ #category : #'as yet unclassified' }
 XRTextPanel >> text: aString [
 
 	element innerHTML: aString

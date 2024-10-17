@@ -288,6 +288,8 @@ XRWorld >> start [
 	self add: self avatar.
 	self avatar createControllerHands.
 	
+	Transcript addDependent: self.
+	
 	"temporary"
 	createTestElement := [ | button clickCounter count element text updateCounter |
 		element := JS window document createElement: 'div'.
@@ -333,7 +335,7 @@ XRWorld >> start [
 	
 	self add: (XRTextEditorPanel new
 		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
-		editedClass: XRRotatingCube selector: #step:)
+		editedClass: XRRotatingCube selector: #step:).
 ]
 
 { #category : #setup }
@@ -341,6 +343,8 @@ XRWorld >> stop [
 
 	self renderer setAnimationLoop: nil.
 	self renderer dispose.
+	
+	Transcript removeDependent: self.
 ]
 
 { #category : #'as yet unclassified' }
@@ -352,7 +356,8 @@ XRWorld >> topLevelXrObjects [
 { #category : #rendering }
 XRWorld >> update: aSymbol [
 
-	Transcript showln: aSymbol
+	aSymbol = #appendEntry ifTrue: [
+		errorPanel text: errorPanel text, Transcript content]
 ]
 
 { #category : #'as yet unclassified' }

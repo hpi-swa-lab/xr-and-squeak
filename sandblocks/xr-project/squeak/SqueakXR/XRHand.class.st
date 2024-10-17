@@ -177,10 +177,14 @@ XRHand >> step: delta [
 
 	self gamepad ifNotNil: [:gamepad |
 		triggerPressedPrev := triggerPressed.
-		triggerPressed := (gamepad buttons at: 0) pressed.
+		triggerPressed := (gamepad buttons at: 0)
+			ifNil: [false]
+			ifNotNil: #pressed.
 		
 		buttonAPressedPrev := buttonAPressed.
-		buttonAPressed := (gamepad buttons at: 4) pressed.].
+		buttonAPressed := (gamepad buttons at: 4)
+			ifNil: [false]
+			ifNotNil: #pressed.].
 	
 	"self triggerJustPressed ifTrue: [self castRay]."
 	({self triggerJustPressed. self buttonAJustPressed} includes: true) ifTrue: [self castRay]
