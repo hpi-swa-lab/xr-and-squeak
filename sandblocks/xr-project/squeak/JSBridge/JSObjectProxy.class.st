@@ -215,6 +215,13 @@ JSObjectProxy class >> primReturnFromCallback: returnValue [
 
 ]
 
+{ #category : #promises }
+JSObjectProxy >> asCollection [
+
+	self assert: (JS Array isArray: self) description: 'asCollection is only implented for Arrays for now'.
+	^ JSArrayWrapper from: self
+]
+
 { #category : #accessing }
 JSObjectProxy >> asJSArgument [
 	^ self

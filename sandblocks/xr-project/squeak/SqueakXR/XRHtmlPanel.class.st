@@ -117,6 +117,8 @@ XRHtmlPanel >> elementFromPoint: aPoint inElement: anHTMLElement [
 XRHtmlPanel >> handlePointing: anEvent [
 
 	| dimensions normalizedPoint point clickPoint clickedElement event pointingInformation |
+	anEvent hand triggerJustPressed ifFalse: [^ self].
+	
 	pointingInformation := anEvent info.
 	
 	point := self threeObject worldToLocal: pointingInformation point.

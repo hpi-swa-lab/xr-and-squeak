@@ -3,10 +3,23 @@ Class {
 	#superclass : #Object,
 	#instVars : [
 		'propagating',
-		'info'
+		'info',
+		'hand'
 	],
 	#category : #'SqueakXR-Core'
 }
+
+{ #category : #'as yet unclassified' }
+XREvent >> hand [
+
+	^ hand
+]
+
+{ #category : #'as yet unclassified' }
+XREvent >> hand: aHand [
+
+	hand := aHand
+]
 
 { #category : #'as yet unclassified' }
 XREvent >> info [

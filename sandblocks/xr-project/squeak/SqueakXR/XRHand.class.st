@@ -4,31 +4,49 @@ Class {
 	#instVars : [
 		'index',
 		'raycaster',
-		'inputSource'
+		'inputSource',
+		'triggerPressed',
+		'triggerPressedPrev',
+		'buttonAPressed',
+		'buttonAPressedPrev'
 	],
 	#category : #'SqueakXR-Core'
 }
 
+{ #category : #accessing }
+XRHand >> buttonAJustPressed [
+
+	^ buttonAPressed and: buttonAPressedPrev not
+]
+
+{ #category : #accessing }
+XRHand >> buttonAPressed [
+
+	^ buttonAPressed
+]
+
 { #category : #'as yet unclassified' }
 XRHand >> castRay [
 
-	| intersection sphere identifier event |
+	| intersection identifier event |
 	intersection := self closestIntersectionWithPointableObject
 		ifNil: [^ self].
 	
-	sphere := Three Mesh
+	"sphere := Three Mesh
 		new: (Three SphereGeometry
 			new: 5mm
 			widthSegments: 5
 			heightSegments: 5)
 		material: (Three MeshLambertMaterial
 			new: ({#color -> 16rffffff} as: Dictionary)).
-	sphere position copy: intersection point.
+	 position copy: intersection point.
 	
-	self world scene add: sphere.
+	self world scene add: sphere."
 	
 	identifier := intersection object userData at: #xrObjectIdentifier.
-	event := XRPointingEvent new info: intersection.
+	event := XRPointingEvent new
+		info: intersection;
+		hand: self.
 	"TODO: what if identifier is nil"
 	(self world xrObjectWithIdentifier: identifier) ifNotNil: [:xrObject |
 		xrObject handleEvent: event].
@@ -116,6 +134,12 @@ XRHand >> initialize [
 
 	super initialize.
 	self raycaster: Three Raycaster new.
+	
+	triggerPressed := false.
+	triggerPressedPrev := false.
+	
+	buttonAPressed := false.
+	buttonAPressedPrev := false.
 ]
 
 { #category : #initializing }
@@ -123,7 +147,7 @@ XRHand >> initializeThreeObject [
 
 	| obj |
 	obj := self world renderer xr getController: self index.
-	obj addEventListener: 'select' do: [:event | ToolSet doWithDefaultErrorHandling: [self castRay]].
+	"obj addEventListener: 'select' do: [:event | ToolSet doWithDefaultErrorHandling: [self castRay: 'select']]."
 	obj add: self createModel.
 	
 	obj addEventListener: 'connected' do: [:event |
@@ -146,6 +170,32 @@ XRHand >> raycaster [
 XRHand >> raycaster: aRaycaster [
 
 	raycaster := aRaycaster
+]
+
+{ #category : #'as yet unclassified' }
+XRHand >> step: delta [
+
+	self gamepad ifNotNil: [:gamepad |
+		triggerPressedPrev := triggerPressed.
+		triggerPressed := (gamepad buttons at: 0) pressed.
+		
+		buttonAPressedPrev := buttonAPressed.
+		buttonAPressed := (gamepad buttons at: 4) pressed.].
+	
+	"self triggerJustPressed ifTrue: [self castRay]."
+	({self triggerJustPressed. self buttonAJustPressed} includes: true) ifTrue: [self castRay]
+]
+
+{ #category : #accessing }
+XRHand >> triggerJustPressed [
+
+	^ triggerPressed and: triggerPressedPrev not
+]
+
+{ #category : #accessing }
+XRHand >> triggerPressed [
+
+	^ triggerPressed
 ]
 
 { #category : #accessing }

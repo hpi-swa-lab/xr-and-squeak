@@ -59,10 +59,11 @@ XRTextEditorPanel >> initialize [
 
 	element := JS window document createElement: 'div'.
 	element style
-		width: 400px;
+		width: 800px;
 		height: 400px;
 		background: '#fff';
-		at: #'font-family' put: 'Arial'.
+		at: #'font-family' put: 'Arial';
+		at: #'font-size' put: 12px.
 	self addChild: (XRHtmlPanel new element: element).
 
 	codeMirrorView := (JS CodeMirror at: #EditorView) new: ({
@@ -70,7 +71,7 @@ XRTextEditorPanel >> initialize [
 		#parent -> element.
 			} as: Dictionary).
 	
-	codeMirrorView dom parentElement parentElement style visibility: #visible
+	"codeMirrorView dom parentElement parentElement style visibility: #visible"
 ]
 
 { #category : #'as yet unclassified' }

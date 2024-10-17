@@ -319,7 +319,7 @@ XRWorld >> start [
 		element].
 	
 	self add: (XRHtmlPanel new
-		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
+		position: (Three Vector3 new: -1m y: 2.1m z: -0.5m);
 		element: createTestElement value).
 	
 	self add: (XRRotatingCube new
@@ -332,7 +332,7 @@ XRWorld >> start [
 		position: (Three Vector3 new: -1m y: 1m z: -0.5m)).
 	
 	self add: (XRTextEditorPanel new
-		position: (Three Vector3 new: -1m y: 2.1m z: -0.5m);
+		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
 		editedClass: XRRotatingCube selector: #step:)
 ]
 

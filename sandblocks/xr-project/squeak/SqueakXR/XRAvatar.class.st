@@ -72,6 +72,12 @@ XRAvatar >> createControllerHands [
 	
 ]
 
+{ #category : #accessing }
+XRAvatar >> hands [
+
+	^ hands
+]
+
 { #category : #initializing }
 XRAvatar >> initialize [
 
@@ -93,13 +99,13 @@ XRAvatar >> initializeThreeObject [
 { #category : #accessing }
 XRAvatar >> leftHand [
 
-	^ hands first
+	^ self hands first
 ]
 
 { #category : #accessing }
 XRAvatar >> rightHand [
 
-	^ hands second
+	^ self hands second
 ]
 
 { #category : #'as yet unclassified' }
