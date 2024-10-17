@@ -18,6 +18,14 @@ XRTextEditorPanel >> codeMirror [
 ]
 
 { #category : #'as yet unclassified' }
+XRTextEditorPanel >> currentSource [
+
+	^ codeMirrorView state doc toString asString
+		copyReplaceAll: '\n' with: String cr;
+		copyReplaceAll: '\t' with: String tab
+]
+
+{ #category : #'as yet unclassified' }
 XRTextEditorPanel >> editedClass [
 
 	^ editedClass
@@ -33,7 +41,7 @@ XRTextEditorPanel >> editedClass: aClass selector: aSelector [
 		#changes -> ({
 			#from -> 0.
 			#to -> (codeMirrorView state doc length).
-			#insert -> (self source).
+			#insert -> (self originalSource).
 			} as: Dictionary)
 		} as: Dictionary)
 ]
@@ -45,10 +53,15 @@ XRTextEditorPanel >> editedSelector [
 ]
 
 { #category : #'as yet unclassified' }
-XRTextEditorPanel >> handlePointing: pointingInformation [
+XRTextEditorPanel >> handlePointing: anEvent [
 
 	"JS console log: pointingInformation."
-	self codeMirror focus.
+	anEvent hand triggerJustPressed ifTrue: [
+		self codeMirror focus].
+	
+	anEvent hand buttonAJustPressed ifTrue: [
+		self save]
+	
 ]
 
 { #category : #'as yet unclassified' }
@@ -70,11 +83,23 @@ XRTextEditorPanel >> initialize [
 		#parent -> element.
 			} as: Dictionary).
 	
-	"codeMirrorView dom parentElement parentElement style visibility: #visible"
+	codeMirrorView dom parentElement parentElement style visibility: #visible.
 ]
 
 { #category : #'as yet unclassified' }
-XRTextEditorPanel >> source [
+XRTextEditorPanel >> originalSource [
 
 	^ self editedClass ultimateSourceCodeAt: self editedSelector ifAbsent: ['Failed to retrieve source']
+]
+
+{ #category : #'as yet unclassified' }
+XRTextEditorPanel >> save [
+
+	Transcript
+		showln: 'saving ', self editedClass asString, '>>', self editedSelector;
+		showln: self currentSource.
+	[editedClass compile: self currentSource]
+		"Just for now, currently handling exceptions too eagerly"
+		on: CurrentEnvironment do: [:signal | signal resume]
+		on: Error do: [:e | Transcript showln: e class asString, e description]
 ]
