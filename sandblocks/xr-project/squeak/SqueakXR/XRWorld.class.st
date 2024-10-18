@@ -357,7 +357,7 @@ XRWorld >> topLevelXrObjects [
 XRWorld >> update: aSymbol [
 
 	aSymbol = #appendEntry ifTrue: [
-		errorPanel text: errorPanel text, Transcript content]
+		errorPanel text: errorPanel text, Transcript contents]
 ]
 
 { #category : #'as yet unclassified' }

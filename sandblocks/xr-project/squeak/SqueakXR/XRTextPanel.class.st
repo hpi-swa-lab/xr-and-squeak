@@ -2,7 +2,8 @@ Class {
 	#name : #XRTextPanel,
 	#superclass : #XRObject,
 	#instVars : [
-		'element'
+		'element',
+		'htmlPanel'
 	],
 	#category : #'SqueakXR-Core'
 }
@@ -19,18 +20,20 @@ XRTextPanel >> initialize [
 		padding: 30px;
 		background: '#fff';
 		at: #'font-size' put: 10px.
-	 
-	self addChild: (XRHtmlPanel new element: element).
+	
+	htmlPanel := XRHtmlPanel new element: element.
+	self addChild: htmlPanel.
 ]
 
 { #category : #'as yet unclassified' }
 XRTextPanel >> text [
 
-	^ element innerHTML
+	^ element innerHTML asString
 ]
 
 { #category : #'as yet unclassified' }
 XRTextPanel >> text: aString [
 
-	element innerHTML: aString
+	element innerHTML: aString.
+	htmlPanel updateTexture.
 ]
