@@ -256,6 +256,9 @@ XRWorld >> setupDocument [
 	container appendChild: (JS VRButton createButton: self renderer).
 	
 	self elementContainer: (JS window document createElement: 'div').
+	self elementContainer style
+		at: #'z-index' put: -1;
+		at: #position put: #relative.
 	container appendChild: elementContainer.
 	
 	resize := [self camera aspect: XRWorld aspect.
