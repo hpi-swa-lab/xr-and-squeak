@@ -282,6 +282,12 @@ JSObjectProxy >> callIntoJS: aMessage [
 
 ]
 
+{ #category : #'manual overrides' }
+JSObjectProxy >> clone [
+
+	self doesNotUnderstand: (Message selector: #clone)
+]
+
 { #category : #accessing }
 JSObjectProxy >> doesNotUnderstand: aMessage [
 
