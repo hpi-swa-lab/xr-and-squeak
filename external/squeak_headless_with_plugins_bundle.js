@@ -8572,7 +8572,7 @@ Object.extend(Squeak.Primitives.prototype,
                 maskForm = argCount === 1 ? this.loadForm(this.stackNonInteger(0)) : null;
             if (!this.success || !cursorForm) return false;
             var cursorCanvas = this.display.cursorCanvas,
-                context = cursorCanvas.getContext("2d"),
+                context =   cursorCanvas.getContext("2d"),
                 bounds = {left: 0, top: 0, right: cursorForm.width, bottom: cursorForm.height};
             cursorCanvas.width = cursorForm.width;
             cursorCanvas.height = cursorForm.height;
@@ -9663,6 +9663,7 @@ Object.extend(Squeak.Primitives.prototype,
 'initialization', {
     initPlugins: function() {
         Object.extend(this.builtinModules, {
+            Form2CanvasPlugin:      this.findPluginFunctions("f2c_"), // TODO: This is an unsaved modification
             JavaScriptPlugin:       this.findPluginFunctions("js_"),
             FilePlugin:             this.findPluginFunctions("", "primitive(Disable)?(File|Directory)"),
             DropPlugin:             this.findPluginFunctions("", "primitiveDropRequest"),

@@ -16,6 +16,7 @@ import {} from "../../view/widget-utils.js";
 
 import { runHeadless } from "../../external/squeak_headless_with_plugins_bundle.js";
 import {} from "../xr-project/vm.plugins.javascript.js";
+import {} from "../xr-project/vm.plugins.form2canvas.js";
 
 // Use RPC with:
 /*
@@ -96,15 +97,17 @@ export class SqueakProject extends Project {
     }[this.type]());
 
     // performance measurements
+    return
     const _sqEval = window.sqEval;
-    window.sqEval = async (x) => {
-      const start = performance.now();
-      const res = await _sqEval(x);
-      const end = performance.now();
-      (window.times ??= []).push(end - start);
-      console.debug(`sqEval ${x} took ${end - start}ms`);
-      return res;
-    };
+    console.log('sqeval', _sqEval);
+    // window.sqEval = async (x) => {
+      // const start = performance.now();
+      // const res = await _sqEval(x);
+      // const end = performance.now();
+      // (window.times ??= []).push(end - start);
+      // console.debug(`sqEval ${x} took ${end - start}ms`);
+      // return res;
+    // };
     await ensureSystemChangeCallback(this.type === 'browser');
 
     window.sqEscapeString = (string) => string.replaceAll("'", "''");

@@ -47,7 +47,7 @@ const PROJECT_TYPES = {
     name: "XRProject",
     label: "XR Project",
     createArgs: async () => ({
-      path: prompt("Path?", "external/squeak-minimal.image"),
+      path: prompt("Path?", "external/full-no-ui.image"),
     }),
   },
 };

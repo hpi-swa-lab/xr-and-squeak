@@ -339,6 +339,10 @@ XRWorld >> start [
 	self add: (XRTextEditorPanel new
 		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
 		editedClass: XRRotatingCube selector: #step:).
+	
+	self add: (XRMorphPanel new
+		position: (Three Vector3 new: 1m y: 2.1m z: -0.5m);
+		morph: (Morph new))
 ]
 
 { #category : #setup }

@@ -111,3 +111,21 @@ export class XRProject extends SqueakProject {
     ]);
   }
 }
+
+// Utilities
+
+window.decodeByteSymbol = (selector) => {
+  return Array.from(selector.bytes).map(b => String.fromCharCode(b)).join("");
+}
+
+window.printCallStack = (context) => {
+  console.log(_printCallStack(context));
+}
+
+window._printCallStack = (context) => {
+  try {
+    return decodeByteSymbol(context.pointers[Squeak.Context_method].pointers.at(-2)) + "\n" + _printCallStack(context.pointers[Squeak.Context_sender]);
+  } catch (e) {
+    return "(error while retrieving selector)"
+  }
+}
