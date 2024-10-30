@@ -63,8 +63,9 @@ export class XRProject extends SqueakProject {
       sqEval(cls.definition);
     }
     
+    let i = 1;
     for (const cls of packageSources) {
-      console.info(`Compiling ${cls.name}...`);
+      console.info(`(${i++}/${packageSources.length}) Compiling ${cls.name}...`);
 
       for (const method of cls.instanceMethods) {
         sqCompile(cls.name, method);
@@ -76,8 +77,9 @@ export class XRProject extends SqueakProject {
       }
     }
 
+    i = 1;
     for (const [cls, methods] of Object.entries(extensionMethods)) {
-      console.info(`Compiling extension methods in ${cls}`);
+      console.info(`(${i++}/${Object.entries(extensionMethods).length}) Compiling extension methods in ${cls}`);
 
       for (const method of methods) {
         sqCompile(cls, method);
