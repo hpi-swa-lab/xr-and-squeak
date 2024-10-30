@@ -88,7 +88,7 @@ XRRemoteService >> postSource: aWebRequest [
 XRRemoteService >> source [
 
 	| categories |
-	categories := (#('SqueakXR*' 'JSBridge*') collect: [:cat |
+	categories := (self class syncCategories collect: [:cat |
 		SystemOrganization categoriesMatching: cat])
 		concatenation.
 	
