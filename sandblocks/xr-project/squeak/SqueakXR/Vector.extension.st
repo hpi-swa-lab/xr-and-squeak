@@ -1,6 +1,18 @@
 Extension { #name : #Vector }
 
 { #category : #'*SqueakXR-helpers' }
+Vector >> asJSArgument [
+
+	^ Object asJSArgument
+]
+
+{ #category : #'*SqueakXR-helpers' }
+Vector >> asVector [
+
+	^ self
+]
+
+{ #category : #'*SqueakXR-helpers' }
 Vector class >> componentSelectors [
 
 	^ #()

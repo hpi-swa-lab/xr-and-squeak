@@ -25,6 +25,12 @@ XRRemoteService class >> stop [
 		CurrentService := nil]
 ]
 
+{ #category : #'as yet unclassified' }
+XRRemoteService class >> syncCategories [
+	
+	^ #('SqueakXR*' 'JSBridge*' '3DTransform*')
+]
+
 { #category : #sources }
 XRRemoteService >> extensionMethodSourcesFor: aCollectionOfCategories [
 
@@ -34,10 +40,12 @@ XRRemoteService >> extensionMethodSourcesFor: aCollectionOfCategories [
 		do: [:category |
 			((SystemNavigation new allExtensionMethodsOfPackage: category)
 				groupBy: #actualClass) associations
-					do: [:classAndMethods |
+					do: [:classAndMethods | | categorySources |
+						categorySources := classAndMethods value collect: #sourceString.
 						sources
 							at: classAndMethods key name
-							put: (classAndMethods value collect: #sourceString)]].
+							ifPresent: [:existingSources | existingSources addAll: categorySources]
+							ifAbsentPut: [categorySources]]].
 	^ sources
 ]
 
@@ -87,14 +95,15 @@ XRRemoteService >> postSource: aWebRequest [
 { #category : #sources }
 XRRemoteService >> source [
 
-	| categories |
-	categories := (self class syncCategories collect: [:cat |
+	| allCategories rootCategories |
+	allCategories := (self class syncCategories collect: [:cat |
 		SystemOrganization categoriesMatching: cat])
 		concatenation.
+	rootCategories := self class syncCategories collect: [:c | c copyFrom: 1 to: c size - 1].
 	
 	^ {
-		#packageSources -> (self packageSourcesFor: categories).
-		#extensionMethods -> (self extensionMethodSourcesFor: categories).
+		#packageSources -> (self packageSourcesFor: allCategories).
+		#extensionMethods -> (self extensionMethodSourcesFor: rootCategories).
 	} as: Dictionary
 ]
 
