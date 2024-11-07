@@ -132,6 +132,18 @@ XRObject >> removeChild: anXRObject [
 	anXRObject parent: nil.
 ]
 
+{ #category : #accessing }
+XRObject >> scale [
+
+	^ self threeObject scale asVector
+]
+
+{ #category : #accessing }
+XRObject >> scale: aVector3 [
+
+	self threeObject scale: aVector3
+]
+
 { #category : #stepping }
 XRObject >> step: deltaTimeInMs [
 ]
@@ -143,6 +155,12 @@ XRObject >> threeObject [
 		threeObject := self initializeThreeObject.
 		threeObject userData at: #xrObjectIdentifier put: self identityHash.
 		threeObject]
+]
+
+{ #category : #private }
+XRObject >> threeObject: aThreeObject [
+
+	threeObject := aThreeObject
 ]
 
 { #category : #accessing }

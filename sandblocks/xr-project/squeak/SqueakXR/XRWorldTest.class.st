@@ -1,6 +1,6 @@
 Class {
 	#name : #XRWorldTest,
-	#superclass : #TestCase,
+	#superclass : #XRTestCase,
 	#category : #'SqueakXR-Core-Tests'
 }
 

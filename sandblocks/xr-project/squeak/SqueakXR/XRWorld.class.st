@@ -281,7 +281,7 @@ XRWorld >> setupEnvironment [
 { #category : #setup }
 XRWorld >> start [
 
-	| createTestElement |
+	| createTestElement morph |
 	self
 		setupEnvironment;
 		createRenderer;
@@ -340,9 +340,13 @@ XRWorld >> start [
 		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
 		editedClass: XRRotatingCube selector: #step:).
 	
+	morph := (SystemBrowser default open dependents first)
+		extent:  650@425;
+		yourself.
 	self add: (XRMorphPanel new
+		pixelsPerMeter: 500;
 		position: (Three Vector3 new: 1m y: 2.1m z: -0.5m);
-		morph: (Morph new))
+		morph: morph)
 ]
 
 { #category : #setup }

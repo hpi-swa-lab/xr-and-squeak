@@ -1,24 +1,8 @@
 Class {
 	#name : #XRObjectTest,
-	#superclass : #TestCase,
-	#instVars : [
-		'actualJS'
-	],
+	#superclass : #XRTestCase,
 	#category : #'SqueakXR-Core-Tests'
 }
-
-{ #category : #'as yet unclassified' }
-XRObjectTest >> setUp [
-
-	actualJS := Smalltalk at: #JS ifAbsent: nil.
-	Smalltalk at: #JS put: (XRJSMock new)
-]
-
-{ #category : #'as yet unclassified' }
-XRObjectTest >> tearDown [
-
-	Smalltalk at: #JS put: actualJS
-]
 
 { #category : #'as yet unclassified' }
 XRObjectTest >> testCanAddChild [
