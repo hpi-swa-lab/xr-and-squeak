@@ -5,11 +5,17 @@ Class {
 }
 
 { #category : #'as yet unclassified' }
+XRToolSet class >> debugException: anException [
+
+	Transcript showln: '(exception handling nyi) An exception occurred: ', anException description
+]
+
+{ #category : #'as yet unclassified' }
 XRToolSet class >> doWithDefaultErrorHandling: aBlock [
 
 	^ aBlock
-		on: Exception
-		do: [:exception | self handleError: exception]
+		on: Error
+		do: [:error | self handleError: error]
 ]
 
 { #category : #'as yet unclassified' }

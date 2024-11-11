@@ -11,6 +11,17 @@ Class {
 }
 
 { #category : #'as yet unclassified' }
+XRRemoteService class >> createWebXRImage [
+
+	| resuming smalltalkName |
+	smalltalkName := Smalltalk imageName.
+	Smalltalk imageName: (FileDirectory default fullNameFor: 'websqueakxr.image') asSqueakPathName.
+	resuming := Smalltalk forXrSnapshot: true andQuit: false withExitCode: nil embedded: false.
+	resuming == true ifFalse: [Smalltalk imageName: smalltalkName].
+	Smalltalk snapshot: true andQuit: false withExitCode: nil embedded: false.
+]
+
+{ #category : #'as yet unclassified' }
 XRRemoteService class >> start [
 
 	self stop.
