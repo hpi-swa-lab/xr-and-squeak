@@ -19,5 +19,5 @@ XRRotatingCube >> initializeThreeObject [
 { #category : #'as yet unclassified' }
 XRRotatingCube >> step: delta [
 
-	self threeObject rotation y: delta / 1000 + self threeObject rotation y.
+	self threeObject rotation y: (delta / 1000) + (self threeObject rotation y).
 ]

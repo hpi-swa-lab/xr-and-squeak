@@ -68,14 +68,12 @@ XRHand >> closestIntersectionWithPointableObject [
 		intersectObjects: self world scene children.
 	
 	"TODO: find a better way to iterate over JS arrays"
-	0 to: intersections length - 1 do: [:idx || intersection isPointable |
+	0 to: intersections length - 1 do: [:idx || intersection |
 		intersection := intersections at: idx.
-		"TODO: JSObjectProxy does not yet support things like at:ifPresent:"
-		isPointable := (intersection object userData at: 'isPointable')
-			ifNil: false
-			ifNotNil: #value.
-		
-		isPointable ifTrue: [^ intersection]].
+		intersection object at: #userData ifPresent: [:userData |
+			userData at: #isPointable
+				ifPresent: [:isPointable |
+					isPointable ifTrue: [^ intersection]]]].
 	
 	^ nil
 ]
