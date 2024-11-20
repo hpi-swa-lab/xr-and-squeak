@@ -248,6 +248,32 @@ JSObjectProxy >> at: aKey [
 ]
 
 { #category : #accessing }
+JSObjectProxy >> at: aKey ifAbsent: aBlock [
+
+	^ self at: aKey ifPresent: nil ifAbsent: aBlock
+]
+
+{ #category : #accessing }
+JSObjectProxy >> at: aKey ifAbsentPut: aBlock [
+
+	^ self at: aKey ifPresent: nil ifAbsent: [self at: aKey put: aBlock]
+]
+
+{ #category : #accessing }
+JSObjectProxy >> at: aKey ifPresent: aBlock [
+
+	^ self at: aKey ifPresent: aBlock ifAbsent: nil
+]
+
+{ #category : #accessing }
+JSObjectProxy >> at: aKey ifPresent: aPresentBlock ifAbsent: anAbsentBlock [
+
+	(self hasOwnProperty: aKey)
+		ifTrue: [aPresentBlock cull: (self at: aKey)]
+		ifFalse: [anAbsentBlock value]
+]
+
+{ #category : #accessing }
 JSObjectProxy >> at: aKey put: aValue [
 	"set a property"
 	| error |

@@ -2,6 +2,109 @@ import { SqueakProject, ensureSystemChangeCallback, sqCompile } from "../squeak-
 import { button, h } from "../../view/widgets.js";
 import { useState } from "../../external/preact-hooks.mjs";
 
+class Sources {
+  constructor() {
+    this.classDefinitions = new Map();
+    this.methodSources = new Map();
+  }
+
+  loadFromRemote(sources, force = false) {
+    const startTime = Date.now();
+
+    let i = 1;
+    const progressCounter = (arr) => `(${i++}/${arr.length})`;
+    const {packageSources, extensionMethods} = sources;
+
+    console.info("Loading class definitions...")
+    for (const cls of packageSources) {
+      if (force || this.doesClassDefinitionDiffer(cls.name, cls.definition)) {
+        console.info(`${progressCounter(packageSources)} Loading class definition for ${cls.name}`);
+        this.loadClassDefinition(cls.name, cls.definition);
+      } else {
+        console.info(`${progressCounter(packageSources)} Skipping class definition for ${cls.name} (already loaded)`);
+      }
+    } 
+
+    for (const cls of packageSources) {
+      i = 1;
+      console.info(`Compiling methods of ${cls.name}...`);
+
+      let skippedCount = 0;
+      for (const method of cls.instanceMethods) {
+        const methodName = `${cls.name}>>${method.selector}`;
+        if (force || this.doesMethodDefinitionDiffer(methodName, method.source)) {
+          console.info(`${progressCounter(cls.instanceMethods)} Compiling ${methodName}`);
+          this.loadMethodDefinition(cls.name, methodName, method.source);
+        } else {
+          ++skippedCount;
+        }
+      }
+      
+
+      i = 1;
+      const metaclass = cls.name + " class";
+      for (const method of cls.classMethods) {
+        const methodName = `${metaclass}>>${method.selector}`;
+        if (force || this.doesMethodDefinitionDiffer(methodName, method.source)) {
+          console.info(`${progressCounter(cls.classMethods)} Compiling ${methodName}`);
+          this.loadMethodDefinition(metaclass, methodName, method.source);
+        } else {
+          ++skippedCount;
+        }
+      }
+      
+
+      if (skippedCount !==  0) {
+        console.info(`(Skipped ${skippedCount}/${cls.instanceMethods.length + cls.classMethods.length})`);
+      }
+    }
+
+    for (const [cls, methods] of Object.entries(extensionMethods)) {
+      console.info(`Compiling extension methods in ${cls}`);
+
+      i = 1;
+      let skippedCount = 0;
+      for (const method of methods) {
+        const methodName = `${cls}>>${method.selector}`;
+        if (force || this.doesMethodDefinitionDiffer(methodName, method.source)) {
+          console.info(`${progressCounter(methods)} Compiling ${methodName}`);
+          this.loadMethodDefinition(cls, methodName, method.source);
+        } else {
+          ++skippedCount;
+        }
+      }
+      
+      if (skippedCount !== 0) {
+        console.log(`(Skipped ${skippedCount}/${methods.length})`);
+      }
+    }
+
+
+    const elapsed = Date.now() - startTime;
+    const minutes = Math.floor(elapsed / 60000);
+    const seconds = Math.floor(elapsed / 1000 - minutes * 60);
+    console.info(`Time to update from remote sources: ${minutes}m ${seconds}s`)
+  }
+
+  doesClassDefinitionDiffer(className, definition) {
+    return this.classDefinitions.get(className) !== definition;
+  }
+
+  doesMethodDefinitionDiffer(methodName, methodSource) {
+    return this.methodSources.get(methodName) !== methodSource;
+  }
+
+  loadClassDefinition(className, definition) {
+    sqEval(definition);
+    this.classDefinitions.set(className, definition);
+  }
+
+  loadMethodDefinition(className, methodName, methodSource) {
+    sqCompile(className, methodSource);
+    this.methodSources.set(methodName, methodSource);
+  }
+}
+
 export class XRProject extends SqueakProject {
   static deserialize(options) {
     return new XRProject(options);
@@ -22,28 +125,20 @@ export class XRProject extends SqueakProject {
       type: "browser",
       connectionOptions: {path},
     });
+
+    this.sources = new Sources();
   }
 
   async open() {
     console.info("Opening XRProject...")
-    await super.open();
-    await ensureSystemChangeCallback(true);
-    await this.updateFromRemote();
-
     // TODO: find nicer way to access external objects like this from within squeak (instead of importing like this and using `JS VRButton`)
     window.THREE = await import("/_m/three/build/three.module.js");
     window.VRButton = (await import("/_m/three/examples/jsm/webxr/VRButton.js")).VRButton;
-    // window.THREE = await import(
-    //   "https://unpkg.com/three@0.160.0/build/three.module.js"
-    // );
-    // // TODO: find nicer way to access external objects like this from within squeak (instead of importing like this and using `JS VRButton`)
-    // window.VRButton = (
-    //   await import(
-    //     "https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js"
-    //   )
-    // ).VRButton;
-
     window.CodeMirror = await import("/_m/codemirror/dist/index.js");
+
+    await super.open();
+    await ensureSystemChangeCallback(true);
+    await this.updateFromRemote();
 
     this.container = document.createElement("div");
     this.container.setAttribute("id", "xr-container")
@@ -55,37 +150,12 @@ export class XRProject extends SqueakProject {
   async updateFromRemote() {
     console.info("Fetching sources...");
 
-    const {packageSources, extensionMethods} = await fetch("/xrRemoteService/source")
+    const sources = await fetch("/xrRemoteService/source")
       .then(response => response.json());
 
+    console.info("Loading sources...");
 
-    for (const cls of packageSources) {
-      sqEval(cls.definition);
-    }
-    
-    let i = 1;
-    for (const cls of packageSources) {
-      console.info(`(${i++}/${packageSources.length}) Compiling ${cls.name}...`);
-
-      for (const method of cls.instanceMethods) {
-        sqCompile(cls.name, method);
-      }
-
-      const metaclass = cls.name + " class";
-      for (const method of cls.classMethods) {
-        sqCompile(metaclass, method);
-      }
-    }
-
-    i = 1;
-    for (const [cls, methods] of Object.entries(extensionMethods)) {
-      console.info(`(${i++}/${Object.entries(extensionMethods).length}) Compiling extension methods in ${cls}`);
-
-      for (const method of methods) {
-        sqCompile(cls, method);
-      }
-    }
-
+    this.sources.loadFromRemote(sources);
     console.info("Finished compiling!");
   }
 

@@ -17,8 +17,8 @@ XRRemoteService class >> createWebXRImage [
 	smalltalkName := Smalltalk imageName.
 	Smalltalk imageName: (FileDirectory default fullNameFor: 'websqueakxr.image') asSqueakPathName.
 	resuming := Smalltalk forXrSnapshot: true andQuit: false withExitCode: nil embedded: false.
-	resuming == true ifFalse: [Smalltalk imageName: smalltalkName].
-	Smalltalk snapshot: true andQuit: false withExitCode: nil embedded: false.
+	resuming == true ifFalse: [Smalltalk imageName: smalltalkName.
+		Smalltalk snapshot: true andQuit: false withExitCode: nil embedded: false.].
 ]
 
 { #category : #'as yet unclassified' }
@@ -52,7 +52,10 @@ XRRemoteService >> extensionMethodSourcesFor: aCollectionOfCategories [
 			((SystemNavigation new allExtensionMethodsOfPackage: category)
 				groupBy: #actualClass) associations
 					do: [:classAndMethods | | categorySources |
-						categorySources := classAndMethods value collect: #sourceString.
+						categorySources := classAndMethods value collect: [:method | {
+							#selector -> (method methodSymbol).
+							#source -> (method sourceString).
+							} as: Dictionary].
 						sources
 							at: classAndMethods key name
 							ifPresent: [:existingSources | existingSources addAll: categorySources]
@@ -90,10 +93,14 @@ XRRemoteService >> packageSourcesFor: aCollectionOfCategories [
 		{
 			#name -> (cls name).
 			#definition -> (cls definition).
-			#instanceMethods -> (cls selectors collect: [:selector |
-				cls sourceCodeAt: selector]).
-			#classMethods -> (cls class selectors collect: [:selector |
-				cls class sourceCodeAt: selector])
+			#instanceMethods -> (cls selectors collect: [:selector | {
+				#selector -> selector.
+				#source -> (cls sourceCodeAt: selector)
+				} as: Dictionary]).
+			#classMethods -> (cls class selectors collect: [:selector | {
+				#selector -> selector.
+				#source -> (cls class sourceCodeAt: selector)
+				} as: Dictionary])
 		} as: Dictionary]
 ]
 

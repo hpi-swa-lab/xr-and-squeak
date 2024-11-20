@@ -41,5 +41,5 @@ XRToolSet class >> handleError: anError [
 		[Processor terminateActive]
 			ensure: [JSObjectProxy continueHandlingCallback: XRWorld current animationLoop]].
 	
-	XRWorld current displayError: anError.
+	XRWorld current ifNotNil: [:world | world displayError: anError].
 ]
