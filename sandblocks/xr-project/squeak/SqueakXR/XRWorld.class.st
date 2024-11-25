@@ -205,7 +205,7 @@ XRWorld >> render [
 { #category : #rendering }
 XRWorld >> renderTime: time frame: frameNumber [
 
-	ToolSet doWithDefaultErrorHandling: [ | frame |
+	ToolSet default doWithDefaultErrorHandling: [ | frame |
 		self class renderProcess: Processor activeProcess.
 		frame := self class
 			ensureRenderFrame: frameNumber
@@ -281,7 +281,7 @@ XRWorld >> setupEnvironment [
 { #category : #setup }
 XRWorld >> start [
 
-	| createTestElement morph |
+	| createTestElement morph morphPanel |
 	self
 		setupEnvironment;
 		createRenderer;
@@ -340,13 +340,17 @@ XRWorld >> start [
 		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
 		editedClass: XRRotatingCube selector: #step:).
 	
+	"morph := MyMorph new."
 	morph := (SystemBrowser default open dependents first)
 		extent:  650@425;
 		yourself.
-	self add: (XRMorphPanel new
+	morphPanel := self add: (XRMorphPanel new
 		pixelsPerMeter: 500;
 		position: (Three Vector3 new: 1m y: 2.1m z: -0.5m);
-		morph: morph)
+		morph: morph;
+		preClickBlock: [:m | m activate]).
+	morph extent:  650@425.
+	morphPanel updateTexture.
 ]
 
 { #category : #setup }

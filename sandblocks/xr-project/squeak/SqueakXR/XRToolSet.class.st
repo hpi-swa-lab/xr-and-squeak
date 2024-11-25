@@ -14,6 +14,8 @@ XRToolSet class >> debugException: anException [
 XRToolSet class >> doWithDefaultErrorHandling: aBlock [
 
 	^ aBlock
+		on: CurrentReadOnlySourceFiles
+		do: [:e | e pass]
 		on: Error
 		do: [:error | self handleError: error]
 ]
@@ -23,7 +25,7 @@ XRToolSet class >> handleError: anError [
 	
 	Transcript show: (String new: 1000 streamContents: [:stream | | context |
 		stream
-			nextPutAll: '======== An error occurred ========';
+			nextPutAll: '======== An error occurred (XRToolSet) ========';
 			nextPut: Character cr;
 			nextPutAll: anError asString;
 			nextPut: Character cr;

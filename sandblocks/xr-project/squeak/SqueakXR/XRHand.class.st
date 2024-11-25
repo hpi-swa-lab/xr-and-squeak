@@ -8,7 +8,8 @@ Class {
 		'triggerPressed',
 		'triggerPressedPrev',
 		'buttonAPressed',
-		'buttonAPressedPrev'
+		'buttonAPressedPrev',
+		'errorOccurredDuringRaycastHandling'
 	],
 	#category : #'SqueakXR-Core'
 }
@@ -49,7 +50,11 @@ XRHand >> castRay [
 		hand: self.
 	"TODO: what if identifier is nil"
 	(self world xrObjectWithIdentifier: identifier) ifNotNil: [:xrObject |
-		xrObject handleEvent: event].
+		[xrObject handleEvent: event]
+			on: Error
+			do: [:error |
+				errorOccurredDuringRaycastHandling := true.
+				error signal]].
 ]
 
 { #category : #private }
@@ -133,6 +138,8 @@ XRHand >> initialize [
 	super initialize.
 	self raycaster: Three Raycaster new.
 	
+	errorOccurredDuringRaycastHandling := false.
+	
 	triggerPressed := false.
 	triggerPressedPrev := false.
 	
@@ -156,6 +163,16 @@ XRHand >> initializeThreeObject [
 		inputSource := nil].
 	
 	^ obj
+]
+
+{ #category : #'as yet unclassified' }
+XRHand >> mayStep [
+
+	errorOccurredDuringRaycastHandling
+		ifTrue: [
+			errorOccurredDuringRaycastHandling := false.
+			self erroredInLastFrame: false].
+	^ super mayStep
 ]
 
 { #category : #accessing }

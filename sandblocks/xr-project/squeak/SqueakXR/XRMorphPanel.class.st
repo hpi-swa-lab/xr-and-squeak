@@ -6,7 +6,7 @@ Class {
 		'canvasTexture',
 		'canvas',
 		'pixelsPerMeter',
-		'textureNeedsUpdate'
+		'preClickBlock'
 	],
 	#category : #'SqueakXR-Core'
 }
@@ -24,12 +24,6 @@ XRMorphPanel >> canvas [
 		canvas := JS window document createElement: 'canvas']
 ]
 
-{ #category : #private }
-XRMorphPanel >> canvas: aCanvas [
-
-	canvas := aCanvas
-]
-
 { #category : #accessing }
 XRMorphPanel >> canvasTexture [
 
@@ -41,28 +35,59 @@ XRMorphPanel >> canvasTexture [
 			yourself]
 ]
 
-{ #category : #private }
-XRMorphPanel >> canvasTexture: aCanvasTexture [
+{ #category : #'as yet unclassified' }
+XRMorphPanel >> cleanupMorph [
 
-	canvasTexture := aCanvasTexture
+	morph delete
+]
+
+{ #category : #'as yet unclassified' }
+XRMorphPanel >> delete [
+
+	self cleanupMorph
 ]
 
 { #category : #accessing }
 XRMorphPanel >> handlePointing: anEvent [
 
-	| dimensions normalizedPoint point pointingInformation |
+	| dimensions normalizedPoint point pointingInformation clickPoint event |
 	anEvent hand triggerJustPressed ifFalse: [^ self].
 	
 	pointingInformation := anEvent info.
 	
-	point := self threeObject worldToLocal: pointingInformation point.
-	dimensions := Three Vector3
-		new: pointingInformation object geometry parameters width
+	point := (self threeObject worldToLocal: pointingInformation point) asVector.
+	dimensions := Vector3
+		x: pointingInformation object geometry parameters width
 		y: pointingInformation object geometry parameters height
 		z: 1.
-	normalizedPoint := point clone divide: dimensions.
+	normalizedPoint := point / dimensions.
 	normalizedPoint x: normalizedPoint x + 0.5.
 	normalizedPoint y: 1.0 - (normalizedPoint y + 0.5).
+	clickPoint := (normalizedPoint xy * (self morph extent)) asPoint + self morph topLeft.
+	
+	Transcript showln: clickPoint.
+	
+	"preClickBlock cull: self morph."
+	"self currentHand mouseFocus: morph."
+	"morph activate."
+	event := MouseButtonEvent new
+		setType: #mouseDown
+		position: clickPoint asPoint
+		which: MouseButtonEvent redButton
+		buttons: MouseButtonEvent redButton
+		nClicks: 1
+		hand: self currentHand
+		stamp: Sensor eventTimeNow.
+	self currentHand handleEvent: event.
+	event := MouseButtonEvent new
+		setType: #mouseUp
+		position: clickPoint asPoint
+		which: MouseButtonEvent redButton
+		buttons: MouseButtonEvent redButton
+		nClicks: 1
+		hand: self currentHand
+		stamp: Sensor eventTimeNow.
+	self currentHand handleEvent: event.
 	
 	"clickPoint := normalizedPoint multiply: self htmlElementSizeAsVector3.
 	clickedElement := self elementFromPoint: clickPoint.
@@ -73,8 +98,8 @@ XRMorphPanel >> handlePointing: anEvent [
 			#cancelable -> true.
 			# view -> JS window} as: Dictionary).
 	
-	self withElementSelectableDo: [clickedElement dispatchEvent: event].
-	self updateTexture"
+	self withElementSelectableDo: [clickedElement dispatchEvent: event]."
+	self updateTexture
 ]
 
 { #category : #initializing }
@@ -82,7 +107,6 @@ XRMorphPanel >> initialize [
 
 	super initialize.
 	
-	textureNeedsUpdate := false.
 	self pixelsPerMeter: 100.
 ]
 
@@ -112,8 +136,12 @@ XRMorphPanel >> morph [
 { #category : #accessing }
 XRMorphPanel >> morph: aMorph [
 
+	morph ifNotNil: [
+		self cleanupMorph].
+	
 	morph := aMorph.
-	self queueTextureUpdate.
+	morph openInWorld.
+	self updateTexture.
 ]
 
 { #category : #'as yet unclassified' }
@@ -129,32 +157,30 @@ XRMorphPanel >> pixelsPerMeter: aNumber [
 ]
 
 { #category : #accessing }
-XRMorphPanel >> queueTextureUpdate [
+XRMorphPanel >> preClickBlock: aBlock [
 
-	textureNeedsUpdate := true
+	preClickBlock := aBlock
 ]
 
 { #category : #accessing }
-XRMorphPanel >> step: deltaTime [
-
-	textureNeedsUpdate ifTrue: [self updateTexture]
+XRMorphPanel >> scale [
 ]
 
 { #category : #'as yet unclassified' }
 XRMorphPanel >> updateTexture [
 
+	self morph ifNil: [^ self].
+
 	self canvas
 		width: self morph width;
 		height: self morph height.
 	self threeObject scale
-		set: self morph width / self pixelsPerMeter
-		y: self morph height / self pixelsPerMeter
+		set: self morph width / self pixelsPerMeter;
+		y: self morph height / self pixelsPerMeter;
 		z: 1.0.
 	
 	self morph imageForm drawOnTexture: self canvasTexture.
 	self canvasTexture needsUpdate: true.
-	
-	textureNeedsUpdate := false.
 ]
 
 { #category : #accessing }
@@ -163,5 +189,5 @@ XRMorphPanel >> worldToMorph: aVector3 [
 	| localPoint |
 	localPoint := (self threeObject worldToLocal: aVector3) asVector.
 	localPoint /= self scale.
-	^ localPoint * (self morph extent @ 1)
+	^ localPoint * self morph extent
 ]
