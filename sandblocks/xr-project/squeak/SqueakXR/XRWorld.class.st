@@ -336,9 +336,9 @@ XRWorld >> start [
 	self add: (errorPanel
 		position: (Three Vector3 new: -1m y: 1m z: -0.5m)).
 	
-	self add: (XRTextEditorPanel new
+	"self add: (XRTextEditorPanel new
 		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
-		editedClass: XRRotatingCube selector: #step:).
+		editedClass: XRRotatingCube selector: #step:)."
 	
 	"morph := MyMorph new."
 	morph := (SystemBrowser default open dependents first)
@@ -346,7 +346,7 @@ XRWorld >> start [
 		yourself.
 	morphPanel := self add: (XRMorphPanel new
 		pixelsPerMeter: 500;
-		position: (Three Vector3 new: 1m y: 2.1m z: -0.5m);
+		position: (Three Vector3 new: 1m y: 1m z: -0.5m);
 		morph: morph;
 		preClickBlock: [:m | m activate]).
 	morph extent:  650@425.

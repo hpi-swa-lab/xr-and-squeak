@@ -70,7 +70,7 @@ XRMorphPanel >> handlePointing: anEvent [
 	"preClickBlock cull: self morph."
 	"self currentHand mouseFocus: morph."
 	"morph activate."
-	event := MouseButtonEvent new
+	[event := MouseButtonEvent new
 		setType: #mouseDown
 		position: clickPoint asPoint
 		which: MouseButtonEvent redButton
@@ -87,7 +87,9 @@ XRMorphPanel >> handlePointing: anEvent [
 		nClicks: 1
 		hand: self currentHand
 		stamp: Sensor eventTimeNow.
-	self currentHand handleEvent: event.
+	self currentHand handleEvent: event.]
+		on: ProvideAnswerNotification
+		do: [:n | Transcript showln: n. n resume: true].
 	
 	"clickPoint := normalizedPoint multiply: self htmlElementSizeAsVector3.
 	clickedElement := self elementFromPoint: clickPoint.
@@ -108,6 +110,8 @@ XRMorphPanel >> initialize [
 	super initialize.
 	
 	self pixelsPerMeter: 100.
+	
+	JS document onkeydown: [:event | [self onKeydown: event] on: Error do: [:e | Transcript showln: 'keydown error ', e asString]].
 ]
 
 { #category : #initializing }
@@ -142,6 +146,54 @@ XRMorphPanel >> morph: aMorph [
 	morph := aMorph.
 	morph openInWorld.
 	self updateTexture.
+]
+
+{ #category : #initializing }
+XRMorphPanel >> onKeydown: aJSEvent [
+
+	| character event value keyString keyCode keyValue buttons |
+	keyString := aJSEvent key asString.
+	(keyString size > 1 and: [keyString ~= 'Backspace']) ifTrue: [Transcript showln: 'Character string must be length 1: ', keyString. ^ self].
+	character := keyString first.
+	"character isAlphaNumeric ifFalse: [Transcript showln: 'No support for non-alphanumeric characters'. ^ self]."
+	value := EventSensor virtualKeyTable keyAtValue: character asUppercase.
+	[Transcript showln: ('keyString: "{1}" character: "{2}" value: "{3}" value to character: "{4}"' format: {keyString. character. value. EventSensor virtualKeyTable at: value. 1. 2. 3. 4}).]
+		on: Error do: [:e | Transcript showln: e].
+	
+	Transcript showln: aJSEvent ctrlKey.
+	keyValue := aJSEvent ctrlKey ifTrue: [115] ifFalse: [character asInteger].
+	keyCode := aJSEvent ctrlKey ifTrue: [1] ifFalse: [value].
+	buttons := aJSEvent ctrlKey ifTrue: [64] ifFalse: [0].
+	
+	keyString = 'Backspace' ifTrue: [
+		keyValue := 8.
+		keyCode := 51].
+	
+	event := KeyboardEvent new
+		setType: #keystroke
+		buttons: buttons
+		position: self currentHand position
+		keyValue: keyValue
+		keyCode: keyCode
+		hand: self currentHand
+		stamp: Sensor eventTimeNow.
+	[self currentHand keyboardFocus keyStroke: event.]
+		on: Error
+		do: [:e | Transcript showln: 'error occurred during keystroke: ', e description asString].
+	Transcript showln: event .
+	Transcript showln: self currentHand keyboardFocus.
+	self updateTexture.
+	aJSEvent preventDefault.
+	"self currentHand handleEvent: event."
+	"event := KeyboardEvent new
+		setType: #keyUp
+		buttons: 0
+		position: self currentHand position
+		keyValue: value
+		keyCode: value
+		hand: self currentHand
+		stamp: Sensor eventTimeNow.
+	self currentHand handleEvent: event."
 ]
 
 { #category : #'as yet unclassified' }

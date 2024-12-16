@@ -5,6 +5,11 @@ Class {
 }
 
 { #category : #'as yet unclassified' }
+XRToolSet class >> codeCompletionAround: aBlock textMorph: aTextMorph keyStroke: evt [
+	^ aBlock value
+]
+
+{ #category : #'as yet unclassified' }
 XRToolSet class >> debugException: anException [
 
 	Transcript showln: '(exception handling nyi) An exception occurred: ', anException description
