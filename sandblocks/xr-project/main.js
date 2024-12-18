@@ -138,7 +138,11 @@ export class XRProject extends SqueakProject {
 
     await super.open();
     await ensureSystemChangeCallback(true);
-    await this.updateFromRemote();
+    const updateResult = await this.updateFromRemote();
+    if (!updateResult.success) {
+      console.error(`Failed to update: ${updateResult.reason} (${updateResult.error.message})`)
+      return;
+    }
 
     this.container = document.createElement("div");
     this.container.setAttribute("id", "xr-container")
@@ -150,13 +154,20 @@ export class XRProject extends SqueakProject {
   async updateFromRemote() {
     console.info("Fetching sources...");
 
-    const sources = await fetch("/xrRemoteService/source")
-      .then(response => response.json());
+    let sources;
+    try {
+      sources = await fetch("/xrRemoteService/source")
+        .then(response => response.json());
+    } catch (error) {
+      return {success: false, failureReason: "An error occurred while fetching sources", error};
+    }
 
     console.info("Loading sources...");
 
     this.sources.loadFromRemote(sources);
     console.info("Finished compiling!");
+
+    return {success: true};
   }
 
   async startWorld() {
@@ -172,7 +183,10 @@ export class XRProject extends SqueakProject {
       super.renderBackground(),
       button("Update SqueakXR", async () => {
         setIsLoading(true);
-        await this.updateFromRemote();
+        const updateResult = await this.updateFromRemote();
+        if (!updateResult.success) {
+          console.error(`Failed to update: ${updateResult.reason} (${updateResult.error.message})`)
+        }
         setIsLoading(false);
       }),
       button("Restart world", () => {
